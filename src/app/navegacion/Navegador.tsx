@@ -29,7 +29,7 @@ export function Navegador() {
   const temaNavegacion = useMemo<Theme>(
     () => ({
       ...DefaultTheme,
-      dark: rt.themeName === 'oscuro',
+      dark: rt.themeName === 'dark',
       colors: {
         primary: theme.colores.primario,
         background: theme.colores.fondo,

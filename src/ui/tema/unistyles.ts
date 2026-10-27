@@ -2,7 +2,8 @@ import {StyleSheet} from 'react-native-unistyles';
 
 import {temaClaro, temaOscuro} from './tema';
 
-const temas = {claro: temaClaro, oscuro: temaOscuro};
+// Con adaptiveThemes, unistyles exige exactamente los nombres 'light' y 'dark'.
+const temas = {light: temaClaro, dark: temaOscuro};
 
 type TemasApp = typeof temas;
 
