@@ -19,6 +19,8 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
+jest.mock('react-native-webview', () => ({WebView: () => null}));
+
 jest.mock('react-native-keychain', () => {
   const guardado = {valor: null};
   return {

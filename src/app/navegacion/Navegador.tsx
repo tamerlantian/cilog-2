@@ -8,7 +8,13 @@ import {useEffect, useMemo} from 'react';
 import {useUnistyles} from 'react-native-unistyles';
 
 import {conectarSesionConApi, useSesion} from '@/core/sesion';
-import {EmpresaPantalla, LoginPantalla} from '@/features/auth';
+import {
+  EmpresaPantalla,
+  LoginPantalla,
+  RecuperarClavePantalla,
+  RegistroPantalla,
+  ReenviarVerificacionPantalla,
+} from '@/features/auth';
 import {InicioPantalla} from '@/features/inicio';
 import {Cargando, Pantalla} from '@/ui';
 
@@ -54,7 +60,18 @@ export function Navegador() {
     <NavigationContainer theme={temaNavegacion}>
       <Stack.Navigator screenOptions={{headerShown: false}}>
         {estado === 'sinSesion' ? (
-          <Stack.Screen component={LoginPantalla} name="Login" />
+          <>
+            <Stack.Screen component={LoginPantalla} name="Login" />
+            <Stack.Screen component={RegistroPantalla} name="Registro" />
+            <Stack.Screen
+              component={RecuperarClavePantalla}
+              name="RecuperarClave"
+            />
+            <Stack.Screen
+              component={ReenviarVerificacionPantalla}
+              name="ReenviarVerificacion"
+            />
+          </>
         ) : estado === 'sinEmpresa' ? (
           <Stack.Screen component={EmpresaPantalla} name="Empresa" />
         ) : (

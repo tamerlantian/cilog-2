@@ -20,3 +20,43 @@ export const listarEmpresasApi = async (): Promise<Empresa[]> => {
   });
   return esquemaPaginaEmpresas.parse(data).items.filter(e => e.activo);
 };
+
+type Desafio = {turnstileToken?: string | undefined};
+
+export type DatosRegistro = Desafio & {
+  nombres: string;
+  apellidos: string;
+  numeroIdentificacion: string;
+  email: string;
+  clave: string;
+};
+
+/** Crea la cuenta. Fluor envía el correo de verificación; la cuenta no sirve hasta verificarla. */
+export const registrarApi = async (datos: DatosRegistro) => {
+  await cliente.post('/auth/user/registrar', {
+    email: datos.email,
+    password: datos.clave,
+    nombres: datos.nombres,
+    apellidos: datos.apellidos,
+    numero_identificacion: datos.numeroIdentificacion,
+    turnstile_token: datos.turnstileToken,
+  });
+};
+
+/** Responde igual exista o no el correo, para no revelar qué cuentas existen. */
+export const recuperarClaveApi = async (email: string, desafio: Desafio) => {
+  await cliente.post('/auth/user/recuperar-clave', {
+    email,
+    turnstile_token: desafio.turnstileToken,
+  });
+};
+
+export const reenviarVerificacionApi = async (
+  email: string,
+  desafio: Desafio,
+) => {
+  await cliente.post('/auth/user/reenviar-verificacion', {
+    email,
+    turnstile_token: desafio.turnstileToken,
+  });
+};

@@ -277,3 +277,14 @@ Con `client_type=api`, el login debe incluir `expires_in` (segundos) y el JWT de
 ## Qué no se pide (descartado en esta versión)
 
 Cupones, foto de perfil, noticias, mapa de ruta, listado de viajes del cliente y "solicitar ayuda".
+
+
+## Enlaces de correo hacia la app (prioridad 2)
+
+Hoy los correos de verificación y de restablecer clave abren la web (`frontend_url` → `APP_URL` o un origen de `FRONTEND_URLS`). Para que abran la app hay que:
+
+1. Publicar un dominio con Android App Links / iOS Universal Links (`assetlinks.json` y `apple-app-site-association`) o aceptar un esquema propio.
+2. Que `frontend_url` use ese dominio cuando la petición venga del cliente móvil (p. ej. un header `X-Client: mobile`).
+3. En la app, pantallas para `verify-email?token=` y `restablecer-clave?token=` (esta última con `POST /auth/user/restablecer-clave`, que también exige Turnstile).
+
+Mientras tanto la app pide el correo y el usuario completa el paso en la web.
