@@ -73,3 +73,13 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Secretos y configuracion local (no versionar)
+android/app/google-services.json
+ios/GoogleService-Info.plist
+.env
+.env.*
+!.env.example
+
+# Certificado público de la clave de subida (no versionar)
+*.pem

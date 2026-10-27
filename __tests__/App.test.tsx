@@ -1,13 +1,11 @@
-/**
- * @format
- */
+import {render, screen} from '@testing-library/react-native';
 
-import React from 'react';
-import ReactTestRenderer from 'react-test-renderer';
-import App from '../App';
+import {App} from '@/app/App';
 
-test('renders correctly', async () => {
-  await ReactTestRenderer.act(() => {
-    ReactTestRenderer.create(<App />);
+describe('App', () => {
+  it('arranca y muestra la pantalla base', async () => {
+    await render(<App />);
+    expect(screen.getByText('Plutonio')).toBeTruthy();
+    expect(screen.getByText('https://api.prueba.test')).toBeTruthy();
   });
 });
