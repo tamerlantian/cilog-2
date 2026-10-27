@@ -1,11 +1,144 @@
-import {render, screen} from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
+
+import Toast from 'react-native-toast-message';
 
 import {App} from '@/app/App';
+import {clienteConsultas} from '@/core/api/clienteConsultas';
+import {ErrorApi} from '@/core/api/errores';
+import * as api from '@/features/auth/api';
+import {useSesion} from '@/core/sesion';
+
+import {crearJwt, empresaPrueba, usuarioPrueba} from './helpers';
+
+jest.mock('@/features/auth/api');
+const apiSimulada = jest.mocked(api);
+
+const llenarLogin = async () => {
+  await fireEvent.changeText(
+    screen.getByLabelText('Correo'),
+    'conductor@prueba.test',
+  );
+  await fireEvent.changeText(screen.getByLabelText('Clave'), 'secreta123');
+  await fireEvent.press(screen.getByRole('button', {name: 'Iniciar sesión'}));
+};
 
 describe('App', () => {
-  it('arranca y muestra la pantalla base', async () => {
+  // Los temporizadores de recolección de react-query mantienen vivo el proceso de Jest.
+  afterEach(() => clienteConsultas.clear());
+
+  beforeEach(async () => {
+    apiSimulada.iniciarSesionApi.mockReset();
+    apiSimulada.listarEmpresasApi.mockReset();
+    await useSesion.getState().cerrarSesion();
+    useSesion.setState({estado: 'iniciando', avisoSesion: null});
+  });
+
+  it('sin sesión guardada muestra el login', async () => {
     await render(<App />);
-    expect(screen.getByText('Plutonio')).toBeTruthy();
-    expect(screen.getByText('https://api.prueba.test')).toBeTruthy();
+    expect(
+      await screen.findByText('Inicia sesión para ver tus despachos'),
+    ).toBeTruthy();
+  });
+
+  it('valida el formulario antes de llamar a la API', async () => {
+    await render(<App />);
+    await screen.findByLabelText('Correo');
+    await fireEvent.press(screen.getByRole('button', {name: 'Iniciar sesión'}));
+
+    expect(await screen.findByText('Ingresa tu correo')).toBeTruthy();
+    expect(apiSimulada.iniciarSesionApi).not.toHaveBeenCalled();
+  });
+
+  it('con una sola empresa entra directo al inicio', async () => {
+    apiSimulada.iniciarSesionApi.mockResolvedValue({
+      access_token: crearJwt(600),
+      user: usuarioPrueba,
+    });
+    apiSimulada.listarEmpresasApi.mockResolvedValue([
+      empresaPrueba(7, 'Transportes Sur'),
+    ]);
+
+    await render(<App />);
+    await screen.findByLabelText('Correo');
+    await llenarLogin();
+
+    expect(
+      await screen.findByText('Tus despachos aparecerán aquí.'),
+    ).toBeTruthy();
+    expect(screen.getByText('Transportes Sur')).toBeTruthy();
+    expect(apiSimulada.iniciarSesionApi).toHaveBeenCalledWith(
+      'conductor@prueba.test',
+      'secreta123',
+    );
+  });
+
+  it('con varias empresas deja elegir una', async () => {
+    apiSimulada.iniciarSesionApi.mockResolvedValue({
+      access_token: crearJwt(600),
+      user: usuarioPrueba,
+    });
+    apiSimulada.listarEmpresasApi.mockResolvedValue([
+      empresaPrueba(7, 'Transportes Sur'),
+      empresaPrueba(8, 'Logística Norte'),
+    ]);
+
+    await render(<App />);
+    await screen.findByLabelText('Correo');
+    await llenarLogin();
+
+    expect(await screen.findByText('Elige tu empresa')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Logística Norte'));
+
+    expect(
+      await screen.findByText('Tus despachos aparecerán aquí.'),
+    ).toBeTruthy();
+    expect(useSesion.getState().empresa?.tenant_id).toBe(8);
+  });
+
+  it('muestra el error del servidor si las credenciales son inválidas', async () => {
+    apiSimulada.iniciarSesionApi.mockRejectedValue(
+      new ErrorApi({
+        codigo: 'NO_AUTENTICADO',
+        mensaje: 'Credenciales inválidas',
+        estado: 401,
+      }),
+    );
+
+    await render(<App />);
+    await screen.findByLabelText('Correo');
+    await llenarLogin();
+
+    await waitFor(() =>
+      expect(apiSimulada.iniciarSesionApi).toHaveBeenCalled(),
+    );
+    expect(useSesion.getState().estado).toBe('sinSesion');
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({type: 'error', text1: 'Credenciales inválidas'}),
+    );
+  });
+
+  it('cerrar sesión vuelve al login', async () => {
+    apiSimulada.iniciarSesionApi.mockResolvedValue({
+      access_token: crearJwt(600),
+      user: usuarioPrueba,
+    });
+    apiSimulada.listarEmpresasApi.mockResolvedValue([
+      empresaPrueba(7, 'Transportes Sur'),
+    ]);
+
+    await render(<App />);
+    await screen.findByLabelText('Correo');
+    await llenarLogin();
+    await screen.findByText('Tus despachos aparecerán aquí.');
+
+    await fireEvent.press(screen.getByRole('button', {name: 'Cerrar sesión'}));
+    expect(
+      await screen.findByText('Inicia sesión para ver tus despachos'),
+    ).toBeTruthy();
   });
 });

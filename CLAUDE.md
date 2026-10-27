@@ -21,6 +21,10 @@ npm run build:aab   # AAB de release con .env.prod
 - `edgeToEdgeEnabled=true`: toda pantalla usa `Pantalla` (respeta safe areas y teclado).
 - Alias `@/` apunta a `src/`. No hay archivos `.js` en `src/`.
 
+## Sesión
+
+`useSesion` (`@/core/sesion`) es la fuente de verdad: token, usuario y empresa. No guardes tokens fuera del llavero. Las features no se importan entre sí (ESLint lo bloquea); lo compartido sube a `core/` o `ui/`.
+
 ## Fluor
 
 Login `POST /auth/seguridad/login` con `client_type: "api"`; todas las demás rutas llevan `Authorization: Bearer` y `X-Tenant-ID`. Errores `{success:false, error:{code,message}, request_id}`. Faltan endpoints para entregar, novedades y paquete offline: ver `docs/contratos-fluor.md`.

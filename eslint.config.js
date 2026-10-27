@@ -1,3 +1,4 @@
+const fs = require('node:fs');
 const reactNative = require('@react-native/eslint-config/flat');
 const tseslint = require('typescript-eslint');
 
@@ -7,6 +8,11 @@ const tseslint = require('typescript-eslint');
  *   core      -> no conoce features ni app
  *   features  -> no conocen app (y no se importan entre si, ver restriccion por feature)
  */
+const features = fs
+  .readdirSync('src/features', {withFileTypes: true})
+  .filter(entrada => entrada.isDirectory())
+  .map(entrada => entrada.name);
+
 const prohibir = (...grupos) => ({
   'no-restricted-imports': [
     'error',
@@ -66,7 +72,16 @@ module.exports = [
     files: ['src/core/**/*.{ts,tsx}'],
     rules: prohibir(['@/features/*', '@/app/*']),
   },
-  {files: ['src/features/**/*.{ts,tsx}'], rules: prohibir(['@/app/*'])},
+  // Cada feature solo ve core y ui: se calcula con los directorios que existan.
+  ...features.map(feature => ({
+    files: [`src/features/${feature}/**/*.{ts,tsx}`],
+    rules: prohibir([
+      '@/app/*',
+      ...features
+        .filter(otra => otra !== feature)
+        .map(otra => `@/features/${otra}`),
+    ]),
+  })),
   {
     files: ['src/ui/tema/**/*.ts'],
     rules: {
