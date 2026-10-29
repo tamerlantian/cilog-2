@@ -16,7 +16,7 @@ listas `{total, page, size, items}`, errores `{success:false, error:{code,messag
 | Tema | Decisión |
 | --- | --- |
 | Duración de la sesión móvil | Extender el JWT de `client_type=api`. Valor a acordar con backend (propuesta: 7 días) y devolver `expires_in` en segundos en el login. |
-| Registro y recuperación de clave | **Se mantiene Turnstile.** La app mostrará el widget en un WebView; backend debe indicar la *site key* y el hostname permitido para ese WebView. |
+| Registro y recuperación de clave | **Resuelto en Fluor** (`329211e`): `client_type` `api`/`mobile` salta Turnstile; solo `web` lo exige. La app va como `api` y no usa WebView. |
 | Usuario con conductor | Propuesta: resolver el conductor comparando `auth_user.numero_identificacion` con `tte_conductor.numero_identificacion` en la base de la empresa. Sin cambio de esquema; el registro ya exige la identificación. Alternativa: columna `codigo_conductor_fk` en `mas_user_tenant`. **Pendiente de hablar con backend.** |
 | Varias empresas por usuario | **Pendiente.** La app mostrará selector si `GET /mas/user-tenant/lista` devuelve más de una. |
 | Despachos offline de la app vieja | Se pierden al corte; no hay migración. |

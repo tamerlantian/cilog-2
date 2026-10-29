@@ -44,7 +44,7 @@ src/
 | Sesión: token en llavero, perfil y empresa en MMKV (`core/sesion`) | 1 | Hecho, con pruebas |
 | Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas |
 | Firebase (push y sesión única), Sentry | 1 | Pendiente |
-| Registro, recuperación de clave y reenvío de verificación (WebView con Turnstile) | 1 | Hecho, con pruebas. Falta probar con la site key real |
+| Registro, recuperación de clave y reenvío de verificación | 1 | Hecho, con pruebas. Falta probar contra el Fluor desplegado |
 | SQLite, cola y motor de sincronización | 2 | Pendiente |
 
 ## Sesión y navegación
@@ -53,13 +53,13 @@ src/
 - El token vive solo en el llavero (`core/storage/llavero.ts`). El usuario y la empresa elegida van en MMKV, porque no son secretos.
 - Al arrancar, un token vencido (se lee `exp` del JWT) se descarta y se pide login. Un 401 con token cierra la sesión y avisa. Fluor no entrega refresh para `api`: queda pendiente alargar el JWT móvil con backend (ver `docs/contratos-fluor.md`).
 - Cambiar de usuario o de empresa limpia la caché de TanStack Query, para no mostrar datos de otra empresa.
-- El login móvil usa `client_type: "api"`, que Fluor no protege con Turnstile. Solo registro y recuperación de clave lo exigen.
+- Todas las llamadas sin sesión van con `client_type: "api"`, que Fluor no protege con Turnstile.
 
-## Cuentas sin sesión y Turnstile
+## Cuentas sin sesión
 
 - Registro, recuperar clave y reenviar verificación llaman a `/auth/user/registrar`, `/recuperar-clave` y `/reenviar-verificacion`. Fluor responde igual exista o no el correo en recuperar y reenviar.
 - Los correos de Fluor enlazan a la **web** (`/auth/verify-email`, `/auth/restablecer-clave`), no a la app. La app solo pide el correo; el usuario verifica o crea la clave nueva en la web. Abrir esos enlaces dentro de la app exige deep links y un cambio en `frontend_url` del backend: ver `docs/contratos-fluor.md`.
 - Un login con 403 y `is_verified: false` no muestra toast: la pantalla ofrece reenviar el correo.
-- Turnstile solo se pide si Fluor tiene `TURNSTILE_ENABLED=True`. En la app, `TURNSTILE_SITE_KEY` activa el WebView (`features/auth/useDesafio.tsx`); sin ella no hay desafío y se envía sin token. `TURNSTILE_BASE_URL` debe ser un hostname autorizado en el widget de Cloudflare (por defecto, el de `API_URL`).
+- Turnstile: Fluor solo lo exige al cliente `web` (login, registrar, recuperar, restablecer y reenviar). La app se identifica como `api` y no lo usa, así que no hay WebView ni site key. Un servidor sin la actualización `329211e` de Fluor seguirá respondiendo "Token de verificación requerido" en registro y recuperación.
 - Fluor no impone política de clave; la app exige 8 caracteres como mínimo.
 - Los límites de Fluor son estrictos: 3/min en registrar y recuperar, 1/min en reenviar y 5/min en login. Un 429 muestra "Demasiados intentos".

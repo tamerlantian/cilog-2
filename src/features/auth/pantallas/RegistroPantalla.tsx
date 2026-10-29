@@ -6,11 +6,10 @@ import {Controller, useForm, type Control} from 'react-hook-form';
 import {type TextInput, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {Boton, EstadoVacio, Input, mostrarInfo, Pantalla, Texto} from '@/ui';
+import {Boton, EstadoVacio, Input, Pantalla, Texto} from '@/ui';
 
 import {esquemaFormularioRegistro, type FormularioRegistro} from '../esquemas';
 import type {RutasAuth} from '../rutas';
-import {useDesafio} from '../useDesafio';
 import {useRegistrar} from '../useSolicitudes';
 
 type Campo = {
@@ -72,7 +71,6 @@ export function RegistroPantalla() {
     {},
   );
   const [correoRegistrado, setCorreoRegistrado] = useState<string | null>(null);
-  const desafio = useDesafio();
   const {mutate, isPending} = useRegistrar();
   const {control, handleSubmit} = useForm<FormularioRegistro>({
     resolver: zodResolver(esquemaFormularioRegistro),
@@ -88,10 +86,6 @@ export function RegistroPantalla() {
 
   const enviar = () =>
     handleSubmit(datos => {
-      if (desafio.requerido && !desafio.token) {
-        mostrarInfo('Completa la verificación de seguridad.');
-        return;
-      }
       mutate(
         {
           nombres: datos.nombres,
@@ -99,12 +93,8 @@ export function RegistroPantalla() {
           numeroIdentificacion: datos.numeroIdentificacion,
           email: datos.email,
           clave: datos.clave,
-          turnstileToken: desafio.token,
         },
-        {
-          onSuccess: () => setCorreoRegistrado(datos.email),
-          onSettled: desafio.reiniciar,
-        },
+        {onSuccess: () => setCorreoRegistrado(datos.email)},
       );
     })();
 
@@ -152,7 +142,6 @@ export function RegistroPantalla() {
         );
       })}
 
-      {desafio.elemento}
       <Boton cargando={isPending} titulo="Crear cuenta" onPress={enviar} />
       <Boton
         tipo="texto"

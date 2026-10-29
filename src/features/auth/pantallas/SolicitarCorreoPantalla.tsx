@@ -5,11 +5,10 @@ import {Controller, useForm} from 'react-hook-form';
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {Boton, EstadoVacio, Input, mostrarInfo, Pantalla, Texto} from '@/ui';
+import {Boton, EstadoVacio, Input, Pantalla, Texto} from '@/ui';
 
 import {esquemaFormularioCorreo, type FormularioCorreo} from '../esquemas';
 import type {RutasAuth} from '../rutas';
-import {useDesafio} from '../useDesafio';
 import {type TipoSolicitudCorreo, useSolicitarCorreo} from '../useSolicitudes';
 
 type Textos = {
@@ -45,24 +44,13 @@ function SolicitarCorreo({tipo}: {tipo: TipoSolicitudCorreo}) {
   const emailInicial =
     (ruta.params as {email?: string} | undefined)?.email ?? '';
   const textos = TEXTOS[tipo];
-  const desafio = useDesafio();
   const {mutate, isPending, isSuccess} = useSolicitarCorreo(tipo);
   const {control, handleSubmit} = useForm<FormularioCorreo>({
     resolver: zodResolver(esquemaFormularioCorreo),
     defaultValues: {email: emailInicial},
   });
 
-  const enviar = () =>
-    handleSubmit(({email}) => {
-      if (desafio.requerido && !desafio.token) {
-        mostrarInfo('Completa la verificación de seguridad.');
-        return;
-      }
-      mutate(
-        {email, turnstileToken: desafio.token},
-        {onSettled: desafio.reiniciar},
-      );
-    })();
+  const enviar = () => handleSubmit(({email}) => mutate(email))();
 
   if (isSuccess) {
     return (
@@ -107,7 +95,6 @@ function SolicitarCorreo({tipo}: {tipo: TipoSolicitudCorreo}) {
           />
         )}
       />
-      {desafio.elemento}
       <Boton cargando={isPending} titulo={textos.boton} onPress={enviar} />
       <Boton
         tipo="texto"

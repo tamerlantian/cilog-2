@@ -23,15 +23,9 @@ export type TipoSolicitudCorreo = 'recuperarClave' | 'reenviarVerificacion';
 
 export const useSolicitarCorreo = (tipo: TipoSolicitudCorreo) =>
   useMutation({
-    mutationFn: ({
-      email,
-      turnstileToken,
-    }: {
-      email: string;
-      turnstileToken?: string | undefined;
-    }) =>
+    mutationFn: (email: string) =>
       tipo === 'recuperarClave'
-        ? recuperarClaveApi(email, {turnstileToken})
-        : reenviarVerificacionApi(email, {turnstileToken}),
+        ? recuperarClaveApi(email)
+        : reenviarVerificacionApi(email),
     onError: alFallar,
   });

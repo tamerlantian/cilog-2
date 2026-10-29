@@ -83,7 +83,6 @@ describe('cuenta sin sesión', () => {
         numeroIdentificacion: '1020304050',
         email: 'ana@prueba.test',
         clave: 'clave-segura-1',
-        turnstileToken: undefined,
       });
     });
 
@@ -133,9 +132,6 @@ describe('cuenta sin sesión', () => {
       expect(await screen.findByText('Revisa tu correo')).toBeTruthy();
       expect(apiSimulada.recuperarClaveApi).toHaveBeenCalledWith(
         'ana@prueba.test',
-        {
-          turnstileToken: undefined,
-        },
       );
     });
 
@@ -193,9 +189,6 @@ describe('cuenta sin sesión', () => {
       expect(await screen.findByText('Revisa tu correo')).toBeTruthy();
       expect(apiSimulada.reenviarVerificacionApi).toHaveBeenCalledWith(
         'ana@prueba.test',
-        {
-          turnstileToken: undefined,
-        },
       );
     });
 

@@ -3,12 +3,17 @@ import type {Empresa} from '@/core/sesion';
 
 import {esquemaPaginaEmpresas, esquemaRespuestaLogin} from './esquemas';
 
-/** El login móvil usa `client_type: "api"`, que no exige Turnstile. */
+/**
+ * Fluor solo exige Turnstile al cliente `web`, así que las llamadas sin sesión van como
+ * `api`. Un servidor sin esa actualización ignora el campo en registro y recuperación.
+ */
+const CLIENTE = 'api';
+
 export const iniciarSesionApi = async (email: string, clave: string) => {
   const {data} = await cliente.post('/auth/seguridad/login', {
     email,
     password: clave,
-    client_type: 'api',
+    client_type: CLIENTE,
   });
   return esquemaRespuestaLogin.parse(data);
 };
@@ -21,9 +26,7 @@ export const listarEmpresasApi = async (): Promise<Empresa[]> => {
   return esquemaPaginaEmpresas.parse(data).items.filter(e => e.activo);
 };
 
-type Desafio = {turnstileToken?: string | undefined};
-
-export type DatosRegistro = Desafio & {
+export type DatosRegistro = {
   nombres: string;
   apellidos: string;
   numeroIdentificacion: string;
@@ -39,24 +42,21 @@ export const registrarApi = async (datos: DatosRegistro) => {
     nombres: datos.nombres,
     apellidos: datos.apellidos,
     numero_identificacion: datos.numeroIdentificacion,
-    turnstile_token: datos.turnstileToken,
+    client_type: CLIENTE,
   });
 };
 
 /** Responde igual exista o no el correo, para no revelar qué cuentas existen. */
-export const recuperarClaveApi = async (email: string, desafio: Desafio) => {
+export const recuperarClaveApi = async (email: string) => {
   await cliente.post('/auth/user/recuperar-clave', {
     email,
-    turnstile_token: desafio.turnstileToken,
+    client_type: CLIENTE,
   });
 };
 
-export const reenviarVerificacionApi = async (
-  email: string,
-  desafio: Desafio,
-) => {
+export const reenviarVerificacionApi = async (email: string) => {
   await cliente.post('/auth/user/reenviar-verificacion', {
     email,
-    turnstile_token: desafio.turnstileToken,
+    client_type: CLIENTE,
   });
 };
