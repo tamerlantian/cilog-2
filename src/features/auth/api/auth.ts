@@ -1,13 +1,21 @@
-import {cliente} from '@/core/api/cliente';
-import type {Empresa} from '@/core/sesion';
+import {z} from 'zod';
 
-import {esquemaPaginaEmpresas, esquemaRespuestaLogin} from './esquemas';
+import {cliente, paginaDe} from '@/core/api';
+import {esquemaEmpresa, esquemaUsuario, type Empresa} from '@/core/sesion';
 
 /**
  * Fluor solo exige Turnstile al cliente `web`, así que las llamadas sin sesión van como
  * `api`. Un servidor sin esa actualización ignora el campo en registro y recuperación.
  */
 const CLIENTE = 'api';
+
+const esquemaRespuestaLogin = z.object({
+  access_token: z.string(),
+  token_type: z.string().nullish(),
+  user: esquemaUsuario,
+});
+
+const esquemaPaginaEmpresas = paginaDe(esquemaEmpresa);
 
 export const iniciarSesionApi = async (email: string, clave: string) => {
   const {data} = await cliente.post('/auth/seguridad/login', {

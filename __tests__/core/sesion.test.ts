@@ -1,4 +1,4 @@
-import {leerToken} from '@/core/storage/llavero';
+import {almacen, leerToken} from '@/core/storage';
 import {useSesion} from '@/core/sesion';
 
 import {crearJwt, empresaPrueba, usuarioPrueba} from '../helpers';
@@ -26,7 +26,9 @@ describe('tienda de sesión', () => {
 
   it('con empresa elegida, un reinicio restaura la sesión activa', async () => {
     await useSesion.getState().iniciarSesion(crearJwt(600), usuarioPrueba);
-    useSesion.getState().elegirEmpresa(empresaPrueba(7, 'Transportes Sur'));
+    useSesion
+      .getState()
+      .elegirEmpresa(empresaPrueba(7, 'Transportes Sur'), true);
 
     useSesion.setState({
       estado: 'iniciando',
@@ -44,7 +46,9 @@ describe('tienda de sesión', () => {
 
   it('un token vencido al arrancar obliga a iniciar sesión y se borra', async () => {
     await useSesion.getState().iniciarSesion(crearJwt(-60), usuarioPrueba);
-    useSesion.getState().elegirEmpresa(empresaPrueba(7, 'Transportes Sur'));
+    useSesion
+      .getState()
+      .elegirEmpresa(empresaPrueba(7, 'Transportes Sur'), true);
 
     useSesion.setState({
       estado: 'iniciando',
@@ -60,11 +64,28 @@ describe('tienda de sesión', () => {
 
   it('cambiar de empresa conserva la sesión pero pide elegir de nuevo', async () => {
     await useSesion.getState().iniciarSesion(crearJwt(600), usuarioPrueba);
-    useSesion.getState().elegirEmpresa(empresaPrueba(7, 'Transportes Sur'));
+    useSesion
+      .getState()
+      .elegirEmpresa(empresaPrueba(7, 'Transportes Sur'), true);
     useSesion.getState().cambiarEmpresa();
 
     expect(useSesion.getState().estado).toBe('sinEmpresa');
     expect(useSesion.getState().token).not.toBeNull();
+  });
+
+  it('un perfil guardado con otra forma se descarta y pide login', async () => {
+    await useSesion.getState().iniciarSesion(crearJwt(600), usuarioPrueba);
+    // Perfil de una versión anterior: sin `tieneVariasEmpresas`.
+    almacen.set(
+      'sesion.perfil',
+      JSON.stringify({usuario: usuarioPrueba, empresa: null}),
+    );
+
+    useSesion.setState({estado: 'iniciando', token: null, usuario: null});
+    await useSesion.getState().restaurar();
+
+    expect(useSesion.getState().estado).toBe('sinSesion');
+    expect(await leerToken()).toBeNull();
   });
 
   it('cerrar sesión borra token y datos, y puede dejar un aviso', async () => {

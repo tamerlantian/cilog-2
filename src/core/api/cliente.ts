@@ -1,13 +1,14 @@
 import axios from 'axios';
 
-import {env} from '@/core/config/env';
+import {env} from '@/core/config';
 
 import {traducirError} from './errores';
 import {generarIdPeticion} from './idPeticion';
 
 /**
- * `core` no conoce las features: la feature de auth registra aquí cómo obtener
- * el token y la empresa (tenant) activos y qué hacer si el servidor responde 401.
+ * El cliente no importa la sesión (evita el ciclo api <-> sesion): `core/sesion`
+ * registra aquí cómo obtener el token y la empresa (tenant) activos y qué hacer
+ * si el servidor responde 401.
  */
 export type ProveedorSesion = {
   obtenerToken: () => string | null;
@@ -47,10 +48,14 @@ cliente.interceptors.response.use(
   respuesta => respuesta,
   error => {
     const errorApi = traducirError(error);
-    const llevabaToken = Boolean(
-      axios.isAxiosError(error) && error.config?.headers?.Authorization,
-    );
-    if (errorApi.estado === 401 && llevabaToken) {
+    const autorizacion = axios.isAxiosError(error)
+      ? error.config?.headers?.Authorization
+      : undefined;
+    // Un 401 de una petición hecha con un token anterior no debe cerrar la sesión nueva.
+    const conTokenActual =
+      Boolean(autorizacion) &&
+      autorizacion === `Bearer ${sesion?.obtenerToken()}`;
+    if (errorApi.estado === 401 && conTokenActual) {
       sesion?.alSesionInvalida();
     }
     return Promise.reject(errorApi);

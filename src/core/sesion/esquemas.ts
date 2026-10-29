@@ -14,5 +14,16 @@ export const esquemaEmpresa = z.object({
   activo: z.boolean(),
 });
 
+/** Lo que se guarda en MMKV. Se valida al leer: puede venir de una versión anterior de la app. */
+export const esquemaPerfil = z.object({
+  usuario: esquemaUsuario,
+  empresa: esquemaEmpresa
+    .pick({tenant_id: true, tenant_nombre: true})
+    .nullable(),
+  /** Con una sola empresa no se ofrece cambiarla. */
+  tieneVariasEmpresas: z.boolean(),
+});
+
 export type Usuario = z.infer<typeof esquemaUsuario>;
 export type Empresa = z.infer<typeof esquemaEmpresa>;
+export type Perfil = z.infer<typeof esquemaPerfil>;

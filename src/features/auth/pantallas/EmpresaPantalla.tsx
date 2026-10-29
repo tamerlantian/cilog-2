@@ -1,25 +1,21 @@
-import {useQuery} from '@tanstack/react-query';
 import {useEffect} from 'react';
 import {Pressable, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {mensajeUsuario} from '@/core/api/errores';
+import {mensajeUsuario} from '@/core/api';
 import {useSesion} from '@/core/sesion';
 import {Boton, Cargando, EstadoVacio, Pantalla, Tarjeta, Texto} from '@/ui';
 
-import {listarEmpresasApi} from '../api';
+import {useEmpresas} from '../hooks/useEmpresas';
 
 export function EmpresaPantalla() {
   const elegirEmpresa = useSesion(s => s.elegirEmpresa);
   const cerrarSesion = useSesion(s => s.cerrarSesion);
-  const {data, error, isPending, refetch} = useQuery({
-    queryKey: ['empresas'],
-    queryFn: listarEmpresasApi,
-  });
+  const {data, error, isPending, refetch} = useEmpresas();
 
   // Con una sola empresa no hay nada que elegir.
   useEffect(() => {
-    if (data?.length === 1 && data[0]) elegirEmpresa(data[0]);
+    if (data?.length === 1 && data[0]) elegirEmpresa(data[0], false);
   }, [data, elegirEmpresa]);
 
   const salir = () => cerrarSesion();
@@ -75,7 +71,7 @@ export function EmpresaPantalla() {
         <Pressable
           key={empresa.id}
           accessibilityRole="button"
-          onPress={() => elegirEmpresa(empresa)}>
+          onPress={() => elegirEmpresa(empresa, true)}>
           <Tarjeta>
             <Texto negrita>
               {empresa.tenant_nombre ?? `Empresa ${empresa.tenant_id}`}

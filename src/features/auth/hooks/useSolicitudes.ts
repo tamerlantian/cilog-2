@@ -1,6 +1,6 @@
 import {useMutation} from '@tanstack/react-query';
 
-import {mensajeUsuario} from '@/core/api/errores';
+import {mensajeUsuario} from '@/core/api';
 import {mostrarError} from '@/ui';
 
 import {
@@ -8,7 +8,7 @@ import {
   registrarApi,
   reenviarVerificacionApi,
   type DatosRegistro,
-} from './api';
+} from '../api/auth';
 
 /** Registro, recuperación y reenvío son públicos: muestran el error del servidor tal cual. */
 const alFallar = (error: unknown) => mostrarError(mensajeUsuario(error));

@@ -81,6 +81,32 @@ describe('cliente API', () => {
     expect(alSesionInvalida).toHaveBeenCalledTimes(1);
   });
 
+  it('un 401 de una petición con un token anterior no cierra la sesión nueva', async () => {
+    const alSesionInvalida = jest.fn();
+    let token = 'anterior';
+    configurarSesionApi({
+      obtenerToken: () => token,
+      obtenerTenantId: () => 1,
+      alSesionInvalida,
+    });
+    const cuerpo = {
+      success: false,
+      error: {code: 'UNAUTHORIZED', message: 'No autenticado'},
+    };
+    const adaptador = adaptadorEco(401, cuerpo);
+
+    await expect(
+      cliente.get('/x', {
+        // El usuario vuelve a iniciar sesión mientras la petición está en vuelo.
+        adapter: config => {
+          token = 'nuevo';
+          return adaptador(config);
+        },
+      }),
+    ).rejects.toBeInstanceOf(ErrorApi);
+    expect(alSesionInvalida).not.toHaveBeenCalled();
+  });
+
   it('un 401 de login (sin token) no cierra sesión', async () => {
     const alSesionInvalida = jest.fn();
     configurarSesionApi({

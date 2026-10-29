@@ -5,9 +5,9 @@ import {App} from '@/app/App';
 import {clienteConsultas} from '@/core/api/clienteConsultas';
 import {ErrorApi} from '@/core/api/errores';
 import {useSesion} from '@/core/sesion';
-import * as api from '@/features/auth/api';
+import * as api from '@/features/auth/api/auth';
 
-jest.mock('@/features/auth/api');
+jest.mock('@/features/auth/api/auth');
 const apiSimulada = jest.mocked(api);
 
 const escribir = async (etiqueta: string, texto: string) =>

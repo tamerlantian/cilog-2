@@ -4,6 +4,15 @@ import {StyleSheet, useUnistyles} from 'react-native-unistyles';
 
 import {Texto} from './Texto';
 
+/** Props de todo campo de correo: teclado, autocompletado y sin mayúsculas. */
+export const PROPS_CORREO = {
+  autoCapitalize: 'none',
+  autoComplete: 'email',
+  autoCorrect: false,
+  keyboardType: 'email-address',
+  textContentType: 'emailAddress',
+} as const satisfies TextInputProps;
+
 type Props = TextInputProps & {
   etiqueta: string;
   error?: string | undefined;

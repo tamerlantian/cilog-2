@@ -1,15 +1,21 @@
 import {zodResolver} from '@hookform/resolvers/zod';
-import {useNavigation, useRoute} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RouteProp} from '@react-navigation/native';
 import {Controller, useForm} from 'react-hook-form';
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {Boton, EstadoVacio, Input, Pantalla, Texto} from '@/ui';
+import {Boton, EstadoVacio, Input, Pantalla, PROPS_CORREO, Texto} from '@/ui';
 
-import {esquemaFormularioCorreo, type FormularioCorreo} from '../esquemas';
+import {
+  esquemaFormularioCorreo,
+  type FormularioCorreo,
+} from '../domain/formularios';
+import {useNavegacionAuth} from '../hooks/useNavegacionAuth';
+import {
+  type TipoSolicitudCorreo,
+  useSolicitarCorreo,
+} from '../hooks/useSolicitudes';
 import type {RutasAuth} from '../rutas';
-import {type TipoSolicitudCorreo, useSolicitarCorreo} from '../useSolicitudes';
 
 type Textos = {
   titulo: string;
@@ -38,11 +44,14 @@ const TEXTOS: Record<TipoSolicitudCorreo, Textos> = {
 };
 
 /** Formulario de un solo campo (correo) que comparten recuperar clave y reenviar verificación. */
-function SolicitarCorreo({tipo}: {tipo: TipoSolicitudCorreo}) {
-  const navigation = useNavigation<NativeStackNavigationProp<RutasAuth>>();
-  const ruta = useRoute();
-  const emailInicial =
-    (ruta.params as {email?: string} | undefined)?.email ?? '';
+function SolicitarCorreo({
+  tipo,
+  emailInicial = '',
+}: {
+  tipo: TipoSolicitudCorreo;
+  emailInicial?: string;
+}) {
+  const navigation = useNavegacionAuth();
   const textos = TEXTOS[tipo];
   const {mutate, isPending, isSuccess} = useSolicitarCorreo(tipo);
   const {control, handleSubmit} = useForm<FormularioCorreo>({
@@ -80,14 +89,10 @@ function SolicitarCorreo({tipo}: {tipo: TipoSolicitudCorreo}) {
         name="email"
         render={({field, fieldState}) => (
           <Input
-            autoCapitalize="none"
-            autoComplete="email"
-            autoCorrect={false}
+            {...PROPS_CORREO}
             error={fieldState.error?.message}
             etiqueta="Correo"
-            keyboardType="email-address"
             returnKeyType="done"
-            textContentType="emailAddress"
             value={field.value}
             onBlur={field.onBlur}
             onChangeText={field.onChange}
@@ -105,11 +110,23 @@ function SolicitarCorreo({tipo}: {tipo: TipoSolicitudCorreo}) {
   );
 }
 
-export const RecuperarClavePantalla = () => (
-  <SolicitarCorreo tipo="recuperarClave" />
+export const RecuperarClavePantalla = ({
+  route,
+}: {
+  route: RouteProp<RutasAuth, 'RecuperarClave'>;
+}) => (
+  <SolicitarCorreo emailInicial={route.params?.email} tipo="recuperarClave" />
 );
-export const ReenviarVerificacionPantalla = () => (
-  <SolicitarCorreo tipo="reenviarVerificacion" />
+
+export const ReenviarVerificacionPantalla = ({
+  route,
+}: {
+  route: RouteProp<RutasAuth, 'ReenviarVerificacion'>;
+}) => (
+  <SolicitarCorreo
+    emailInicial={route.params?.email}
+    tipo="reenviarVerificacion"
+  />
 );
 
 const styles = StyleSheet.create(tema => ({

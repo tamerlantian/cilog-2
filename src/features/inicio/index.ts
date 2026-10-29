@@ -1,1 +1,1 @@
-export {InicioPantalla} from './InicioPantalla';
+export {InicioPantalla} from './pantallas/InicioPantalla';

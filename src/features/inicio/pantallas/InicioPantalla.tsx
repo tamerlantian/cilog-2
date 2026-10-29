@@ -8,6 +8,7 @@ import {Boton, Pantalla, Tarjeta, Texto} from '@/ui';
 export function InicioPantalla() {
   const usuario = useSesion(s => s.usuario);
   const empresa = useSesion(s => s.empresa);
+  const tieneVariasEmpresas = useSesion(s => s.tieneVariasEmpresas);
   const cambiarEmpresa = useSesion(s => s.cambiarEmpresa);
   const cerrarSesion = useSesion(s => s.cerrarSesion);
 
@@ -25,11 +26,13 @@ export function InicioPantalla() {
         <Texto negrita>Empresa</Texto>
         <Texto tono="secundario">{empresa?.tenant_nombre ?? '—'}</Texto>
       </Tarjeta>
-      <Boton
-        tipo="secundario"
-        titulo="Cambiar de empresa"
-        onPress={cambiarEmpresa}
-      />
+      {tieneVariasEmpresas ? (
+        <Boton
+          tipo="secundario"
+          titulo="Cambiar de empresa"
+          onPress={cambiarEmpresa}
+        />
+      ) : null}
       <Boton
         tipo="texto"
         titulo="Cerrar sesión"

@@ -1,12 +1,15 @@
 import {create} from 'zustand';
 
-import {clienteConsultas} from '@/core/api/clienteConsultas';
-import {configurarSesionApi} from '@/core/api/cliente';
-import {tokenVencido} from '@/core/api/jwt';
-import {almacen} from '@/core/storage/almacen';
-import {borrarToken, guardarToken, leerToken} from '@/core/storage/llavero';
+import {clienteConsultas, configurarSesionApi} from '@/core/api';
+import {almacen, borrarToken, guardarToken, leerToken} from '@/core/storage';
 
-import type {Empresa, Usuario} from './esquemas';
+import {
+  esquemaPerfil,
+  type Empresa,
+  type Perfil,
+  type Usuario,
+} from './esquemas';
+import {tokenVencido} from './jwt';
 
 const CLAVE_PERFIL = 'sesion.perfil';
 
@@ -18,21 +21,17 @@ const CLAVE_PERFIL = 'sesion.perfil';
  */
 export type EstadoSesion = 'iniciando' | 'sinSesion' | 'sinEmpresa' | 'activa';
 
-type Perfil = {
-  usuario: Usuario;
-  empresa: Pick<Empresa, 'tenant_id' | 'tenant_nombre'> | null;
-};
-
 type Tienda = {
   estado: EstadoSesion;
   token: string | null;
   usuario: Usuario | null;
   empresa: Perfil['empresa'];
+  tieneVariasEmpresas: boolean;
   /** Se llena si la sesión terminó sola (token vencido o rechazado). */
   avisoSesion: string | null;
   restaurar: () => Promise<void>;
   iniciarSesion: (token: string, usuario: Usuario) => Promise<void>;
-  elegirEmpresa: (empresa: Empresa) => void;
+  elegirEmpresa: (empresa: Empresa, tieneVariasEmpresas: boolean) => void;
   cambiarEmpresa: () => void;
   cerrarSesion: (aviso?: string) => Promise<void>;
 };
@@ -41,7 +40,8 @@ const leerPerfil = (): Perfil | null => {
   const texto = almacen.getString(CLAVE_PERFIL);
   if (!texto) return null;
   try {
-    return JSON.parse(texto) as Perfil;
+    const perfil = esquemaPerfil.safeParse(JSON.parse(texto));
+    return perfil.success ? perfil.data : null;
   } catch {
     return null;
   }
@@ -55,6 +55,7 @@ export const useSesion = create<Tienda>((set, get) => ({
   token: null,
   usuario: null,
   empresa: null,
+  tieneVariasEmpresas: false,
   avisoSesion: null,
 
   restaurar: async () => {
@@ -63,13 +64,20 @@ export const useSesion = create<Tienda>((set, get) => ({
     if (!token || !perfil || tokenVencido(token)) {
       if (token) await borrarToken().catch(() => undefined);
       almacen.remove(CLAVE_PERFIL);
-      set({estado: 'sinSesion', token: null, usuario: null, empresa: null});
+      set({
+        estado: 'sinSesion',
+        token: null,
+        usuario: null,
+        empresa: null,
+        tieneVariasEmpresas: false,
+      });
       return;
     }
     set({
       token,
       usuario: perfil.usuario,
       empresa: perfil.empresa,
+      tieneVariasEmpresas: perfil.tieneVariasEmpresas,
       estado: perfil.empresa ? 'activa' : 'sinEmpresa',
     });
   },
@@ -77,17 +85,18 @@ export const useSesion = create<Tienda>((set, get) => ({
   iniciarSesion: async (token, usuario) => {
     clienteConsultas.clear();
     await guardarToken(token);
-    guardarPerfil({usuario, empresa: null});
+    guardarPerfil({usuario, empresa: null, tieneVariasEmpresas: false});
     set({
       token,
       usuario,
       empresa: null,
+      tieneVariasEmpresas: false,
       estado: 'sinEmpresa',
       avisoSesion: null,
     });
   },
 
-  elegirEmpresa: empresa => {
+  elegirEmpresa: (empresa, tieneVariasEmpresas) => {
     const {usuario} = get();
     if (!usuario) return;
     clienteConsultas.clear();
@@ -95,15 +104,15 @@ export const useSesion = create<Tienda>((set, get) => ({
       tenant_id: empresa.tenant_id,
       tenant_nombre: empresa.tenant_nombre,
     };
-    guardarPerfil({usuario, empresa: elegida});
-    set({empresa: elegida, estado: 'activa'});
+    guardarPerfil({usuario, empresa: elegida, tieneVariasEmpresas});
+    set({empresa: elegida, tieneVariasEmpresas, estado: 'activa'});
   },
 
   cambiarEmpresa: () => {
-    const {usuario} = get();
+    const {usuario, tieneVariasEmpresas} = get();
     if (!usuario) return;
     clienteConsultas.clear();
-    guardarPerfil({usuario, empresa: null});
+    guardarPerfil({usuario, empresa: null, tieneVariasEmpresas});
     set({empresa: null, estado: 'sinEmpresa'});
   },
 
@@ -115,6 +124,7 @@ export const useSesion = create<Tienda>((set, get) => ({
       token: null,
       usuario: null,
       empresa: null,
+      tieneVariasEmpresas: false,
       avisoSesion: aviso ?? null,
     });
     await borrarToken().catch(() => undefined);

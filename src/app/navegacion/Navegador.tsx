@@ -7,7 +7,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useEffect, useMemo} from 'react';
 import {useUnistyles} from 'react-native-unistyles';
 
-import {conectarSesionConApi, useSesion} from '@/core/sesion';
+import {useSesion} from '@/core/sesion';
 import {
   EmpresaPantalla,
   LoginPantalla,
@@ -28,7 +28,6 @@ export function Navegador() {
   const restaurar = useSesion(s => s.restaurar);
 
   useEffect(() => {
-    conectarSesionConApi();
     restaurar();
   }, [restaurar]);
 

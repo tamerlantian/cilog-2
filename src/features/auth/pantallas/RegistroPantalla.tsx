@@ -1,16 +1,17 @@
 import {zodResolver} from '@hookform/resolvers/zod';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {type ComponentRef, useRef, useState} from 'react';
 import {Controller, useForm, type Control} from 'react-hook-form';
 import {type TextInput, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {Boton, EstadoVacio, Input, Pantalla, Texto} from '@/ui';
+import {Boton, EstadoVacio, Input, Pantalla, PROPS_CORREO, Texto} from '@/ui';
 
-import {esquemaFormularioRegistro, type FormularioRegistro} from '../esquemas';
-import type {RutasAuth} from '../rutas';
-import {useRegistrar} from '../useSolicitudes';
+import {
+  esquemaFormularioRegistro,
+  type FormularioRegistro,
+} from '../domain/formularios';
+import {useNavegacionAuth} from '../hooks/useNavegacionAuth';
+import {useRegistrar} from '../hooks/useSolicitudes';
 
 type Campo = {
   nombre: keyof FormularioRegistro;
@@ -37,13 +38,7 @@ const CAMPOS: Campo[] = [
   {
     nombre: 'email',
     etiqueta: 'Correo',
-    props: {
-      autoCapitalize: 'none',
-      autoComplete: 'email',
-      autoCorrect: false,
-      keyboardType: 'email-address',
-      textContentType: 'emailAddress',
-    },
+    props: PROPS_CORREO,
   },
   {
     nombre: 'clave',
@@ -66,7 +61,7 @@ const CAMPOS: Campo[] = [
 ];
 
 export function RegistroPantalla() {
-  const navigation = useNavigation<NativeStackNavigationProp<RutasAuth>>();
+  const navigation = useNavegacionAuth();
   const refs = useRef<Record<string, ComponentRef<typeof TextInput> | null>>(
     {},
   );

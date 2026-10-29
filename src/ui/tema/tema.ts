@@ -7,7 +7,6 @@ const comun = {
     familia: {regular: 'Rubik-Regular', negrita: 'Rubik-Bold'},
     tamano: {pie: 12, cuerpo: 14, subtitulo: 16, titulo: 22, display: 28},
   },
-  gap: (multiplo: number) => multiplo * 4,
 } as const;
 
 export const temaClaro = {

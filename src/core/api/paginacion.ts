@@ -8,5 +8,3 @@ export const paginaDe = <T extends z.ZodType>(item: T) =>
     size: z.number(),
     items: z.array(item),
   });
-
-export type Pagina<T> = {total: number; page: number; size: number; items: T[]};

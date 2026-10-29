@@ -1,7 +1,7 @@
 export {Boton} from './Boton';
 export {Cargando} from './Cargando';
 export {EstadoVacio} from './EstadoVacio';
-export {Input} from './Input';
+export {Input, PROPS_CORREO} from './Input';
 export {
   ContenedorMensajes,
   mostrarError,

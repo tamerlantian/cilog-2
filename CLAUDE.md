@@ -14,9 +14,9 @@ npm run build:aab   # AAB de release con .env.prod
 
 - No cambiar `applicationId` (`com.plutonio`) ni la clave de firma. `versionCode` siempre mayor que el publicado en Play (parte en 57). Ver `docs/release-play.md`.
 - Secretos fuera del repo: `.env*`, `google-services.json` y las `MYAPP_UPLOAD_*` de `~/.gradle/gradle.properties`. Nunca agregarlos a `android/gradle.properties`.
-- Capas: `ui` no importa `core`/`features`; `core` no importa `features`/`app`; `features` no importan `app` ni otras features. ESLint lo hace cumplir. Detalle en `docs/arquitectura.md`.
+- Capas: `ui` no importa `core`/`features`; `core` no importa `features`/`app`; `features` no importan `app` ni otras features. Módulos de `core` y `ui` se importan por su `index.ts` (`@/core/api`), y los relativos no suben más de un nivel. ESLint lo hace cumplir. Detalle en `docs/arquitectura.md`.
 - Las pantallas no llaman a axios ni SQLite; usan hooks de su feature. Toda escritura offline pasa por la cola de operaciones pendientes con `id_operacion` UUID.
-- Respuestas de Fluor siempre validadas con zod. Errores con `mensajeUsuario(error)` de `core/api/errores.ts`.
+- Respuestas de Fluor siempre validadas con zod. Errores con `mensajeUsuario(error)` de `@/core/api`.
 - Estilos solo con `StyleSheet` de unistyles y el tema de `ui/tema`. Sin colores literales ni estilos inline (ESLint lo bloquea). Importar primitivas desde `@/ui`.
 - `edgeToEdgeEnabled=true`: toda pantalla usa `Pantalla` (respeta safe areas y teclado).
 - Alias `@/` apunta a `src/`. No hay archivos `.js` en `src/`.

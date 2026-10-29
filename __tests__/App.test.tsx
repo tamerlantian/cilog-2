@@ -10,12 +10,12 @@ import Toast from 'react-native-toast-message';
 import {App} from '@/app/App';
 import {clienteConsultas} from '@/core/api/clienteConsultas';
 import {ErrorApi} from '@/core/api/errores';
-import * as api from '@/features/auth/api';
+import * as api from '@/features/auth/api/auth';
 import {useSesion} from '@/core/sesion';
 
 import {crearJwt, empresaPrueba, usuarioPrueba} from './helpers';
 
-jest.mock('@/features/auth/api');
+jest.mock('@/features/auth/api/auth');
 const apiSimulada = jest.mocked(api);
 
 const llenarLogin = async () => {
@@ -71,6 +71,10 @@ describe('App', () => {
       await screen.findByText('Tus despachos aparecerán aquí.'),
     ).toBeTruthy();
     expect(screen.getByText('Transportes Sur')).toBeTruthy();
+    // Con una sola empresa no hay a cuál cambiar.
+    expect(
+      screen.queryByRole('button', {name: 'Cambiar de empresa'}),
+    ).toBeNull();
     expect(apiSimulada.iniciarSesionApi).toHaveBeenCalledWith(
       'conductor@prueba.test',
       'secreta123',
@@ -98,6 +102,11 @@ describe('App', () => {
       await screen.findByText('Tus despachos aparecerán aquí.'),
     ).toBeTruthy();
     expect(useSesion.getState().empresa?.tenant_id).toBe(8);
+
+    await fireEvent.press(
+      screen.getByRole('button', {name: 'Cambiar de empresa'}),
+    );
+    expect(await screen.findByText('Elige tu empresa')).toBeTruthy();
   });
 
   it('muestra el error del servidor si las credenciales son inválidas', async () => {

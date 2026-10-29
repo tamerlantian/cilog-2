@@ -4,7 +4,7 @@ import {
   recuperarClaveApi,
   registrarApi,
   reenviarVerificacionApi,
-} from '@/features/auth/api';
+} from '@/features/auth/api/auth';
 
 import {crearJwt, usuarioPrueba} from '../../helpers';
 

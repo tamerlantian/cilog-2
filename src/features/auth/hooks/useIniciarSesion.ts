@@ -1,11 +1,11 @@
 import {useMutation} from '@tanstack/react-query';
 
-import {mensajeUsuario, traducirError} from '@/core/api/errores';
+import {mensajeUsuario, traducirError} from '@/core/api';
 import {useSesion} from '@/core/sesion';
 import {mostrarError} from '@/ui';
 
-import {iniciarSesionApi} from './api';
-import type {FormularioLogin} from './esquemas';
+import {iniciarSesionApi} from '../api/auth';
+import type {FormularioLogin} from '../domain/formularios';
 
 /** Fluor responde 403 con `is_verified: false` cuando falta confirmar el correo. */
 export const esCuentaNoVerificada = (error: unknown) =>

@@ -1,22 +1,34 @@
 import {zodResolver} from '@hookform/resolvers/zod';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {type ComponentRef, useEffect, useRef} from 'react';
 import {Controller, useForm} from 'react-hook-form';
 import {type TextInput, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {useSesion} from '@/core/sesion';
-import {Boton, Input, mostrarInfo, Pantalla, Tarjeta, Texto} from '@/ui';
+import {
+  Boton,
+  Input,
+  mostrarInfo,
+  Pantalla,
+  PROPS_CORREO,
+  Tarjeta,
+  Texto,
+} from '@/ui';
 
-import {esquemaFormularioLogin, type FormularioLogin} from '../esquemas';
-import type {RutasAuth} from '../rutas';
-import {esCuentaNoVerificada, useIniciarSesion} from '../useIniciarSesion';
+import {
+  esquemaFormularioLogin,
+  type FormularioLogin,
+} from '../domain/formularios';
+import {
+  esCuentaNoVerificada,
+  useIniciarSesion,
+} from '../hooks/useIniciarSesion';
+import {useNavegacionAuth} from '../hooks/useNavegacionAuth';
 
 export function LoginPantalla() {
   const claveRef = useRef<ComponentRef<typeof TextInput>>(null);
   const avisoSesion = useSesion(s => s.avisoSesion);
-  const navigation = useNavigation<NativeStackNavigationProp<RutasAuth>>();
+  const navigation = useNavegacionAuth();
   const {mutate, isPending, error} = useIniciarSesion();
   const {control, handleSubmit, getValues} = useForm<FormularioLogin>({
     resolver: zodResolver(esquemaFormularioLogin),
@@ -44,14 +56,10 @@ export function LoginPantalla() {
           name="email"
           render={({field, fieldState}) => (
             <Input
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect={false}
+              {...PROPS_CORREO}
               error={fieldState.error?.message}
               etiqueta="Correo"
-              keyboardType="email-address"
               returnKeyType="next"
-              textContentType="emailAddress"
               value={field.value}
               onBlur={field.onBlur}
               onChangeText={field.onChange}

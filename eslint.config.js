@@ -7,20 +7,38 @@ const tseslint = require('typescript-eslint');
  *   ui        -> no conoce core ni features
  *   core      -> no conoce features ni app
  *   features  -> no conocen app (y no se importan entre si, ver restriccion por feature)
+ * Y en todo src: core y ui se importan por la entrada de cada módulo, y los
+ * imports relativos no suben más de un nivel (así no se saltan estas reglas).
  */
 const features = fs
   .readdirSync('src/features', {withFileTypes: true})
   .filter(entrada => entrada.isDirectory())
   .map(entrada => entrada.name);
 
+const comunes = [
+  {
+    regex: '^\\.\\./\\.\\./',
+    message: 'No subas más de un nivel con imports relativos: usa el alias @/.',
+  },
+  {
+    group: ['@/core/*/*'],
+    message: 'Importa core por la entrada del módulo: @/core/<modulo>.',
+  },
+  {group: ['@/ui/*'], message: 'Importa la UI desde @/ui.'},
+];
+
+// Cada bloque reemplaza la regla del anterior, así que todos repiten los comunes.
 const prohibir = (...grupos) => ({
   'no-restricted-imports': [
     'error',
     {
-      patterns: grupos.map(group => ({
-        group,
-        message: 'Import prohibido por la arquitectura de capas.',
-      })),
+      patterns: [
+        ...comunes,
+        ...grupos.map(group => ({
+          group,
+          message: 'Import prohibido por la arquitectura de capas.',
+        })),
+      ],
     },
   ],
 });
@@ -63,6 +81,10 @@ module.exports = [
         },
       ],
     },
+  },
+  {
+    files: ['src/app/**/*.{ts,tsx}'],
+    rules: prohibir(['@/features/*/*']),
   },
   {
     files: ['src/ui/**/*.{ts,tsx}'],

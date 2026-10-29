@@ -1,4 +1,4 @@
-import {leerExpiracion, tokenVencido} from '@/core/api/jwt';
+import {leerExpiracion, tokenVencido} from '@/core/sesion/jwt';
 
 import {crearJwt} from '../helpers';
 

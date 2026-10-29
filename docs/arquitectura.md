@@ -7,12 +7,14 @@ src/
   app/        arranque: providers y navegación raíz
   features/   un directorio por módulo de negocio (auth, despachos, guias, ...)
     <feature>/
+      index.ts    lo único que ve app/: pantallas y tipos de rutas
+      rutas.ts    tipos de las rutas de la feature
       pantallas/  pantallas (solo importan ui/, core/ y los hooks de su feature)
       components/ piezas propias de la feature
-      hooks/      useQuery/useMutation, orquestan api + db + cola de sync
-      api/        llamadas HTTP de la feature (usan core/api)
+      hooks/      useQuery/useMutation, orquestan api + db + cola de sync; `claves.ts` con las query keys
+      api/        llamadas HTTP de la feature y los esquemas zod de sus respuestas (usan core/api)
       db/         repositorio SQLite (drizzle)
-      domain/     reglas puras y esquemas zod; sin React ni librerías nativas
+      domain/     reglas puras y esquemas de formularios; sin React ni librerías nativas
   core/       infraestructura compartida: api, config, sesion, storage, db, sync, firebase
   ui/         sistema de diseño: tema (unistyles) y primitivas
   assets/     fuentes e imágenes
@@ -23,12 +25,20 @@ src/
 | `ui` | solo librerías | `core`, `features`, `app` |
 | `core` | `ui` no; solo librerías | `features`, `app` |
 | `features` | `core`, `ui` | `app`, otras features |
-| `app` | todo | |
+| `app` | todo | el interior de una feature (`@/features/x/...`) |
+
+Además, en todo `src`:
+
+- Cada módulo de `core` (`api`, `config`, `sesion`, `storage`, ...) y `ui` se importan por su `index.ts`: `@/core/api`, no `@/core/api/errores`. Dentro del propio módulo se usan rutas relativas.
+- Los imports relativos no suben más de un nivel (`../x` sí, `../../x` no); para llegar más lejos se usa `@/`. Así nadie se salta las reglas de capas con rutas relativas.
+- Las carpetas vacías de la estructura no se crean por adelantado: aparecen cuando la feature las necesita.
 
 ## Reglas
 
 - Las pantallas no llaman a axios ni a SQLite. Usan hooks de su feature, y el hook decide si el dato sale de la API o de la base local.
 - Toda escritura del conductor (entregar, novedad, recogida, posición) se guarda primero en SQLite como operación pendiente y la cola de `core/sync` la envía. "Online" es solo el caso en que la cola se vacía al instante.
+- El `id_operacion` es la llave de idempotencia ante Fluor: se genera con un generador criptográfico (`react-native-get-random-values` + `uuid`, por agregar en la Fase 2), no con `Math.random` como `X-Request-ID`.
+- Las query keys de cada feature viven en `hooks/claves.ts` y empiezan por el nombre de la feature.
 - Cada respuesta de Fluor pasa por un esquema zod. Los tipos se derivan con `z.infer`.
 - Errores: `core/api/errores.ts` traduce los errores de Fluor y de red. Las pantallas muestran `mensajeUsuario(error)`.
 - Estado: sesión y preferencias en zustand (MMKV); datos del servidor en TanStack Query; formularios en react-hook-form. Tokens en el llavero seguro, no en MMKV.
@@ -50,7 +60,9 @@ src/
 ## Sesión y navegación
 
 - `core/sesion` guarda el estado: `iniciando`, `sinSesion`, `sinEmpresa`, `activa`. El navegador (`app/navegacion/Navegador.tsx`) muestra las pantallas que corresponden a ese estado; no se navega a mano entre login, empresa e inicio.
-- El token vive solo en el llavero (`core/storage/llavero.ts`). El usuario y la empresa elegida van en MMKV, porque no son secretos.
+- El token vive solo en el llavero (`core/storage/llavero.ts`). El usuario y la empresa elegida van en MMKV, porque no son secretos. El perfil guardado se valida con zod al leerlo; si no cuadra (p. ej. lo guardó otra versión), se descarta y se pide login.
+- `conectarSesionConApi()` corre al cargar `app/App.tsx`, antes de montar nada. Un 401 solo cierra la sesión si la petición llevaba el token actual: una respuesta tardía con un token anterior no tumba un login nuevo.
+- Con una sola empresa se elige sola y no se ofrece "Cambiar de empresa" (`tieneVariasEmpresas` en la sesión).
 - Al arrancar, un token vencido (se lee `exp` del JWT) se descarta y se pide login. Un 401 con token cierra la sesión y avisa. Fluor no entrega refresh para `api`: queda pendiente alargar el JWT móvil con backend (ver `docs/contratos-fluor.md`).
 - Cambiar de usuario o de empresa limpia la caché de TanStack Query, para no mostrar datos de otra empresa.
 - Todas las llamadas sin sesión van con `client_type: "api"`, que Fluor no protege con Turnstile.

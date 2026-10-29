@@ -1,33 +1,17 @@
 import {z} from 'zod';
 
-import {paginaDe} from '@/core/api/paginacion';
-import {esquemaEmpresa, esquemaUsuario} from '@/core/sesion';
-
-export const esquemaRespuestaLogin = z.object({
-  access_token: z.string(),
-  token_type: z.string().nullish(),
-  user: esquemaUsuario,
-});
-
-export const esquemaPaginaEmpresas = paginaDe(esquemaEmpresa);
-
-export const esquemaFormularioLogin = z.object({
-  email: z
-    .string()
-    .trim()
-    .min(1, 'Ingresa tu correo')
-    .pipe(z.email('Correo no válido')),
-  clave: z.string().min(1, 'Ingresa tu clave'),
-});
-
-export type FormularioLogin = z.infer<typeof esquemaFormularioLogin>;
-
 const textoObligatorio = (mensaje: string) => z.string().trim().min(1, mensaje);
+
 const correo = z
   .string()
   .trim()
   .min(1, 'Ingresa tu correo')
   .pipe(z.email('Correo no válido'));
+
+export const esquemaFormularioLogin = z.object({
+  email: correo,
+  clave: z.string().min(1, 'Ingresa tu clave'),
+});
 
 export const esquemaFormularioRegistro = z
   .object({
@@ -47,5 +31,6 @@ export const esquemaFormularioRegistro = z
 
 export const esquemaFormularioCorreo = z.object({email: correo});
 
+export type FormularioLogin = z.infer<typeof esquemaFormularioLogin>;
 export type FormularioRegistro = z.infer<typeof esquemaFormularioRegistro>;
 export type FormularioCorreo = z.infer<typeof esquemaFormularioCorreo>;
