@@ -32,6 +32,14 @@ const prohibir = (...grupos) => ({
   'no-restricted-imports': [
     'error',
     {
+      paths: [
+        {
+          name: 'lucide-react-native',
+          allowTypeImports: true,
+          message:
+            'Importa los íconos desde @/ui (ui/iconos.ts): el paquete completo suma ~2 MB al bundle.',
+        },
+      ],
       patterns: [
         ...comunes,
         ...grupos.map(group => ({
@@ -84,7 +92,7 @@ module.exports = [
   },
   {
     files: ['src/app/**/*.{ts,tsx}'],
-    rules: prohibir(['@/features/*/*']),
+    rules: prohibir(['@/features/*/*'], ['lucide-react-native/*']),
   },
   {
     files: ['src/ui/**/*.{ts,tsx}'],
@@ -92,17 +100,20 @@ module.exports = [
   },
   {
     files: ['src/core/**/*.{ts,tsx}'],
-    rules: prohibir(['@/features/*', '@/app/*']),
+    rules: prohibir(['@/features/*', '@/app/*'], ['lucide-react-native/*']),
   },
   // Cada feature solo ve core y ui: se calcula con los directorios que existan.
   ...features.map(feature => ({
     files: [`src/features/${feature}/**/*.{ts,tsx}`],
-    rules: prohibir([
-      '@/app/*',
-      ...features
-        .filter(otra => otra !== feature)
-        .map(otra => `@/features/${otra}`),
-    ]),
+    rules: prohibir(
+      ['lucide-react-native/*'],
+      [
+        '@/app/*',
+        ...features
+          .filter(otra => otra !== feature)
+          .map(otra => `@/features/${otra}`),
+      ],
+    ),
   })),
   {
     files: ['src/ui/tema/**/*.ts'],

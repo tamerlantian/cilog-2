@@ -2,6 +2,8 @@ import {type ComponentRef, type Ref, useState} from 'react';
 import {Pressable, TextInput, type TextInputProps, View} from 'react-native';
 import {StyleSheet, useUnistyles} from 'react-native-unistyles';
 
+import {CircleAlert, Eye, EyeOff} from './iconos';
+import {Icono} from './Icono';
 import {Texto} from './Texto';
 
 /** Props de todo campo de correo: teclado, autocompletado y sin mayúsculas. */
@@ -34,11 +36,12 @@ export function Input({
   const [enfocado, setEnfocado] = useState(false);
   const [oculto, setOculto] = useState(true);
   const esClave = Boolean(secureTextEntry);
-  styles.useVariants({enfocado, conError: Boolean(error)});
+  const conError = Boolean(error);
+  styles.useVariants({enfocado, conError});
 
   return (
     <View style={styles.contenedor}>
-      <Texto variante="pie" tono="secundario" negrita>
+      <Texto style={styles.etiqueta} variante="etiqueta">
         {etiqueta}
       </Texto>
       <View style={styles.campo}>
@@ -47,6 +50,7 @@ export function Input({
           accessibilityLabel={etiqueta}
           placeholderTextColor={theme.colores.sobreDeshabilitado}
           secureTextEntry={esClave && oculto}
+          selectionColor={theme.colores.primario}
           style={styles.entrada}
           onBlur={evento => {
             setEnfocado(false);
@@ -62,20 +66,26 @@ export function Input({
           <Pressable
             accessibilityLabel={oculto ? 'Mostrar clave' : 'Ocultar clave'}
             accessibilityRole="button"
-            hitSlop={8}
+            hitSlop={4}
+            style={styles.ojo}
             onPress={() => setOculto(valor => !valor)}>
-            <Texto variante="pie" tono="primario" negrita>
-              {oculto ? 'Mostrar' : 'Ocultar'}
-            </Texto>
+            <Icono
+              color="textoSecundario"
+              icono={oculto ? Eye : EyeOff}
+              tamano={20}
+            />
           </Pressable>
         ) : null}
       </View>
       {error ? (
-        <Texto accessibilityRole="alert" variante="pie" tono="peligro">
-          {error}
-        </Texto>
+        <View style={styles.mensaje}>
+          <Icono color="peligro" icono={CircleAlert} tamano={14} />
+          <Texto accessibilityRole="alert" tono="peligro" variante="etiqueta">
+            {error}
+          </Texto>
+        </View>
       ) : ayuda ? (
-        <Texto variante="pie" tono="secundario">
+        <Texto tono="secundario" variante="etiqueta">
           {ayuda}
         </Texto>
       ) : null}
@@ -84,19 +94,27 @@ export function Input({
 }
 
 const styles = StyleSheet.create(tema => ({
-  contenedor: {gap: tema.espaciado.xs},
+  contenedor: {gap: tema.espaciado.xs + 2},
+  etiqueta: {
+    color: tema.colores.textoSecundario,
+    variants: {
+      enfocado: {true: {color: tema.colores.primario}, false: {}},
+      conError: {true: {color: tema.colores.peligro}, false: {}},
+    },
+  },
   campo: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 48,
-    borderWidth: 1,
+    minHeight: tema.alto.control,
+    borderWidth: 1.5,
     borderRadius: tema.radio.md,
-    paddingHorizontal: tema.espaciado.md,
+    paddingLeft: tema.espaciado.md + 2,
+    paddingRight: tema.espaciado.xs,
     backgroundColor: tema.colores.fondo,
     borderColor: tema.colores.borde,
     variants: {
       enfocado: {
-        true: {borderColor: tema.colores.primario},
+        true: {borderColor: tema.colores.primario, borderWidth: 2},
         false: {},
       },
       conError: {
@@ -108,8 +126,20 @@ const styles = StyleSheet.create(tema => ({
   entrada: {
     flex: 1,
     paddingVertical: tema.espaciado.sm,
+    paddingRight: tema.espaciado.sm,
     color: tema.colores.texto,
     fontFamily: tema.tipografia.familia.regular,
     fontSize: tema.tipografia.tamano.cuerpo,
+  },
+  ojo: {
+    width: tema.alto.botonCompacto,
+    height: tema.alto.botonCompacto,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mensaje: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tema.espaciado.xs + 2,
   },
 }));

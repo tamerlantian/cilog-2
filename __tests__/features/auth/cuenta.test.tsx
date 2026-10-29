@@ -43,7 +43,7 @@ describe('cuenta sin sesión', () => {
     it('valida que las claves coincidan antes de llamar a la API', async () => {
       await abrirLogin();
       await fireEvent.press(screen.getByRole('button', {name: 'Crear cuenta'}));
-      await screen.findByText('Te enviaremos un correo para verificarla.');
+      await screen.findByText('Te enviaremos un correo para activarla.');
 
       await llenarRegistro('otra-clave');
       await fireEvent.press(screen.getByRole('button', {name: 'Crear cuenta'}));
@@ -52,10 +52,24 @@ describe('cuenta sin sesión', () => {
       expect(apiSimulada.registrarApi).not.toHaveBeenCalled();
     });
 
+    it('muestra el requisito de la clave cumplido mientras se escribe', async () => {
+      await abrirLogin();
+      await fireEvent.press(screen.getByRole('button', {name: 'Crear cuenta'}));
+      await screen.findByText('Te enviaremos un correo para activarla.');
+
+      expect(
+        screen.getByLabelText('Al menos 8 caracteres: pendiente'),
+      ).toBeTruthy();
+      await escribir('Clave', 'clave-segura-1');
+      expect(
+        screen.getByLabelText('Al menos 8 caracteres: cumplido'),
+      ).toBeTruthy();
+    });
+
     it('exige al menos 8 caracteres en la clave', async () => {
       await abrirLogin();
       await fireEvent.press(screen.getByRole('button', {name: 'Crear cuenta'}));
-      await screen.findByText('Te enviaremos un correo para verificarla.');
+      await screen.findByText('Te enviaremos un correo para activarla.');
 
       await llenarRegistro();
       await escribir('Clave', 'corta');
@@ -70,7 +84,7 @@ describe('cuenta sin sesión', () => {
       apiSimulada.registrarApi.mockResolvedValue(undefined);
       await abrirLogin();
       await fireEvent.press(screen.getByRole('button', {name: 'Crear cuenta'}));
-      await screen.findByText('Te enviaremos un correo para verificarla.');
+      await screen.findByText('Te enviaremos un correo para activarla.');
 
       await llenarRegistro();
       await fireEvent.press(screen.getByRole('button', {name: 'Crear cuenta'}));
@@ -96,7 +110,7 @@ describe('cuenta sin sesión', () => {
       );
       await abrirLogin();
       await fireEvent.press(screen.getByRole('button', {name: 'Crear cuenta'}));
-      await screen.findByText('Te enviaremos un correo para verificarla.');
+      await screen.findByText('Te enviaremos un correo para activarla.');
 
       await llenarRegistro();
       await fireEvent.press(screen.getByRole('button', {name: 'Crear cuenta'}));
@@ -133,6 +147,10 @@ describe('cuenta sin sesión', () => {
       expect(apiSimulada.recuperarClaveApi).toHaveBeenCalledWith(
         'ana@prueba.test',
       );
+      // Fluor admite un reenvío por minuto: el botón espera antes de habilitarse.
+      expect(
+        screen.getByRole('button', {name: 'Reenviar en 1:00'}),
+      ).toBeDisabled();
     });
 
     it('rechaza un correo inválido sin llamar a la API', async () => {
@@ -140,7 +158,7 @@ describe('cuenta sin sesión', () => {
       await fireEvent.press(
         screen.getByRole('button', {name: 'Olvidé mi clave'}),
       );
-      await screen.findByText('Recuperar clave');
+      await screen.findByText('¿Olvidaste tu clave?');
 
       await escribir('Correo', 'no-es-correo');
       await fireEvent.press(
@@ -170,9 +188,7 @@ describe('cuenta sin sesión', () => {
         screen.getByRole('button', {name: 'Iniciar sesión'}),
       );
 
-      expect(
-        await screen.findByText('Tu cuenta aún no está verificada'),
-      ).toBeTruthy();
+      expect(await screen.findByText('Falta verificar tu correo')).toBeTruthy();
       expect(Toast.show).not.toHaveBeenCalled();
 
       await fireEvent.press(
@@ -211,7 +227,7 @@ describe('cuenta sin sesión', () => {
       expect(Toast.show).toHaveBeenCalledWith(
         expect.objectContaining({text1: 'Credenciales inválidas'}),
       );
-      expect(screen.queryByText('Tu cuenta aún no está verificada')).toBeNull();
+      expect(screen.queryByText('Falta verificar tu correo')).toBeNull();
     });
   });
 });

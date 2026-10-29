@@ -1,5 +1,8 @@
 import {z} from 'zod';
 
+/** Fluor no impone política de clave; la app exige este mínimo. */
+export const LARGO_MINIMO_CLAVE = 8;
+
 const textoObligatorio = (mensaje: string) => z.string().trim().min(1, mensaje);
 
 const correo = z
@@ -21,7 +24,12 @@ export const esquemaFormularioRegistro = z
       'Ingresa tu número de identificación',
     ),
     email: correo,
-    clave: z.string().min(8, 'La clave debe tener al menos 8 caracteres'),
+    clave: z
+      .string()
+      .min(
+        LARGO_MINIMO_CLAVE,
+        `La clave debe tener al menos ${LARGO_MINIMO_CLAVE} caracteres`,
+      ),
     confirmarClave: z.string().min(1, 'Confirma tu clave'),
   })
   .refine(datos => datos.clave === datos.confirmarClave, {

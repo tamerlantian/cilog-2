@@ -1,11 +1,24 @@
 import {zodResolver} from '@hookform/resolvers/zod';
 import type {RouteProp} from '@react-navigation/native';
+import {useState} from 'react';
 import {Controller, useForm} from 'react-hook-form';
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {Boton, EstadoVacio, Input, Pantalla, PROPS_CORREO, Texto} from '@/ui';
+import {
+  Boton,
+  Encabezado,
+  IconoDestacado,
+  Input,
+  Pantalla,
+  PROPS_CORREO,
+  Texto,
+  type TipoIcono,
+  KeyRound,
+  MailWarning,
+} from '@/ui';
 
+import {CorreoEnviado} from '../components/CorreoEnviado';
 import {
   esquemaFormularioCorreo,
   type FormularioCorreo,
@@ -18,28 +31,36 @@ import {
 import type {RutasAuth} from '../rutas';
 
 type Textos = {
+  icono: TipoIcono;
   titulo: string;
   descripcion: string;
   boton: string;
-  exito: string;
+  /** El mensaje de éxito va partido para resaltar el correo en medio. */
+  exito: [antes: string, despues: string];
 };
 
 const TEXTOS: Record<TipoSolicitudCorreo, Textos> = {
   recuperarClave: {
-    titulo: 'Recuperar clave',
+    icono: KeyRound,
+    titulo: '¿Olvidaste tu clave?',
     descripcion:
       'Escribe tu correo y te enviaremos un enlace para crear una clave nueva.',
     boton: 'Enviar enlace',
-    exito:
-      'Si el correo está registrado, te enviamos las instrucciones. El enlace abre la página donde creas tu clave nueva.',
+    exito: [
+      'Si ',
+      ' está registrado, te llegará un enlace. Ábrelo para crear tu clave nueva.',
+    ],
   },
   reenviarVerificacion: {
+    icono: MailWarning,
     titulo: 'Verifica tu cuenta',
     descripcion:
       'Tu cuenta aún no está verificada. Te reenviamos el enlace por correo.',
     boton: 'Reenviar correo',
-    exito:
-      'Si la cuenta existe y no está verificada, te enviamos el enlace. Ábrelo y luego inicia sesión.',
+    exito: [
+      'Si ',
+      ' tiene una cuenta sin verificar, te llegará un enlace. Ábrelo y luego inicia sesión.',
+    ],
   },
 };
 
@@ -53,59 +74,74 @@ function SolicitarCorreo({
 }) {
   const navigation = useNavegacionAuth();
   const textos = TEXTOS[tipo];
-  const {mutate, isPending, isSuccess} = useSolicitarCorreo(tipo);
+  const [correoEnviado, setCorreoEnviado] = useState<string | null>(null);
+  const {mutate, mutateAsync, isPending} = useSolicitarCorreo(tipo);
   const {control, handleSubmit} = useForm<FormularioCorreo>({
     resolver: zodResolver(esquemaFormularioCorreo),
     defaultValues: {email: emailInicial},
   });
 
-  const enviar = () => handleSubmit(({email}) => mutate(email))();
+  const enviar = () =>
+    handleSubmit(({email}) =>
+      mutate(email, {onSuccess: () => setCorreoEnviado(email)}),
+    )();
+  const volver = () => navigation.navigate('Login');
 
-  if (isSuccess) {
+  if (correoEnviado) {
+    const [antes, despues] = textos.exito;
     return (
-      <Pantalla>
-        <EstadoVacio
-          accion={{
-            titulo: 'Volver a iniciar sesión',
-            alPresionar: () => navigation.navigate('Login'),
-          }}
-          mensaje={textos.exito}
-          titulo="Revisa tu correo"
-        />
-      </Pantalla>
+      <CorreoEnviado
+        alReenviar={() => mutateAsync(correoEnviado)}
+        alVolver={volver}
+        reenviando={isPending}>
+        {antes}
+        <Texto negrita>{correoEnviado}</Texto>
+        {despues}
+      </CorreoEnviado>
     );
   }
 
   return (
-    <Pantalla desplazable>
-      <View style={styles.encabezado}>
-        <Texto variante="titulo" negrita tono="primario">
-          {textos.titulo}
-        </Texto>
-        <Texto tono="secundario">{textos.descripcion}</Texto>
-      </View>
-      <Controller
-        control={control}
-        name="email"
-        render={({field, fieldState}) => (
-          <Input
-            {...PROPS_CORREO}
-            error={fieldState.error?.message}
-            etiqueta="Correo"
-            returnKeyType="done"
-            value={field.value}
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
-            onSubmitEditing={enviar}
+    <Pantalla
+      desplazable
+      estiloContenido={styles.contenido}
+      pie={
+        <>
+          <Boton cargando={isPending} titulo={textos.boton} onPress={enviar} />
+          <Boton
+            tamano="compacto"
+            tipo="texto"
+            titulo="Volver a iniciar sesión"
+            onPress={volver}
           />
-        )}
-      />
-      <Boton cargando={isPending} titulo={textos.boton} onPress={enviar} />
-      <Boton
-        tipo="texto"
-        titulo="Volver"
-        onPress={() => navigation.navigate('Login')}
-      />
+        </>
+      }>
+      <Encabezado alVolver={() => navigation.goBack()} />
+      <View style={styles.cuerpo}>
+        <IconoDestacado icono={textos.icono} />
+        <View style={styles.textos}>
+          <Texto negrita variante="titulo">
+            {textos.titulo}
+          </Texto>
+          <Texto tono="secundario">{textos.descripcion}</Texto>
+        </View>
+        <Controller
+          control={control}
+          name="email"
+          render={({field, fieldState}) => (
+            <Input
+              {...PROPS_CORREO}
+              error={fieldState.error?.message}
+              etiqueta="Correo"
+              returnKeyType="done"
+              value={field.value}
+              onBlur={field.onBlur}
+              onChangeText={field.onChange}
+              onSubmitEditing={enviar}
+            />
+          )}
+        />
+      </View>
     </Pantalla>
   );
 }
@@ -130,5 +166,11 @@ export const ReenviarVerificacionPantalla = ({
 );
 
 const styles = StyleSheet.create(tema => ({
-  encabezado: {gap: tema.espaciado.xs, paddingTop: tema.espaciado.xl},
+  contenido: {padding: 0, gap: 0},
+  cuerpo: {
+    gap: tema.espaciado.xl - 4,
+    paddingHorizontal: tema.espaciado.xl,
+    paddingTop: tema.espaciado.lg,
+  },
+  textos: {gap: tema.espaciado.sm},
 }));

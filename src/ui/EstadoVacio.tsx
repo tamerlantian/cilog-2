@@ -2,25 +2,33 @@ import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {Boton} from './Boton';
+import type {TipoIcono} from './Icono';
+import {IconoDestacado} from './IconoDestacado';
 import {Texto} from './Texto';
 
 type Props = {
   titulo: string;
   mensaje?: string;
+  icono?: TipoIcono;
+  tono?: 'primario' | 'exito' | 'advertencia' | 'peligro' | 'info';
   accion?: {titulo: string; alPresionar: () => void};
 };
 
-export function EstadoVacio({titulo, mensaje, accion}: Props) {
+/** Pantalla o sección sin contenido: vacío, error o algo terminado. */
+export function EstadoVacio({titulo, mensaje, icono, tono, accion}: Props) {
   return (
     <View style={styles.contenedor}>
-      <Texto variante="subtitulo" negrita style={styles.centrado}>
-        {titulo}
-      </Texto>
-      {mensaje ? (
-        <Texto tono="secundario" style={styles.centrado}>
-          {mensaje}
+      {icono ? <IconoDestacado icono={icono} tamano="lg" tono={tono} /> : null}
+      <View style={styles.textos}>
+        <Texto centrado negrita variante="subtitulo">
+          {titulo}
         </Texto>
-      ) : null}
+        {mensaje ? (
+          <Texto centrado tono="secundario">
+            {mensaje}
+          </Texto>
+        ) : null}
+      </View>
       {accion ? (
         <Boton
           tipo="secundario"
@@ -37,8 +45,8 @@ const styles = StyleSheet.create(tema => ({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: tema.espaciado.md,
+    gap: tema.espaciado.lg,
     padding: tema.espaciado.xl,
   },
-  centrado: {textAlign: 'center'},
+  textos: {gap: tema.espaciado.sm, maxWidth: 320},
 }));

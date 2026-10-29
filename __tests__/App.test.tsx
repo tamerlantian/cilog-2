@@ -41,7 +41,7 @@ describe('App', () => {
   it('sin sesión guardada muestra el login', async () => {
     await render(<App />);
     expect(
-      await screen.findByText('Inicia sesión para ver tus despachos'),
+      await screen.findByText('Tus entregas del día, en orden.'),
     ).toBeTruthy();
   });
 
@@ -95,7 +95,9 @@ describe('App', () => {
     await screen.findByLabelText('Correo');
     await llenarLogin();
 
-    expect(await screen.findByText('Elige tu empresa')).toBeTruthy();
+    expect(
+      await screen.findByText('¿Con qué empresa trabajas hoy?'),
+    ).toBeTruthy();
     await fireEvent.press(screen.getByText('Logística Norte'));
 
     expect(
@@ -106,7 +108,9 @@ describe('App', () => {
     await fireEvent.press(
       screen.getByRole('button', {name: 'Cambiar de empresa'}),
     );
-    expect(await screen.findByText('Elige tu empresa')).toBeTruthy();
+    expect(
+      await screen.findByText('¿Con qué empresa trabajas hoy?'),
+    ).toBeTruthy();
   });
 
   it('muestra el error del servidor si las credenciales son inválidas', async () => {
@@ -147,7 +151,7 @@ describe('App', () => {
 
     await fireEvent.press(screen.getByRole('button', {name: 'Cerrar sesión'}));
     expect(
-      await screen.findByText('Inicia sesión para ver tus despachos'),
+      await screen.findByText('Tus entregas del día, en orden.'),
     ).toBeTruthy();
   });
 });

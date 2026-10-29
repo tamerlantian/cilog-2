@@ -43,13 +43,16 @@ Además, en todo `src`:
 - Errores: `core/api/errores.ts` traduce los errores de Fluor y de red. Las pantallas muestran `mensajeUsuario(error)`.
 - Estado: sesión y preferencias en zustand (MMKV); datos del servidor en TanStack Query; formularios en react-hook-form. Tokens en el llavero seguro, no en MMKV.
 - Estilos: solo `StyleSheet` de unistyles con el tema de `ui/tema`. Sin colores literales ni estilos inline (ESLint lo bloquea).
+- Íconos: `lucide-react-native`, pero solo a través de `ui/iconos.ts`, que importa cada ícono por su ruta. Metro no elimina código sin usar y el paquete completo suma ~2 MB al bundle; ESLint bloquea importarlo directo. Se dibujan con `Icono` (color del tema).
+- Tema (`ui/tema/tema.ts`): `exito`, `advertencia` y `peligro` son colores de texto que pasan contraste sobre `fondo`; los `*Suave` son fondos. `marca` es el verde de Cilog en ambos temas. Dirección visual en el mockup https://claude.ai/artifact/DHeeTJvpyQEjdpSax84QgP.
+- Los componentes de `ui/` se construyen cuando una pantalla los necesita, no por adelantado.
 
 ## Estado de la implementación
 
 | Pieza | Fase | Estado |
 | --- | --- | --- |
 | Cliente API, errores, paginación, entorno | 0 | Hecho, con pruebas |
-| Tema y primitivas de UI | 0 | Hecho, con pruebas |
+| Tema y primitivas de UI | 0 | Hecho, con pruebas. Rediseño según el mockup: componentes de auth listos (Aviso, Encabezado, IconoDestacado, Avatar, Requisito, Marca, toasts) |
 | Navegación por estado de sesión (`app/navegacion`) | 1 | Hecho, con pruebas |
 | Sesión: token en llavero, perfil y empresa en MMKV (`core/sesion`) | 1 | Hecho, con pruebas |
 | Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas |

@@ -1,0 +1,21 @@
+/**
+ * Íconos de la app. Cada uno se importa por su ruta: Metro no elimina código
+ * sin usar, y `lucide-react-native` completo trae ~1.600 íconos (+2 MB al bundle).
+ * Para usar uno nuevo, agrégalo aquí (nombres en https://lucide.dev/icons).
+ */
+export {default as Building} from 'lucide-react-native/icons/building';
+export {default as Check} from 'lucide-react-native/icons/check';
+export {default as ChevronLeft} from 'lucide-react-native/icons/chevron-left';
+export {default as ChevronRight} from 'lucide-react-native/icons/chevron-right';
+export {default as Circle} from 'lucide-react-native/icons/circle';
+export {default as CircleAlert} from 'lucide-react-native/icons/circle-alert';
+export {default as CloudOff} from 'lucide-react-native/icons/cloud-off';
+export {default as Eye} from 'lucide-react-native/icons/eye';
+export {default as EyeOff} from 'lucide-react-native/icons/eye-off';
+export {default as Info} from 'lucide-react-native/icons/info';
+export {default as KeyRound} from 'lucide-react-native/icons/key-round';
+export {default as LogOut} from 'lucide-react-native/icons/log-out';
+export {default as Mail} from 'lucide-react-native/icons/mail';
+export {default as MailWarning} from 'lucide-react-native/icons/mail-warning';
+export {default as Truck} from 'lucide-react-native/icons/truck';
+export {default as X} from 'lucide-react-native/icons/x';
