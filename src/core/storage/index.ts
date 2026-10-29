@@ -1,2 +1,7 @@
 export {almacen} from './almacen';
-export {borrarToken, guardarToken, leerToken} from './llavero';
+export {
+  borrarCredenciales,
+  guardarCredenciales,
+  leerCredenciales,
+  type Credenciales,
+} from './llavero';

@@ -66,7 +66,9 @@ Además, en todo `src`:
 - El token vive solo en el llavero (`core/storage/llavero.ts`). El usuario y la empresa elegida van en MMKV, porque no son secretos. El perfil guardado se valida con zod al leerlo; si no cuadra (p. ej. lo guardó otra versión), se descarta y se pide login.
 - `conectarSesionConApi()` corre al cargar `app/App.tsx`, antes de montar nada. Un 401 solo cierra la sesión si la petición llevaba el token actual: una respuesta tardía con un token anterior no tumba un login nuevo.
 - Con una sola empresa se elige sola y no se ofrece "Cambiar de empresa" (`tieneVariasEmpresas` en la sesión).
-- Al arrancar, un token vencido (se lee `exp` del JWT) se descarta y se pide login. Un 401 con token cierra la sesión y avisa. Fluor no entrega refresh para `api`: queda pendiente alargar el JWT móvil con backend (ver `docs/contratos-fluor.md`).
+- Tokens: Fluor entrega a `client_type: "api"` un access token de 60 min y un refresh token de 30 días (desde `1f80800`). Ambos van juntos en el llavero. Un servidor anterior no envía refresh: la sesión dura lo que el access token.
+- Al arrancar, se pide login solo si ninguno de los dos sirve (se lee `exp` del JWT). Un access token vencido con refresh vigente mantiene la sesión: la primera petición lo renueva.
+- Renovación (`core/api/cliente.ts`): ante un 401 con el token actual se llama `POST /auth/seguridad/refresh` **una sola vez** aunque fallen varias peticiones a la vez, y se reintentan con el token nuevo. Si Fluor rechaza el refresh (401/403) o el reintento vuelve a dar 401, la sesión se cierra y avisa. Si la renovación falla por red, la sesión **no** se cierra (offline-first): la petición falla con `SIN_CONEXION`.
 - Cambiar de usuario o de empresa limpia la caché de TanStack Query, para no mostrar datos de otra empresa.
 - Todas las llamadas sin sesión van con `client_type: "api"`, que Fluor no protege con Turnstile.
 

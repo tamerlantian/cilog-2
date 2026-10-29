@@ -1,7 +1,28 @@
-import {almacen, leerToken} from '@/core/storage';
+import {almacen, leerCredenciales} from '@/core/storage';
 import {useSesion} from '@/core/sesion';
 
 import {crearJwt, empresaPrueba, usuarioPrueba} from '../helpers';
+
+/** Credenciales con un access token que vence en `segundos` y, opcional, un refresh token. */
+const credenciales = (segundos: number, renovacionSegundos?: number) => ({
+  token: crearJwt(segundos),
+  tokenRenovacion:
+    renovacionSegundos === undefined ? null : crearJwt(renovacionSegundos),
+});
+
+const tokenGuardado = async () => (await leerCredenciales())?.token ?? null;
+
+/** Simula cerrar y abrir la app: borra la memoria y restaura desde el llavero y MMKV. */
+const reabrirApp = async () => {
+  useSesion.setState({
+    estado: 'iniciando',
+    token: null,
+    tokenRenovacion: null,
+    usuario: null,
+    empresa: null,
+  });
+  await useSesion.getState().restaurar();
+};
 
 const reiniciar = async () => {
   await useSesion.getState().cerrarSesion();
@@ -17,15 +38,15 @@ describe('tienda de sesión', () => {
   });
 
   it('iniciar sesión guarda el token en el llavero y pide elegir empresa', async () => {
-    const token = crearJwt(600);
-    await useSesion.getState().iniciarSesion(token, usuarioPrueba);
+    const nuevas = credenciales(600);
+    await useSesion.getState().iniciarSesion(nuevas, usuarioPrueba);
 
     expect(useSesion.getState().estado).toBe('sinEmpresa');
-    expect(await leerToken()).toBe(token);
+    expect(await tokenGuardado()).toBe(nuevas.token);
   });
 
   it('con empresa elegida, un reinicio restaura la sesión activa', async () => {
-    await useSesion.getState().iniciarSesion(crearJwt(600), usuarioPrueba);
+    await useSesion.getState().iniciarSesion(credenciales(600), usuarioPrueba);
     useSesion
       .getState()
       .elegirEmpresa(empresaPrueba(7, 'Transportes Sur'), true);
@@ -45,7 +66,7 @@ describe('tienda de sesión', () => {
   });
 
   it('un token vencido al arrancar obliga a iniciar sesión y se borra', async () => {
-    await useSesion.getState().iniciarSesion(crearJwt(-60), usuarioPrueba);
+    await useSesion.getState().iniciarSesion(credenciales(-60), usuarioPrueba);
     useSesion
       .getState()
       .elegirEmpresa(empresaPrueba(7, 'Transportes Sur'), true);
@@ -59,11 +80,49 @@ describe('tienda de sesión', () => {
     await useSesion.getState().restaurar();
 
     expect(useSesion.getState().estado).toBe('sinSesion');
-    expect(await leerToken()).toBeNull();
+    expect(await tokenGuardado()).toBeNull();
+  });
+
+  it('con el access token vencido pero el refresh vigente, la sesión sigue', async () => {
+    await useSesion
+      .getState()
+      .iniciarSesion(credenciales(-60, 3600), usuarioPrueba);
+    useSesion
+      .getState()
+      .elegirEmpresa(empresaPrueba(7, 'Transportes Sur'), true);
+
+    await reabrirApp();
+
+    expect(useSesion.getState().estado).toBe('activa');
+    expect(useSesion.getState().tokenRenovacion).not.toBeNull();
+  });
+
+  it('con ambos tokens vencidos pide iniciar sesión', async () => {
+    await useSesion
+      .getState()
+      .iniciarSesion(credenciales(-60, -60), usuarioPrueba);
+
+    await reabrirApp();
+
+    expect(useSesion.getState().estado).toBe('sinSesion');
+    expect(await leerCredenciales()).toBeNull();
+  });
+
+  it('renovar el token lo guarda en el llavero y conserva el refresh', async () => {
+    const iniciales = credenciales(600, 3600);
+    await useSesion.getState().iniciarSesion(iniciales, usuarioPrueba);
+
+    await useSesion.getState().renovarToken('jwt-renovado');
+
+    expect(useSesion.getState().token).toBe('jwt-renovado');
+    expect(await leerCredenciales()).toEqual({
+      token: 'jwt-renovado',
+      tokenRenovacion: iniciales.tokenRenovacion,
+    });
   });
 
   it('cambiar de empresa conserva la sesión pero pide elegir de nuevo', async () => {
-    await useSesion.getState().iniciarSesion(crearJwt(600), usuarioPrueba);
+    await useSesion.getState().iniciarSesion(credenciales(600), usuarioPrueba);
     useSesion
       .getState()
       .elegirEmpresa(empresaPrueba(7, 'Transportes Sur'), true);
@@ -74,7 +133,7 @@ describe('tienda de sesión', () => {
   });
 
   it('un perfil guardado con otra forma se descarta y pide login', async () => {
-    await useSesion.getState().iniciarSesion(crearJwt(600), usuarioPrueba);
+    await useSesion.getState().iniciarSesion(credenciales(600), usuarioPrueba);
     // Perfil de una versión anterior: sin `tieneVariasEmpresas`.
     almacen.set(
       'sesion.perfil',
@@ -85,11 +144,11 @@ describe('tienda de sesión', () => {
     await useSesion.getState().restaurar();
 
     expect(useSesion.getState().estado).toBe('sinSesion');
-    expect(await leerToken()).toBeNull();
+    expect(await tokenGuardado()).toBeNull();
   });
 
   it('cerrar sesión borra token y datos, y puede dejar un aviso', async () => {
-    await useSesion.getState().iniciarSesion(crearJwt(600), usuarioPrueba);
+    await useSesion.getState().iniciarSesion(credenciales(600), usuarioPrueba);
     await useSesion.getState().cerrarSesion('Tu sesión expiró.');
 
     const {estado, token, usuario, avisoSesion} = useSesion.getState();
@@ -97,6 +156,6 @@ describe('tienda de sesión', () => {
     expect(token).toBeNull();
     expect(usuario).toBeNull();
     expect(avisoSesion).toBe('Tu sesión expiró.');
-    expect(await leerToken()).toBeNull();
+    expect(await tokenGuardado()).toBeNull();
   });
 });

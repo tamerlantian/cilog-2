@@ -1,7 +1,13 @@
 import {create} from 'zustand';
 
 import {clienteConsultas, configurarSesionApi} from '@/core/api';
-import {almacen, borrarToken, guardarToken, leerToken} from '@/core/storage';
+import {
+  almacen,
+  borrarCredenciales,
+  guardarCredenciales,
+  leerCredenciales,
+  type Credenciales,
+} from '@/core/storage';
 
 import {
   esquemaPerfil,
@@ -24,13 +30,19 @@ export type EstadoSesion = 'iniciando' | 'sinSesion' | 'sinEmpresa' | 'activa';
 type Tienda = {
   estado: EstadoSesion;
   token: string | null;
+  /** Refresh token de Fluor (30 días). Null si el servidor no lo entregó. */
+  tokenRenovacion: string | null;
   usuario: Usuario | null;
   empresa: Perfil['empresa'];
   tieneVariasEmpresas: boolean;
   /** Se llena si la sesión terminó sola (token vencido o rechazado). */
   avisoSesion: string | null;
   restaurar: () => Promise<void>;
-  iniciarSesion: (token: string, usuario: Usuario) => Promise<void>;
+  iniciarSesion: (
+    credenciales: Credenciales,
+    usuario: Usuario,
+  ) => Promise<void>;
+  renovarToken: (token: string) => Promise<void>;
   elegirEmpresa: (empresa: Empresa, tieneVariasEmpresas: boolean) => void;
   cambiarEmpresa: () => void;
   cerrarSesion: (aviso?: string) => Promise<void>;
@@ -47,26 +59,34 @@ const leerPerfil = (): Perfil | null => {
   }
 };
 
+/** Hay sesión si el token de acceso sirve o se puede renovar. */
+const sesionVigente = ({token, tokenRenovacion}: Credenciales) =>
+  !tokenVencido(token) ||
+  (tokenRenovacion !== null && !tokenVencido(tokenRenovacion));
+
 const guardarPerfil = (perfil: Perfil) =>
   almacen.set(CLAVE_PERFIL, JSON.stringify(perfil));
 
 export const useSesion = create<Tienda>((set, get) => ({
   estado: 'iniciando',
   token: null,
+  tokenRenovacion: null,
   usuario: null,
   empresa: null,
   tieneVariasEmpresas: false,
   avisoSesion: null,
 
   restaurar: async () => {
-    const token = await leerToken().catch(() => null);
+    const credenciales = await leerCredenciales().catch(() => null);
     const perfil = leerPerfil();
-    if (!token || !perfil || tokenVencido(token)) {
-      if (token) await borrarToken().catch(() => undefined);
+    // Un token de acceso vencido no cierra la sesión: la primera petición lo renueva.
+    if (!credenciales || !perfil || !sesionVigente(credenciales)) {
+      await borrarCredenciales().catch(() => undefined);
       almacen.remove(CLAVE_PERFIL);
       set({
         estado: 'sinSesion',
         token: null,
+        tokenRenovacion: null,
         usuario: null,
         empresa: null,
         tieneVariasEmpresas: false,
@@ -74,7 +94,8 @@ export const useSesion = create<Tienda>((set, get) => ({
       return;
     }
     set({
-      token,
+      token: credenciales.token,
+      tokenRenovacion: credenciales.tokenRenovacion,
       usuario: perfil.usuario,
       empresa: perfil.empresa,
       tieneVariasEmpresas: perfil.tieneVariasEmpresas,
@@ -82,18 +103,26 @@ export const useSesion = create<Tienda>((set, get) => ({
     });
   },
 
-  iniciarSesion: async (token, usuario) => {
+  iniciarSesion: async (credenciales, usuario) => {
     clienteConsultas.clear();
-    await guardarToken(token);
+    await guardarCredenciales(credenciales);
     guardarPerfil({usuario, empresa: null, tieneVariasEmpresas: false});
     set({
-      token,
+      token: credenciales.token,
+      tokenRenovacion: credenciales.tokenRenovacion,
       usuario,
       empresa: null,
       tieneVariasEmpresas: false,
       estado: 'sinEmpresa',
       avisoSesion: null,
     });
+  },
+
+  renovarToken: async token => {
+    const {tokenRenovacion} = get();
+    // Primero en memoria: el cliente HTTP reintenta con este token de inmediato.
+    set({token});
+    await guardarCredenciales({token, tokenRenovacion}).catch(() => undefined);
   },
 
   elegirEmpresa: (empresa, tieneVariasEmpresas) => {
@@ -122,12 +151,13 @@ export const useSesion = create<Tienda>((set, get) => ({
     set({
       estado: 'sinSesion',
       token: null,
+      tokenRenovacion: null,
       usuario: null,
       empresa: null,
       tieneVariasEmpresas: false,
       avisoSesion: aviso ?? null,
     });
-    await borrarToken().catch(() => undefined);
+    await borrarCredenciales().catch(() => undefined);
   },
 }));
 
@@ -135,6 +165,8 @@ export const useSesion = create<Tienda>((set, get) => ({
 export const conectarSesionConApi = () =>
   configurarSesionApi({
     obtenerToken: () => useSesion.getState().token,
+    obtenerTokenRenovacion: () => useSesion.getState().tokenRenovacion,
+    alRenovarToken: token => useSesion.getState().renovarToken(token),
     obtenerTenantId: () => useSesion.getState().empresa?.tenant_id ?? null,
     alSesionInvalida: () => {
       if (useSesion.getState().estado === 'sinSesion') return;

@@ -11,6 +11,8 @@ const CLIENTE = 'api';
 
 const esquemaRespuestaLogin = z.object({
   access_token: z.string(),
+  /** Fluor lo entrega a clientes `api`/`mobile` desde 1f80800; un servidor anterior no. */
+  refresh_token: z.string().nullish(),
   token_type: z.string().nullish(),
   user: esquemaUsuario,
 });

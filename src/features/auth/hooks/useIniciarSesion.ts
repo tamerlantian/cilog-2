@@ -17,7 +17,13 @@ export const useIniciarSesion = () => {
   return useMutation({
     mutationFn: async ({email, clave}: FormularioLogin) => {
       const respuesta = await iniciarSesionApi(email, clave);
-      await iniciarSesion(respuesta.access_token, respuesta.user);
+      await iniciarSesion(
+        {
+          token: respuesta.access_token,
+          tokenRenovacion: respuesta.refresh_token ?? null,
+        },
+        respuesta.user,
+      );
     },
     // La cuenta sin verificar tiene su propio aviso en la pantalla, con la acción para resolverlo.
     onError: error => {

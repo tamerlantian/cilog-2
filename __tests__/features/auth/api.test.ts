@@ -66,6 +66,25 @@ describe('llamadas sin sesión a Fluor', () => {
     );
   });
 
+  it('el login entrega el refresh token si el servidor lo envía', async () => {
+    post.mockResolvedValue({
+      data: {
+        access_token: 'jwt-acceso',
+        refresh_token: 'jwt-renovacion',
+        token_type: 'bearer',
+        user: usuarioPrueba,
+      },
+    });
+    await expect(
+      iniciarSesionApi('ana@prueba.test', 'clave-segura-1'),
+    ).resolves.toMatchObject({refresh_token: 'jwt-renovacion'});
+  });
+
+  it('el login funciona con un servidor que aún no envía refresh token', async () => {
+    const respuesta = await iniciarSesionApi('ana@prueba.test', 'x');
+    expect(respuesta.refresh_token).toBeUndefined();
+  });
+
   it('ninguna lleva turnstile_token', async () => {
     await recuperarClaveApi('ana@prueba.test');
     const cuerpo = post.mock.calls[0]?.[1] as Record<string, unknown>;

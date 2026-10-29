@@ -15,7 +15,7 @@ listas `{total, page, size, items}`, errores `{success:false, error:{code,messag
 
 | Tema | Decisión |
 | --- | --- |
-| Duración de la sesión móvil | Extender el JWT de `client_type=api`. Valor a acordar con backend (propuesta: 7 días) y devolver `expires_in` en segundos en el login. |
+| Duración de la sesión móvil | **Resuelto en Fluor** (`1f80800`): con `client_type=api` el login devuelve `refresh_token` de 30 días y `POST /auth/seguridad/refresh` acepta `{refresh_token}` en el body. La app ya lo usa. |
 | Registro y recuperación de clave | **Resuelto en Fluor** (`329211e`): `client_type` `api`/`mobile` salta Turnstile; solo `web` lo exige. La app va como `api` y no usa WebView. |
 | Usuario con conductor | Propuesta: resolver el conductor comparando `auth_user.numero_identificacion` con `tte_conductor.numero_identificacion` en la base de la empresa. Sin cambio de esquema; el registro ya exige la identificación. Alternativa: columna `codigo_conductor_fk` en `mas_user_tenant`. **Pendiente de hablar con backend.** |
 | Varias empresas por usuario | **Pendiente.** La app mostrará selector si `GET /mas/user-tenant/lista` devuelve más de una. |
@@ -265,7 +265,9 @@ Registro del token push (FCM).
 
 ### 16. Refresh / sesión móvil
 
-Con `client_type=api`, el login debe incluir `expires_in` (segundos) y el JWT debe durar lo acordado arriba. Si más adelante se prefiere refresh token, `POST /auth/seguridad/refresh` debería aceptar `{refresh_token}` en el body para clientes no web.
+**Hecho en Fluor (`1f80800`)**: login con `client_type=api` devuelve `{access_token, refresh_token, token_type, user}` (access 60 min, refresh 30 días) y `POST /auth/seguridad/refresh` con `{refresh_token}` devuelve `{access_token, token_type}` (10/min).
+
+Mejoras opcionales que se pueden pedir: rotar el refresh token en cada renovación y poder revocarlo (hoy `logout` solo borra cookies, así que un refresh robado sirve hasta que vence).
 
 ---
 
