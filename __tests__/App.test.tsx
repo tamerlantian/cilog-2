@@ -11,12 +11,30 @@ import {App} from '@/app/App';
 import {clienteConsultas} from '@/core/api/clienteConsultas';
 import {ErrorApi} from '@/core/api/errores';
 import * as api from '@/features/auth/api/auth';
+import * as apiDespachos from '@/features/despachos/api/despachos';
 import {useSesion} from '@/core/sesion';
 
 import {crearJwt, empresaPrueba, usuarioPrueba} from './helpers';
 
 jest.mock('@/features/auth/api/auth');
+jest.mock('@/features/despachos/api/despachos');
 const apiSimulada = jest.mocked(api);
+// Mis despachos pide la lista al entrar; aquí el usuario aún no tiene despachos.
+jest.mocked(apiDespachos).listarAsignacionesApi.mockResolvedValue([]);
+
+/** Las pantallas con sesión leen la base al montar: que terminen dentro de act. */
+const esperarConsultas = () =>
+  waitFor(() =>
+    expect(clienteConsultas.isFetching() + clienteConsultas.isMutating()).toBe(
+      0,
+    ),
+  );
+
+const abrirCuenta = async () => {
+  await fireEvent.press(await screen.findByRole('button', {name: 'Mi cuenta'}));
+  await screen.findByText('Empresa para ingreso y envíos');
+  await esperarConsultas();
+};
 
 const llenarLogin = async () => {
   await fireEvent.changeText(
@@ -64,9 +82,8 @@ describe('App', () => {
     await screen.findByLabelText('Correo');
     await llenarLogin();
 
-    expect(
-      await screen.findByText('Tus despachos aparecerán aquí.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('Aún no tienes despachos')).toBeTruthy();
+    await esperarConsultas();
     expect(apiSimulada.listarEmpresasApi).not.toHaveBeenCalled();
     expect(apiSimulada.iniciarSesionApi).toHaveBeenCalledWith(
       'conductor@prueba.test',
@@ -86,6 +103,7 @@ describe('App', () => {
     await render(<App />);
     await screen.findByLabelText('Correo');
     await llenarLogin();
+    await abrirCuenta();
     await fireEvent.press(
       await screen.findByRole('button', {name: 'Elegir empresa'}),
     );
@@ -111,6 +129,7 @@ describe('App', () => {
     await render(<App />);
     await screen.findByLabelText('Correo');
     await llenarLogin();
+    await abrirCuenta();
     await fireEvent.press(
       await screen.findByRole('button', {name: 'Elegir empresa'}),
     );
@@ -120,9 +139,7 @@ describe('App', () => {
     ).toBeTruthy();
     await fireEvent.press(screen.getByText('Logística Norte'));
 
-    expect(
-      await screen.findByText('Tus despachos aparecerán aquí.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('Logística Norte')).toBeTruthy();
     expect(useSesion.getState().empresa?.tenant_id).toBe(8);
 
     await fireEvent.press(
@@ -164,7 +181,7 @@ describe('App', () => {
     await render(<App />);
     await screen.findByLabelText('Correo');
     await llenarLogin();
-    await screen.findByText('Tus despachos aparecerán aquí.');
+    await abrirCuenta();
 
     await fireEvent.press(screen.getByRole('button', {name: 'Cerrar sesión'}));
     expect(

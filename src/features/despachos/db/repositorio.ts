@@ -1,7 +1,22 @@
-import {and, asc, desc, eq, inArray, notInArray, sql} from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  notInArray,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 
 import {despachos, guias, operaciones, type Consulta} from '@/core/db';
-import {SIN_CONFIRMAR, sinConfirmarDelDespacho} from '@/core/sync';
+import {
+  descartar,
+  SIN_CONFIRMAR,
+  sinConfirmarDelDespacho,
+  type Operacion,
+} from '@/core/sync';
 
 import type {Asignacion, DespachoGuias, GuiaFluor} from '../api/despachos';
 import {claveGuia} from '../domain/claves';
@@ -14,7 +29,16 @@ export type DespachoLocal = typeof despachos.$inferSelect & {
   porEnviar: number;
 };
 
-export type GuiaLocal = typeof guias.$inferSelect;
+/**
+ * Cómo va el envío de lo que hizo el conductor en la guía: `porEnviar` mientras
+ * la cola lo tiene, `conProblema` si Fluor lo rechazó. Null si no hay nada pendiente.
+ */
+export type EnvioGuia = 'porEnviar' | 'conProblema' | null;
+
+export type GuiaLocal = typeof guias.$inferSelect & {envio: EnvioGuia};
+
+/** Misma forma que `claveGuia` (domain/claves.ts), armada en SQL. */
+const claveGuiaSql = sql`'guia:' || ${guias.tenantDespachoId} || ':' || ${guias.codigoGuia}`;
 
 /** Claves de las guías del despacho que tienen operaciones sin confirmar. */
 const clavesConPendientes = async (db: Consulta, tenantDespachoId: number) => {
@@ -194,10 +218,9 @@ export const fusionarGuias = async (
   }
 };
 
-/** Despachos del usuario con su avance, del más reciente al más antiguo. */
-export const leerDespachos = async (
+const consultarDespachos = async (
   db: Consulta,
-  usuarioId: number,
+  condicion: SQL | undefined,
 ): Promise<DespachoLocal[]> => {
   const gestionada = sql`(${guias.gestionLocal} IS NOT NULL OR ${guias.estadoEntregado} = 1 OR ${guias.estadoNovedad} = 1)`;
   const filas = await db
@@ -217,7 +240,7 @@ export const leerDespachos = async (
           AND ${inArray(operaciones.estado, SIN_CONFIRMAR)})`,
     })
     .from(despachos)
-    .where(eq(despachos.usuarioId, usuarioId))
+    .where(condicion)
     .orderBy(desc(despachos.asignadoEn), desc(despachos.tenantDespachoId));
   return filas.map(({despacho, totalGuias, gestionadas, porEnviar}) => ({
     ...despacho,
@@ -227,10 +250,38 @@ export const leerDespachos = async (
   }));
 };
 
+/** Despachos del usuario con su avance, del más reciente al más antiguo. */
+export const leerDespachos = (db: Consulta, usuarioId: number) =>
+  consultarDespachos(db, eq(despachos.usuarioId, usuarioId));
+
+/** Un despacho con su avance, o null si ya no está en el teléfono. */
+export const leerDespacho = async (db: Consulta, tenantDespachoId: number) => {
+  const [despacho] = await consultarDespachos(
+    db,
+    eq(despachos.tenantDespachoId, tenantDespachoId),
+  );
+  return despacho ?? null;
+};
+
+const columnasGuia = {
+  ...getTableColumns(guias),
+  envio: sql<EnvioGuia>`(
+    SELECT CASE
+      WHEN sum(${operaciones.estado} IN ('rechazada', 'conflicto')) > 0 THEN 'conProblema'
+      WHEN count(*) > 0 THEN 'porEnviar'
+    END
+    FROM ${operaciones}
+    WHERE ${operaciones.claveEntidad} = ${claveGuiaSql}
+      AND ${inArray(operaciones.estado, SIN_CONFIRMAR)})`,
+};
+
 /** Guías del despacho en orden de ruta; las que no tienen orden van al final. */
-export const leerGuias = (db: Consulta, tenantDespachoId: number) =>
+export const leerGuias = (
+  db: Consulta,
+  tenantDespachoId: number,
+): Promise<GuiaLocal[]> =>
   db
-    .select()
+    .select(columnasGuia)
     .from(guias)
     .where(eq(guias.tenantDespachoId, tenantDespachoId))
     .orderBy(
@@ -238,3 +289,100 @@ export const leerGuias = (db: Consulta, tenantDespachoId: number) =>
       asc(guias.ordenRuta),
       asc(guias.codigoDespachoDetalle),
     );
+
+export const leerGuia = async (
+  db: Consulta,
+  tenantDespachoId: number,
+  codigoGuia: number,
+): Promise<GuiaLocal | null> => {
+  const [guia] = await db
+    .select(columnasGuia)
+    .from(guias)
+    .where(
+      and(
+        eq(guias.tenantDespachoId, tenantDespachoId),
+        eq(guias.codigoGuia, codigoGuia),
+      ),
+    );
+  return guia ?? null;
+};
+
+/** Una operación de la cola con lo que el conductor reconoce: la guía y el despacho. */
+export type EnvioLocal = Operacion & {
+  codigoGuia: number | null;
+  nombreDestinatario: string | null;
+  codigoDespacho: number | null;
+};
+
+/** Operaciones sin confirmar del usuario, de la más antigua a la más nueva. */
+export const leerEnvios = async (
+  db: Consulta,
+  usuarioId: number,
+): Promise<EnvioLocal[]> => {
+  const filas = await db
+    .select({
+      operacion: operaciones,
+      codigoGuia: guias.codigoGuia,
+      nombreDestinatario: guias.nombreDestinatario,
+      codigoDespacho: despachos.codigoDespacho,
+    })
+    .from(operaciones)
+    .leftJoin(
+      guias,
+      and(
+        eq(guias.tenantDespachoId, operaciones.tenantDespachoId),
+        sql`${operaciones.claveEntidad} = ${claveGuiaSql}`,
+      ),
+    )
+    .leftJoin(
+      despachos,
+      eq(despachos.tenantDespachoId, operaciones.tenantDespachoId),
+    )
+    .where(
+      and(
+        eq(operaciones.usuarioId, usuarioId),
+        inArray(operaciones.estado, SIN_CONFIRMAR),
+      ),
+    )
+    .orderBy(asc(operaciones.creadaEn), sql`operaciones_pendientes.rowid`);
+  return filas.map(({operacion, ...resto}) => ({...operacion, ...resto}));
+};
+
+/**
+ * Descarta una operación rechazada (y lo que depende de ella). Si la guía se
+ * queda sin nada por enviar, vuelve a lo que dice Fluor; si el despacho estaba
+ * liberado y ya no tiene pendientes, se borra. Devuelve los ids descartados.
+ */
+export const descartarEnvio = async (tx: Consulta, idOperacion: string) => {
+  const [operacion] = await tx
+    .select()
+    .from(operaciones)
+    .where(eq(operaciones.idOperacion, idOperacion));
+  const ids = await descartar(tx, idOperacion);
+  if (!operacion || ids.length === 0) return ids;
+
+  const [quedan] = await tx
+    .select({total: sql<number>`count(*)`})
+    .from(operaciones)
+    .where(
+      and(
+        eq(operaciones.claveEntidad, operacion.claveEntidad),
+        inArray(operaciones.estado, SIN_CONFIRMAR),
+      ),
+    );
+  if (Number(quedan?.total ?? 0) === 0) {
+    const deLaGuia = sql`${claveGuiaSql} = ${operacion.claveEntidad}`;
+    await tx.delete(guias).where(and(deLaGuia, eq(guias.retirada, true)));
+    await tx.update(guias).set({gestionLocal: null}).where(deLaGuia);
+  }
+
+  const td = operacion.tenantDespachoId;
+  if (td !== null && (await sinConfirmarDelDespacho(tx, td)) === 0) {
+    await tx
+      .delete(despachos)
+      .where(
+        and(eq(despachos.tenantDespachoId, td), eq(despachos.liberado, true)),
+      );
+  }
+  return ids;
+};

@@ -12,6 +12,7 @@ export {
 export {calcularEspera} from './espera';
 export {crearMotor, type Enviador, type Motor} from './motor';
 export {
+  escucharCola,
   iniciarSincronizacion,
   obtenerMotor,
   sincronizarAhora,

@@ -17,6 +17,8 @@ const INTERVALO_MS = 60_000;
 const RETENCION_MS = 7 * 24 * 60 * 60 * 1000;
 
 let motor: Motor | null = null;
+const oyentes = new Set<() => void>();
+const avisarOyentes = () => oyentes.forEach(oyente => oyente());
 
 const usuarioActual = () => {
   const {estado, usuario} = useSesion.getState();
@@ -25,6 +27,17 @@ const usuarioActual = () => {
 
 /** El motor en uso. Null antes de `iniciarSincronizacion`. */
 export const obtenerMotor = () => motor;
+
+/**
+ * Avisa cada vez que cambia el estado de la cola (sale, se confirma, falla).
+ * Sigue funcionando si el motor se reinicia. Devuelve cómo dejar de escuchar.
+ */
+export const escucharCola = (oyente: () => void) => {
+  oyentes.add(oyente);
+  return () => {
+    oyentes.delete(oyente);
+  };
+};
 
 /**
  * Pide enviar lo pendiente. Las features la llaman al guardar una operación;
@@ -42,6 +55,7 @@ export const iniciarSincronizacion = async (
 ) => {
   motor = crearMotor({enviadores, usuarioActual});
   const actual = motor;
+  const dejarMotor = actual.suscribir(avisarOyentes);
 
   await escribir(async tx => {
     await recuperarInterrumpidas(tx);
@@ -87,6 +101,7 @@ export const iniciarSincronizacion = async (
   actual.ejecutar();
 
   return () => {
+    dejarMotor();
     dejarRed();
     dejarApp.remove();
     dejarSesion();

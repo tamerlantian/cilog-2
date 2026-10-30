@@ -352,7 +352,7 @@ Para que las garantías se cumplan, cada endpoint de escritura debe:
 
 - **Barra superior** cuando hay pendientes: "Sin conexión · 3 por enviar" o "Enviando 3…". Desaparece cuando la cola está vacía.
 - **Cada guía** muestra su estado de envío (§6.1), no solo "Entregada".
-- **Pestaña Envíos**: lista de la cola con estado, intentos y motivo del error; botones *Enviar ahora*, *Reintentar* y *Descartar* (este último pide confirmación y solo existe para `rechazada` y `conflicto`).
+- **Pantalla Envíos** (se abre tocando la barra; no hay pestañas): lista de la cola con estado, intentos y motivo del error; botones *Enviar ahora*, *Reintentar* y *Descartar* (este último pide confirmación y solo existe para `rechazada` y `conflicto`).
 - **Terminar despacho** y **desvincular** se bloquean mientras haya operaciones sin confirmar del despacho, con el motivo visible.
 - Si una operación lleva más de **24 h** sin confirmarse, aviso destacado: "Tienes entregas sin enviar desde ayer. Busca señal o avisa a la oficina."
 

@@ -15,7 +15,14 @@ import {
   RegistroPantalla,
   ReenviarVerificacionPantalla,
 } from '@/features/auth';
-import {InicioPantalla} from '@/features/inicio';
+import {CuentaPantalla} from '@/features/cuenta';
+import {
+  DespachoPantalla,
+  EnviosPantalla,
+  GuiaPantalla,
+  MisDespachosPantalla,
+  VincularDespachoPantalla,
+} from '@/features/despachos';
 import {Cargando, CloudOff, EstadoVacio, Pantalla} from '@/ui';
 
 import {useDatosLocales} from '../providers/useDatosLocales';
@@ -90,7 +97,18 @@ export function Navegador() {
           </>
         ) : (
           <>
-            <Stack.Screen component={InicioPantalla} name="Inicio" />
+            <Stack.Screen
+              component={MisDespachosPantalla}
+              name="MisDespachos"
+            />
+            <Stack.Screen
+              component={VincularDespachoPantalla}
+              name="VincularDespacho"
+            />
+            <Stack.Screen component={DespachoPantalla} name="Despacho" />
+            <Stack.Screen component={GuiaPantalla} name="Guia" />
+            <Stack.Screen component={EnviosPantalla} name="Envios" />
+            <Stack.Screen component={CuentaPantalla} name="Cuenta" />
             <Stack.Screen component={EmpresaPantalla} name="Empresa" />
           </>
         )}

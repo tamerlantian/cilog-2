@@ -2,7 +2,7 @@ import {eq} from 'drizzle-orm';
 
 import {cliente} from '@/core/api/cliente';
 import {ErrorApi} from '@/core/api';
-import {despachos, escribir, guias, leer} from '@/core/db';
+import {despachos, escribir, guias, leer, operaciones} from '@/core/db';
 import {encolar} from '@/core/sync';
 import type {
   Asignacion,
@@ -10,9 +10,11 @@ import type {
   GuiaFluor,
 } from '@/features/despachos/api/despachos';
 import {
+  descartarEnvio,
   fusionarGuias,
   guardarAsignaciones,
   leerDespachos,
+  leerEnvios,
   leerGuias,
 } from '@/features/despachos/db/repositorio';
 import {claveGuia} from '@/features/despachos/domain/claves';
@@ -81,7 +83,7 @@ const entregarLocal = (codigo: number) =>
       .update(guias)
       .set({gestionLocal: 'entregada'})
       .where(eq(guias.codigoGuia, codigo));
-    await encolar(tx, {
+    return encolar(tx, {
       usuarioId: USUARIO,
       tipo: 'entrega',
       claveEntidad: claveGuia(DESPACHO, codigo),
@@ -89,6 +91,14 @@ const entregarLocal = (codigo: number) =>
       cuerpo: {codigo_guia: codigo},
     });
   });
+
+const rechazar = (idOperacion: string) =>
+  escribir(tx =>
+    tx
+      .update(operaciones)
+      .set({estado: 'rechazada'})
+      .where(eq(operaciones.idOperacion, idOperacion)),
+  );
 
 const fusionar = (lista: GuiaFluor[]) =>
   escribir(tx => fusionarGuias(tx, USUARIO, descarga(lista)));
@@ -193,6 +203,71 @@ describe('repositorio de despachos', () => {
     expect(locales.map(d => [d.tenantDespachoId, d.liberado])).toEqual([
       [10, true],
     ]);
+  });
+
+  it('cada guía sabe si lo que hizo el conductor ya llegó', async () => {
+    await fusionar([guiaFluor(1), guiaFluor(2), guiaFluor(3)]);
+    await entregarLocal(2);
+    const id = await entregarLocal(3);
+    await escribir(tx =>
+      tx
+        .update(operaciones)
+        .set({estado: 'rechazada'})
+        .where(eq(operaciones.idOperacion, id)),
+    );
+
+    expect((await guiasLocales()).map(g => g.envio)).toEqual([
+      null,
+      'porEnviar',
+      'conProblema',
+    ]);
+  });
+
+  it('la cola visible trae la guía y el despacho de cada operación', async () => {
+    await escribir(tx => guardarAsignaciones(tx, USUARIO, [asignacion()]));
+    await fusionar([guiaFluor(1)]);
+    await entregarLocal(1);
+
+    const [envio] = await leer(db => leerEnvios(db, USUARIO));
+    expect(envio).toMatchObject({
+      tipo: 'entrega',
+      codigoGuia: 1,
+      nombreDestinatario: 'María Pérez',
+      codigoDespacho: 910,
+    });
+  });
+
+  it('descartar devuelve la guía a lo que dice Fluor', async () => {
+    await fusionar([guiaFluor(1)]);
+    const id = await entregarLocal(1);
+    await rechazar(id);
+
+    await escribir(tx => descartarEnvio(tx, id));
+
+    expect((await guiasLocales())[0]).toMatchObject({
+      gestionLocal: null,
+      envio: null,
+    });
+  });
+
+  it('descartar lo último de un despacho liberado lo borra del teléfono', async () => {
+    await escribir(tx => guardarAsignaciones(tx, USUARIO, [asignacion()]));
+    await fusionar([guiaFluor(1)]);
+    const id = await entregarLocal(1);
+    await escribir(tx => guardarAsignaciones(tx, USUARIO, []));
+    await rechazar(id);
+
+    await escribir(tx => descartarEnvio(tx, id));
+
+    expect(await leer(db => leerDespachos(db, USUARIO))).toEqual([]);
+  });
+
+  it('solo se descarta lo rechazado', async () => {
+    await fusionar([guiaFluor(1)]);
+    const id = await entregarLocal(1);
+
+    expect(await escribir(tx => descartarEnvio(tx, id))).toEqual([]);
+    expect((await guiasLocales())[0]?.gestionLocal).toBe('entregada');
   });
 
   it('los despachos de otro usuario del teléfono no se mezclan', async () => {
