@@ -350,8 +350,9 @@ export const leerEnvios = async (
 
 /**
  * Descarta una operación rechazada (y lo que depende de ella). Si la guía se
- * queda sin nada por enviar, vuelve a lo que dice Fluor; si el despacho estaba
- * liberado y ya no tiene pendientes, se borra. Devuelve los ids descartados.
+ * queda sin nada por enviar, vuelve a lo que dice Fluor; un terminar
+ * descartado reabre el despacho; si el despacho estaba liberado y ya no tiene
+ * pendientes, se borra. Devuelve los ids descartados.
  */
 export const descartarEnvio = async (tx: Consulta, idOperacion: string) => {
   const [operacion] = await tx
@@ -377,6 +378,13 @@ export const descartarEnvio = async (tx: Consulta, idOperacion: string) => {
   }
 
   const td = operacion.tenantDespachoId;
+  if (operacion.tipo === 'terminar' && td !== null) {
+    // Sin el terminar, el despacho vuelve a estar abierto en el teléfono.
+    await tx
+      .update(despachos)
+      .set({terminadoEn: null})
+      .where(eq(despachos.tenantDespachoId, td));
+  }
   if (td !== null && (await sinConfirmarDelDespacho(tx, td)) === 0) {
     await tx
       .delete(despachos)

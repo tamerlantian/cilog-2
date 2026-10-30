@@ -1,7 +1,15 @@
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {ChevronRight, Icono, Insignia, Send, Tarjeta, Texto} from '@/ui';
+import {
+  ChevronRight,
+  CircleCheck,
+  Icono,
+  Insignia,
+  Send,
+  Tarjeta,
+  Texto,
+} from '@/ui';
 
 import type {DespachoLocal} from '../db/repositorio';
 import {fechaCorta} from '../domain/formato';
@@ -57,8 +65,11 @@ export function TarjetaDespacho({despacho, alPresionar}: Props) {
         </View>
       )}
 
-      {despacho.liberado || despacho.porEnviar > 0 ? (
+      {despacho.liberado || despacho.porEnviar > 0 || despacho.terminadoEn ? (
         <View style={styles.insignias}>
+          {despacho.terminadoEn ? (
+            <Insignia icono={CircleCheck} texto="Terminado" tono="exito" />
+          ) : null}
           {despacho.liberado ? (
             <Insignia texto="Liberado" tono="advertencia" />
           ) : null}

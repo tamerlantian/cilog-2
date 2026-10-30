@@ -21,5 +21,6 @@ export {
 export {Pantalla} from './Pantalla';
 export {Requisito} from './Requisito';
 export {Segmentos} from './Segmentos';
+export {Selector} from './Selector';
 export {Tarjeta} from './Tarjeta';
 export {Texto} from './Texto';

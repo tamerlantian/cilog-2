@@ -28,6 +28,8 @@ export const despachos = sqliteTable(
     descargadoEn: integer('descargado_en'),
     /** Fluor ya no lo asigna a este usuario, pero quedan operaciones sin confirmar. */
     liberado: integer('liberado', {mode: 'boolean'}).notNull().default(false),
+    /** Cuándo lo terminó el conductor en el teléfono. */
+    terminadoEn: integer('terminado_en'),
   },
   t => [index('despachos_usuario').on(t.usuarioId)],
 );

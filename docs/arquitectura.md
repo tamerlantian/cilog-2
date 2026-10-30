@@ -64,14 +64,15 @@ Además, en todo `src`:
 | Registro, recuperación de clave y reenvío de verificación | 1 | Hecho, con pruebas. Falta probar contra el Fluor desplegado |
 | SQLite, cola y motor de sincronización (`core/db`, `core/sync`) | 2 | Hecho, con pruebas. Sin enviadores aún: Fluor no publica entregar, novedad ni terminar |
 | Despachos: API, repositorio y casos de uso (vincular, actualizar, descargar, desvincular) | 2 | Hecho, con pruebas. Falta probar contra Fluor |
-| Pantallas de despachos: Mis despachos, Vincular (manual), Despacho, Guía, Envíos y barra de envíos | 2 | Hecho, con pruebas. Sin escáner QR (falta el formato); *Entregar* y *Novedad* desactivados hasta el paso 3 |
+| Pantallas de despachos: Mis despachos, Vincular (manual), Despacho, Guía, Envíos y barra de envíos | 2 | Hecho, con pruebas. Sin escáner QR (falta el formato) |
+| Entregar, novedad y terminar despacho: guardado local + cola (`db/gestion.ts`) | 3a | Hecho, con pruebas. Sin envío (Fluor no publica los endpoints); tipos de novedad y configuración de entrega provisionales (ver `docs/contratos-fluor.md`). Fotos, firma y GPS en 3b |
 | Mi cuenta (`features/cuenta`): empresa y cerrar sesión con aviso de envíos pendientes | 2 | Hecho, con pruebas |
 
 ## Sesión y navegación
 
 - `core/sesion` guarda el estado: `iniciando`, `sinSesion`, `activa`. El navegador (`app/navegacion/Navegador.tsx`) muestra las pantallas que corresponden a ese estado; no se navega a mano entre login e inicio.
 - La empresa es **opcional**: el repartidor accede a sus despachos por la asignación (`mas_tenant_despacho`), no por `user_tenant`, y puede tener despachos de varias empresas. Tras el login se entra directo a *Mis despachos*; la pantalla `Empresa` se abre desde *Mi cuenta* solo para ingreso y envíos.
-- Con sesión, el stack es: `MisDespachos` (inicio) → `Despacho` → `Guia`; `VincularDespacho`, `Envios` (desde la barra de envíos), `Cuenta` y `Empresa`. No hay pestañas: la cola se abre desde la barra, que aparece en Mis despachos, Despacho y Guía solo cuando hay algo sin confirmar.
+- Con sesión, el stack es: `MisDespachos` (inicio) → `Despacho` → `Guia` → `Entregar` o `Novedad` (modales; al guardar vuelven a `Despacho`); `VincularDespacho`, `Envios` (desde la barra de envíos), `Cuenta` y `Empresa`. No hay pestañas: la cola se abre desde la barra, que aparece en Mis despachos, Despacho y Guía solo cuando hay algo sin confirmar.
 - Al arrancar, el navegador también espera a que la base local abra y la sincronización encienda (`app/providers/useDatosLocales.ts`). Si la base no abre, muestra un error con *Reintentar*.
 - El token vive solo en el llavero (`core/storage/llavero.ts`). El usuario y la empresa elegida van en MMKV, porque no son secretos. El perfil guardado se valida con zod al leerlo; si no cuadra (p. ej. lo guardó otra versión), se descarta y se pide login.
 - `conectarSesionConApi()` corre al cargar `app/App.tsx`, antes de montar nada. Un 401 solo cierra la sesión si la petición llevaba el token actual: una respuesta tardía con un token anterior no tumba un login nuevo.

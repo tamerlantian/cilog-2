@@ -6,6 +6,8 @@ import {StyleSheet} from 'react-native-unistyles';
 import {
   Boton,
   BotonIcono,
+  CircleCheck,
+  TriangleAlert,
   Cargando,
   Encabezado,
   EstadoVacio,
@@ -23,8 +25,9 @@ import {EstadoGuia} from '../components/EstadoGuia';
 import {destinatario} from '../components/FilaGuia';
 import {enlaceLlamar, enlaceMapa} from '../domain/contacto';
 import {fechaCorta, numero, pesos} from '../domain/formato';
-import {situacionGuia} from '../domain/guias';
-import {useGuia} from '../hooks/useDespachos';
+import {puedeEntregar, puedeReportarNovedad} from '../domain/gestion';
+import {useDespacho, useGuia} from '../hooks/useDespachos';
+import {useConfiguracionEntrega} from '../hooks/useGestion';
 import type {RutasDespachos} from '../rutas';
 
 type Props = NativeStackScreenProps<RutasDespachos, 'Guia'>;
@@ -50,6 +53,8 @@ function Dato({etiqueta, children}: {etiqueta: string; children: ReactNode}) {
 export function GuiaPantalla({navigation, route}: Props) {
   const {tenantDespachoId, codigoGuia} = route.params;
   const {data: guia, isPending} = useGuia(tenantDespachoId, codigoGuia);
+  const {data: despacho} = useDespacho(tenantDespachoId);
+  const configuracion = useConfiguracionEntrega();
   const volver = () => navigation.goBack();
 
   if (isPending) {
@@ -75,26 +80,38 @@ export function GuiaPantalla({navigation, route}: Props) {
 
   const llamar = enlaceLlamar(guia.telefonoDestinatario);
   const mapa = enlaceMapa(guia);
-  const pendiente = situacionGuia(guia) === 'pendiente' && !guia.retirada;
+  const sinDespacho = {permitido: false} as const;
+  const entrega = despacho
+    ? puedeEntregar(despacho, guia, configuracion)
+    : sinDespacho;
+  const novedad = despacho ? puedeReportarNovedad(despacho, guia) : sinDespacho;
 
   return (
     <Pantalla
       desplazable
       pie={
-        pendiente ? (
-          <>
-            <View style={styles.acciones}>
+        entrega.permitido || novedad.permitido ? (
+          <View style={styles.acciones}>
+            {novedad.permitido ? (
               <View style={styles.accion}>
-                <Boton disabled tipo="secundario" titulo="Novedad" />
+                <Boton
+                  icono={TriangleAlert}
+                  tipo="secundario"
+                  titulo="Novedad"
+                  onPress={() => navigation.navigate('Novedad', route.params)}
+                />
               </View>
+            ) : null}
+            {entrega.permitido ? (
               <View style={styles.accion}>
-                <Boton disabled titulo="Entregar" />
+                <Boton
+                  icono={CircleCheck}
+                  titulo="Entregar"
+                  onPress={() => navigation.navigate('Entregar', route.params)}
+                />
               </View>
-            </View>
-            <Texto centrado tono="secundario" variante="pie">
-              Entregar y reportar novedades llega en la próxima versión.
-            </Texto>
-          </>
+            ) : null}
+          </View>
         ) : undefined
       }>
       <Encabezado

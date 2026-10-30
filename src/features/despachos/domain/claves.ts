@@ -4,3 +4,7 @@
  */
 export const claveGuia = (tenantDespachoId: number, codigoGuia: number) =>
   `guia:${tenantDespachoId}:${codigoGuia}`;
+
+/** Entidad de las operaciones del despacho completo (terminar). */
+export const claveDespacho = (tenantDespachoId: number) =>
+  `despacho:${tenantDespachoId}`;

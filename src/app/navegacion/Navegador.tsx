@@ -18,9 +18,11 @@ import {
 import {CuentaPantalla} from '@/features/cuenta';
 import {
   DespachoPantalla,
+  EntregarPantalla,
   EnviosPantalla,
   GuiaPantalla,
   MisDespachosPantalla,
+  NovedadPantalla,
   VincularDespachoPantalla,
 } from '@/features/despachos';
 import {Cargando, CloudOff, EstadoVacio, Pantalla} from '@/ui';
@@ -107,6 +109,16 @@ export function Navegador() {
             />
             <Stack.Screen component={DespachoPantalla} name="Despacho" />
             <Stack.Screen component={GuiaPantalla} name="Guia" />
+            <Stack.Screen
+              component={EntregarPantalla}
+              name="Entregar"
+              options={{presentation: 'modal'}}
+            />
+            <Stack.Screen
+              component={NovedadPantalla}
+              name="Novedad"
+              options={{presentation: 'modal'}}
+            />
             <Stack.Screen component={EnviosPantalla} name="Envios" />
             <Stack.Screen component={CuentaPantalla} name="Cuenta" />
             <Stack.Screen component={EmpresaPantalla} name="Empresa" />

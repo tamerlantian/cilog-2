@@ -74,4 +74,6 @@ export const MIGRACIONES: readonly (readonly string[])[] = [
       bytes INTEGER NOT NULL
     )`,
   ],
+  // 2: el conductor terminó el despacho (la operación puede seguir en la cola)
+  ['ALTER TABLE despachos ADD COLUMN terminado_en INTEGER'],
 ];

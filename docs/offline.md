@@ -383,7 +383,7 @@ Después, si hace falta: Android WorkManager (tarea periódica con condición "h
 
 | Tema | Propuesta | Quién decide |
 | --- | --- | --- |
-| ¿Se permite terminar el despacho con entregas aún sin enviar? | No: terminar exige cola vacía del despacho. | Negocio |
+| ¿Se permite terminar el despacho con entregas aún sin enviar? | No: terminar exige cola vacía del despacho. **Aplicado en la app** (paso 3a); falta que negocio lo confirme. | Negocio |
 | ¿Cuánto tiempo guarda Fluor los `id_operacion`? | 30 días. | Backend |
 | ¿Envío en segundo plano en Android desde la primera versión? | No; evaluarlo con el uso real. | Producto |
 | Exportar la evidencia de un despacho liberado | Compartir un ZIP con JSON + fotos. | Producto |

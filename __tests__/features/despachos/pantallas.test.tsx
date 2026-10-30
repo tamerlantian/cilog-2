@@ -11,7 +11,7 @@ import Toast from 'react-native-toast-message';
 import {App} from '@/app/App';
 import {clienteConsultas} from '@/core/api/clienteConsultas';
 import {ErrorApi} from '@/core/api';
-import {escribir, guias, operaciones} from '@/core/db';
+import {escribir, guias, leer, operaciones} from '@/core/db';
 import {useSesion} from '@/core/sesion';
 import {encolar, obtenerMotor} from '@/core/sync';
 import * as apiAuth from '@/features/auth/api/auth';
@@ -205,7 +205,7 @@ describe('pantallas de despachos', () => {
     expect(nombresVisibles()).toEqual(['María Peña']);
   });
 
-  it('el detalle muestra la guía y aún no deja entregar', async () => {
+  it('el detalle muestra la guía y sus acciones', async () => {
     await abrirDespacho();
 
     await fireEvent.press(
@@ -217,10 +217,163 @@ describe('pantallas de despachos', () => {
     expect(
       screen.getByRole('button', {name: 'Llamar al destinatario'}),
     ).toBeTruthy();
-    expect(
-      screen.getByRole('button', {name: 'Entregar'}).props.accessibilityState
-        .disabled,
-    ).toBe(true);
+    expect(screen.getByRole('button', {name: 'Entregar'})).toBeTruthy();
+    expect(screen.getByRole('button', {name: 'Novedad'})).toBeTruthy();
+  });
+
+  describe('gestión sin señal', () => {
+    const abrirGuia = async (nombre: string) => {
+      await abrirDespacho();
+      await fireEvent.press(screen.getByRole('button', {name: nombre}));
+      await screen.findByRole('button', {name: 'Llamar al destinatario'});
+    };
+
+    /** Responde al Alert de confirmación con el botón indicado. */
+    const confirmarAlerta = (boton: string) => {
+      const botones = alerta.mock.calls.at(-1)?.[2] ?? [];
+      botones.find(b => b.text === boton)?.onPress?.();
+    };
+
+    const operacionesGuardadas = () =>
+      leer(db => db.select().from(operaciones));
+
+    it('entregar guarda en el teléfono, encola y vuelve al despacho', async () => {
+      await abrirGuia('Guía 2, María Peña');
+      await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
+
+      await fireEvent.changeText(
+        await screen.findByLabelText('Recibe'),
+        'Ana Gómez',
+      );
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Parentesco: Sin especificar'}),
+      );
+      await fireEvent.press(await screen.findByText('Portería'));
+      await fireEvent.changeText(
+        screen.getByLabelText('Celular'),
+        '3001234567',
+      );
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Confirmar entrega'}),
+      );
+      confirmarAlerta('Entregar');
+
+      expect(
+        await screen.findByRole('button', {name: '1 por enviar'}),
+      ).toBeTruthy();
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({text1: 'Entrega guardada'}),
+      );
+      expect(nombresVisibles()).toEqual(['Destinatario 3']);
+
+      const [operacion] = await operacionesGuardadas();
+      expect(operacion).toMatchObject({
+        tipo: 'entrega',
+        estado: 'pendiente',
+        claveEntidad: claveGuia(DESPACHO, 2),
+      });
+      expect(JSON.parse(operacion!.cuerpo)).toMatchObject({
+        codigo_guia_pk: 2,
+        codigo_despacho_fk: 910,
+        recibe: 'Ana Gómez',
+        parentesco: 'PORTERÍA',
+        celular: '3001234567',
+        numero_identificacion: null,
+      });
+    });
+
+    it('cancelar la confirmación no guarda nada', async () => {
+      await abrirGuia('Guía 2, María Peña');
+      await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Confirmar entrega'}),
+      );
+      await waitFor(() => expect(alerta).toHaveBeenCalled());
+
+      expect(await operacionesGuardadas()).toEqual([]);
+    });
+
+    it('la novedad pide el tipo y deja la guía con novedad', async () => {
+      await abrirGuia('Guía 3, Destinatario 3');
+      await fireEvent.press(screen.getByRole('button', {name: 'Novedad'}));
+
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Guardar novedad'}),
+      );
+      expect(await screen.findByText('Elige el tipo de novedad')).toBeTruthy();
+
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Tipo de novedad: Elegir'}),
+      );
+      await fireEvent.press(await screen.findByText('Destinatario ausente'));
+      await fireEvent.changeText(
+        screen.getByLabelText('Descripción'),
+        'Nadie atiende',
+      );
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Guardar novedad'}),
+      );
+
+      await screen.findByRole('button', {name: '1 por enviar'});
+      await fireEvent.press(screen.getByRole('tab', {name: 'Gestionadas 2'}));
+      expect(screen.getByText('Con novedad')).toBeTruthy();
+      const [operacion] = await operacionesGuardadas();
+      expect(JSON.parse(operacion!.cuerpo)).toMatchObject({
+        codigo_novedad_tipo_fk: 'AUSENTE',
+        descripcion: 'Nadie atiende',
+      });
+
+      // La empresa no permite entregar con novedad (configuración provisional).
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Guía 3, Destinatario 3'}),
+      );
+      await screen.findByRole('button', {name: 'Llamar al destinatario'});
+      expect(screen.queryByRole('button', {name: 'Entregar'})).toBeNull();
+    });
+
+    it('terminar queda bloqueado mientras haya envíos sin confirmar', async () => {
+      await abrirDespacho();
+      await entregarLocal(2);
+      await entregarLocal(3);
+      avisarCambio();
+
+      expect(
+        await screen.findByText(
+          'Tienes 2 envíos sin confirmar. Envíalos antes de terminar.',
+        ),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('button', {name: 'Terminar despacho'}).props
+          .accessibilityState.disabled,
+      ).toBe(true);
+    });
+
+    it('con todo gestionado y enviado, terminar encola y marca el despacho', async () => {
+      apiSimulada.listarAsignacionesApi.mockResolvedValue([asignacion]);
+      apiSimulada.descargarGuiasApi.mockResolvedValue(
+        descarga([
+          guia(1, {estado_entregado: true}),
+          guia(2, {estado_novedad: true}),
+        ]),
+      );
+      await iniciarSesion();
+      await fireEvent.press(await screen.findByText('Despacho 12345'));
+
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Terminar despacho'}),
+      );
+      confirmarAlerta('Terminar');
+
+      expect(await screen.findByText('Despacho terminado')).toBeTruthy();
+      expect(
+        screen.getByText('Se enviará a la empresa cuando haya señal.'),
+      ).toBeTruthy();
+      const [operacion] = await operacionesGuardadas();
+      expect(operacion).toMatchObject({tipo: 'terminar'});
+      expect(JSON.parse(operacion!.cuerpo)).toMatchObject({
+        codigo_despacho_pk: 910,
+      });
+    });
   });
 
   it('actualizar sin señal avisa y deja las guías como estaban', async () => {

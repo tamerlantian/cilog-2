@@ -42,6 +42,20 @@ Pendiente o por confirmar:
 - `/lista` devuelve solo la asignación. Para pintar la lista sin descargar cada despacho convendría agregar `numero`, `fecha_salida`, `cantidad` y `cantidad_entregada` (no bloquea: la app las calcula de las guías descargadas).
 - El paquete no trae `novedad_tipos` ni `configuracion_entrega`: siguen haciendo falta los endpoints 7 y 9.
 - Las rutas nuevas de escritura (4, 5, 6, 8) deberían validar acceso igual que `/tte/movil/despacho/{id}/...` (por asignación), porque el repartidor no tiene `user_tenant`.
+  Propuesta: colgarlas de la misma ruta, p. ej. `POST /tte/movil/despacho/{tenant_despacho_id}/guia/{codigo_guia}/entregar`. La app guarda `tenant_despacho_id` en cada operación de la cola, así que puede armar esa URL sin `X-Tenant-ID`.
+
+### Lo que la app ya guarda mientras tanto (paso 3a)
+
+Entregar, novedad y terminar ya funcionan en la app: se guardan en el teléfono y quedan en la cola como *Por enviar* hasta que existan estos endpoints. El cuerpo se guarda listo, con la forma de §4, §6 y §8 (sin `id_operacion`, que lo pone el envío). Valores **provisionales** que hay que cambiar antes de activar el envío:
+
+| Qué | Provisional en la app | Se reemplaza con |
+| --- | --- | --- |
+| Tipos de novedad | 6 códigos inventados (`AUSENTE`, `DIRECCION`, `CERRADO`, `RECHAZO`, `AVERIA`, `OTRO`) en `domain/gestion.ts`. **No existen en Fluor**: allá los tipos son de cada empresa (`tte_novedad_tipo.codigo_empresa_fk`). | §7, descargado por empresa del despacho |
+| Configuración de entrega | Foto y firma opcionales; no se entrega una guía con novedad. | §9 |
+| Tipo de documento de quien recibe | No se pide ni se envía `codigo_identificacion_fk` (el legacy tampoco lo pedía). Fluor debería aceptarlo opcional. | Decisión de negocio |
+| Ubicación | No se envían `latitud`/`longitud` todavía (paso 3b). | Paso 3b |
+
+Lo que se encole con los tipos de novedad provisionales Fluor lo rechazaría (404). Antes de activar el envío de novedades hay que tener el catálogo real; las de prueba se descartan desde *Envíos*.
 
 ### 4. `POST /tte/guia/entregar`
 

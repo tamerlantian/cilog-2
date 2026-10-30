@@ -38,3 +38,13 @@ export const fechaHora = (milisegundos: number) => {
   const dosDigitos = (n: number) => String(n).padStart(2, '0');
   return `${fecha.getDate()} ${MESES[fecha.getMonth()]} ${dosDigitos(fecha.getHours())}:${dosDigitos(fecha.getMinutes())}`;
 };
+
+/**
+ * "2026-10-30T14:05:09": hora del teléfono sin zona, como Fluor guarda sus
+ * fechas (hora de Colombia). Es la hora en que el conductor hizo la gestión.
+ */
+export const fechaLocalIso = (milisegundos: number) => {
+  const f = new Date(milisegundos);
+  const d = (n: number) => String(n).padStart(2, '0');
+  return `${f.getFullYear()}-${d(f.getMonth() + 1)}-${d(f.getDate())}T${d(f.getHours())}:${d(f.getMinutes())}:${d(f.getSeconds())}`;
+};

@@ -19,6 +19,8 @@ type Props = TextInputProps & {
   etiqueta: string;
   error?: string | undefined;
   ayuda?: string;
+  /** Texto largo (descripción): varias líneas y campo más alto. */
+  multilinea?: boolean;
   ref?: Ref<ComponentRef<typeof TextInput>>;
 };
 
@@ -26,6 +28,7 @@ export function Input({
   etiqueta,
   error,
   ayuda,
+  multilinea = false,
   secureTextEntry,
   onFocus,
   onBlur,
@@ -37,7 +40,7 @@ export function Input({
   const [oculto, setOculto] = useState(true);
   const esClave = Boolean(secureTextEntry);
   const conError = Boolean(error);
-  styles.useVariants({enfocado, conError});
+  styles.useVariants({enfocado, conError, multilinea});
 
   return (
     <View style={styles.contenedor}>
@@ -48,6 +51,8 @@ export function Input({
         <TextInput
           ref={ref}
           accessibilityLabel={etiqueta}
+          multiline={multilinea}
+          textAlignVertical={multilinea ? 'top' : 'center'}
           placeholderTextColor={theme.colores.sobreDeshabilitado}
           secureTextEntry={esClave && oculto}
           selectionColor={theme.colores.primario}
@@ -130,6 +135,12 @@ const styles = StyleSheet.create(tema => ({
     color: tema.colores.texto,
     fontFamily: tema.tipografia.familia.regular,
     fontSize: tema.tipografia.tamano.cuerpo,
+    variants: {
+      multilinea: {
+        true: {minHeight: 120, paddingTop: tema.espaciado.md},
+        false: {},
+      },
+    },
   },
   ojo: {
     width: tema.alto.botonCompacto,

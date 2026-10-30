@@ -7,6 +7,8 @@ import {mensajeUsuario} from '@/core/api';
 import {
   Aviso,
   Boton,
+  CircleCheck,
+  Tarjeta,
   BotonIcono,
   Buscador,
   Cargando,
@@ -30,12 +32,14 @@ import {BarraEnvios} from '../components/BarraEnvios';
 import {FilaGuia} from '../components/FilaGuia';
 import {nombreDespacho, nombreEmpresa} from '../components/TarjetaDespacho';
 import {plural} from '../domain/envios';
+import {puedeTerminar} from '../domain/gestion';
 import {contarGuias, filtrarGuias, type FiltroGuias} from '../domain/guias';
 import {
   useDescargarDespacho,
   useDesvincularDespacho,
 } from '../hooks/useAccionesDespacho';
 import {useDespacho, useGuias} from '../hooks/useDespachos';
+import {useTerminarDespacho} from '../hooks/useGestion';
 import type {RutasDespachos} from '../rutas';
 
 type Props = NativeStackScreenProps<RutasDespachos, 'Despacho'>;
@@ -47,6 +51,7 @@ export function DespachoPantalla({navigation, route}: Props) {
   const {data: guias = []} = useGuias(tenantDespachoId);
   const descargar = useDescargarDespacho(tenantDespachoId);
   const desvincular = useDesvincularDespacho(tenantDespachoId);
+  const terminar = useTerminarDespacho(tenantDespachoId);
   const [filtro, setFiltro] = useState<FiltroGuias>('pendientes');
   const [busqueda, setBusqueda] = useState('');
 
@@ -90,6 +95,23 @@ export function DespachoPantalla({navigation, route}: Props) {
       ],
     );
 
+  const confirmarTerminar = () =>
+    Alert.alert(
+      '¿Terminar el despacho?',
+      'La empresa lo recibe como completo. Después no podrás gestionar sus guías.',
+      [
+        {text: 'Cancelar', style: 'cancel'},
+        {
+          text: 'Terminar',
+          onPress: () =>
+            terminar.mutate(undefined, {
+              onSuccess: () => mostrarExito('Despacho terminado'),
+              onError: error => mostrarError(mensajeUsuario(error)),
+            }),
+        },
+      ],
+    );
+
   if (isPending) {
     return (
       <Pantalla>
@@ -113,8 +135,46 @@ export function DespachoPantalla({navigation, route}: Props) {
 
   const sinDescargar = despacho.descargadoEn === null;
 
+  const permisoTerminar = puedeTerminar(despacho, guias);
+  const terminado = despacho.terminadoEn !== null;
+  // Se ofrece cuando no queda nada por gestionar; antes sería ruido.
+  const ofrecerTerminar =
+    !terminado &&
+    !despacho.liberado &&
+    cuentas.todas > 0 &&
+    cuentas.pendientes === 0;
+
   const cabecera = (
     <View style={styles.cabecera}>
+      {terminado ? (
+        <Aviso
+          icono={CircleCheck}
+          mensaje={
+            despacho.porEnviar > 0
+              ? 'Se enviará a la empresa cuando haya señal.'
+              : 'La empresa ya lo recibió.'
+          }
+          titulo="Despacho terminado"
+          tono="exito"
+        />
+      ) : null}
+      {ofrecerTerminar ? (
+        <Tarjeta destacada>
+          <Texto negrita>Todas las guías están gestionadas</Texto>
+          {permisoTerminar.permitido ? null : (
+            <Texto tono="secundario" variante="etiqueta">
+              {permisoTerminar.motivo}
+            </Texto>
+          )}
+          <Boton
+            cargando={terminar.isPending}
+            disabled={!permisoTerminar.permitido}
+            icono={CircleCheck}
+            titulo="Terminar despacho"
+            onPress={confirmarTerminar}
+          />
+        </Tarjeta>
+      ) : null}
       {despacho.liberado ? (
         <Aviso
           icono={TriangleAlert}
