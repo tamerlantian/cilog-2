@@ -7,7 +7,7 @@ module.exports = {
     './jest.setup.js',
   ],
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-toast-message|@react-navigation|react-native-screens|react-native-keychain|react-native-svg)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-toast-message|@react-navigation|react-native-screens|react-native-keychain|react-native-svg|uuid)/)',
   ],
   // Las transiciones de native-stack dejan temporizadores vivos al cambiar de pantalla en Jest.
   forceExit: true,

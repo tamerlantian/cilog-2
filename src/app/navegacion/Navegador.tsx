@@ -16,7 +16,9 @@ import {
   ReenviarVerificacionPantalla,
 } from '@/features/auth';
 import {InicioPantalla} from '@/features/inicio';
-import {Cargando, Pantalla} from '@/ui';
+import {Cargando, CloudOff, EstadoVacio, Pantalla} from '@/ui';
+
+import {useDatosLocales} from '../providers/useDatosLocales';
 
 import type {ParametrosRutas} from './rutas';
 
@@ -26,6 +28,7 @@ export function Navegador() {
   const {theme, rt} = useUnistyles();
   const estado = useSesion(s => s.estado);
   const restaurar = useSesion(s => s.restaurar);
+  const datos = useDatosLocales();
 
   useEffect(() => {
     restaurar();
@@ -47,7 +50,21 @@ export function Navegador() {
     [theme, rt.themeName],
   );
 
-  if (estado === 'iniciando') {
+  if (datos.estado === 'error') {
+    return (
+      <Pantalla>
+        <EstadoVacio
+          accion={{titulo: 'Reintentar', alPresionar: datos.reintentar}}
+          icono={CloudOff}
+          mensaje="Tus entregas guardadas siguen en el teléfono. Reintenta; si sigue fallando, reinicia la app."
+          titulo="No pudimos abrir los datos del teléfono"
+          tono="peligro"
+        />
+      </Pantalla>
+    );
+  }
+
+  if (estado === 'iniciando' || datos.estado === 'abriendo') {
     return (
       <Pantalla>
         <Cargando />
@@ -71,10 +88,11 @@ export function Navegador() {
               name="ReenviarVerificacion"
             />
           </>
-        ) : estado === 'sinEmpresa' ? (
-          <Stack.Screen component={EmpresaPantalla} name="Empresa" />
         ) : (
-          <Stack.Screen component={InicioPantalla} name="Inicio" />
+          <>
+            <Stack.Screen component={InicioPantalla} name="Inicio" />
+            <Stack.Screen component={EmpresaPantalla} name="Empresa" />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

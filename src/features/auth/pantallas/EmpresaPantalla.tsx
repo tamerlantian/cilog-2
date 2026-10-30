@@ -1,9 +1,10 @@
+import {useNavigation} from '@react-navigation/native';
 import {useEffect} from 'react';
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {mensajeUsuario} from '@/core/api';
-import {useSesion} from '@/core/sesion';
+import {useSesion, type Empresa} from '@/core/sesion';
 import {
   Avatar,
   Boton,
@@ -14,9 +15,9 @@ import {
   Tarjeta,
   Texto,
   Building,
+  ChevronLeft,
   ChevronRight,
   CloudOff,
-  LogOut,
 } from '@/ui';
 
 import {useEmpresas} from '../hooks/useEmpresas';
@@ -29,24 +30,33 @@ const nombreEmpresa = (empresa: {
   tenant_id: number;
 }) => empresa.tenant_nombre ?? `Empresa ${empresa.tenant_id}`;
 
+/** Empresa para ingreso y envíos. Los despachos no la necesitan. */
 export function EmpresaPantalla() {
+  const navegacion = useNavigation();
   const correo = useSesion(s => s.usuario?.email ?? '');
   const elegirEmpresa = useSesion(s => s.elegirEmpresa);
-  const cerrarSesion = useSesion(s => s.cerrarSesion);
   const {data, error, isPending, refetch} = useEmpresas();
 
+  const elegir = (empresa: Empresa, tieneVarias: boolean) => {
+    elegirEmpresa(empresa, tieneVarias);
+    navegacion.goBack();
+  };
+
   // Con una sola empresa no hay nada que elegir.
+  const unica = data?.length === 1 ? data[0] : undefined;
   useEffect(() => {
-    if (data?.length === 1 && data[0]) elegirEmpresa(data[0], false);
-  }, [data, elegirEmpresa]);
+    if (!unica) return;
+    elegirEmpresa(unica, false);
+    navegacion.goBack();
+  }, [unica, elegirEmpresa, navegacion]);
 
   const pie = (
     <Boton
-      icono={LogOut}
+      icono={ChevronLeft}
       tamano="compacto"
       tipo="texto"
-      titulo="Cerrar sesión"
-      onPress={() => cerrarSesion()}
+      titulo="Volver"
+      onPress={() => navegacion.goBack()}
     />
   );
 
@@ -77,7 +87,7 @@ export function EmpresaPantalla() {
       <Pantalla pie={pie}>
         <EstadoVacio
           icono={Building}
-          mensaje="Tu cuenta no está asociada a ninguna empresa. Pide acceso a tu administrador."
+          mensaje="Tu cuenta no está asociada a ninguna empresa. Puedes entregar tus despachos igual; para ingreso y envíos pide acceso a tu administrador."
           titulo="Sin empresas"
         />
       </Pantalla>
@@ -101,13 +111,13 @@ export function EmpresaPantalla() {
           ¿Con qué empresa trabajas hoy?
         </Texto>
         <Texto tono="secundario">
-          Podrás cambiarla después desde el inicio.
+          La usamos para ingreso y envíos. Podrás cambiarla después.
         </Texto>
       </View>
       {data.map((empresa, indice) => (
         <Tarjeta
           key={empresa.id}
-          alPresionar={() => elegirEmpresa(empresa, true)}
+          alPresionar={() => elegir(empresa, true)}
           etiqueta={nombreEmpresa(empresa)}
           style={styles.empresa}>
           <Avatar

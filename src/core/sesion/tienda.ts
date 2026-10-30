@@ -22,10 +22,12 @@ const CLAVE_PERFIL = 'sesion.perfil';
 /**
  * - iniciando: leyendo el llavero al arrancar
  * - sinSesion: hay que iniciar sesión
- * - sinEmpresa: hay token pero falta elegir la empresa (tenant)
  * - activa: listo para operar
+ *
+ * La empresa es opcional: los despachos se acceden por su asignación al
+ * repartidor, no por la empresa. Solo ingreso y envíos la piden.
  */
-export type EstadoSesion = 'iniciando' | 'sinSesion' | 'sinEmpresa' | 'activa';
+export type EstadoSesion = 'iniciando' | 'sinSesion' | 'activa';
 
 type Tienda = {
   estado: EstadoSesion;
@@ -33,6 +35,7 @@ type Tienda = {
   /** Refresh token de Fluor (30 días). Null si el servidor no lo entregó. */
   tokenRenovacion: string | null;
   usuario: Usuario | null;
+  /** Empresa elegida para ingreso y envíos; null si no ha elegido. */
   empresa: Perfil['empresa'];
   tieneVariasEmpresas: boolean;
   /** Se llena si la sesión terminó sola (token vencido o rechazado). */
@@ -44,7 +47,6 @@ type Tienda = {
   ) => Promise<void>;
   renovarToken: (token: string) => Promise<void>;
   elegirEmpresa: (empresa: Empresa, tieneVariasEmpresas: boolean) => void;
-  cambiarEmpresa: () => void;
   cerrarSesion: (aviso?: string) => Promise<void>;
 };
 
@@ -99,7 +101,7 @@ export const useSesion = create<Tienda>((set, get) => ({
       usuario: perfil.usuario,
       empresa: perfil.empresa,
       tieneVariasEmpresas: perfil.tieneVariasEmpresas,
-      estado: perfil.empresa ? 'activa' : 'sinEmpresa',
+      estado: 'activa',
     });
   },
 
@@ -113,7 +115,7 @@ export const useSesion = create<Tienda>((set, get) => ({
       usuario,
       empresa: null,
       tieneVariasEmpresas: false,
-      estado: 'sinEmpresa',
+      estado: 'activa',
       avisoSesion: null,
     });
   },
@@ -134,15 +136,7 @@ export const useSesion = create<Tienda>((set, get) => ({
       tenant_nombre: empresa.tenant_nombre,
     };
     guardarPerfil({usuario, empresa: elegida, tieneVariasEmpresas});
-    set({empresa: elegida, tieneVariasEmpresas, estado: 'activa'});
-  },
-
-  cambiarEmpresa: () => {
-    const {usuario, tieneVariasEmpresas} = get();
-    if (!usuario) return;
-    clienteConsultas.clear();
-    guardarPerfil({usuario, empresa: null, tieneVariasEmpresas});
-    set({empresa: null, estado: 'sinEmpresa'});
+    set({empresa: elegida, tieneVariasEmpresas});
   },
 
   cerrarSesion: async aviso => {

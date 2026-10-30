@@ -54,7 +54,27 @@ describe('App', () => {
     expect(apiSimulada.iniciarSesionApi).not.toHaveBeenCalled();
   });
 
-  it('con una sola empresa entra directo al inicio', async () => {
+  it('después del login entra directo, sin pedir empresa', async () => {
+    apiSimulada.iniciarSesionApi.mockResolvedValue({
+      access_token: crearJwt(600),
+      user: usuarioPrueba,
+    });
+
+    await render(<App />);
+    await screen.findByLabelText('Correo');
+    await llenarLogin();
+
+    expect(
+      await screen.findByText('Tus despachos aparecerán aquí.'),
+    ).toBeTruthy();
+    expect(apiSimulada.listarEmpresasApi).not.toHaveBeenCalled();
+    expect(apiSimulada.iniciarSesionApi).toHaveBeenCalledWith(
+      'conductor@prueba.test',
+      'secreta123',
+    );
+  });
+
+  it('con una sola empresa la elige sola y vuelve al inicio', async () => {
     apiSimulada.iniciarSesionApi.mockResolvedValue({
       access_token: crearJwt(600),
       user: usuarioPrueba,
@@ -66,22 +86,19 @@ describe('App', () => {
     await render(<App />);
     await screen.findByLabelText('Correo');
     await llenarLogin();
+    await fireEvent.press(
+      await screen.findByRole('button', {name: 'Elegir empresa'}),
+    );
 
-    expect(
-      await screen.findByText('Tus despachos aparecerán aquí.'),
-    ).toBeTruthy();
-    expect(screen.getByText('Transportes Sur')).toBeTruthy();
+    expect(await screen.findByText('Transportes Sur')).toBeTruthy();
+    expect(useSesion.getState().empresa?.tenant_id).toBe(7);
     // Con una sola empresa no hay a cuál cambiar.
     expect(
       screen.queryByRole('button', {name: 'Cambiar de empresa'}),
     ).toBeNull();
-    expect(apiSimulada.iniciarSesionApi).toHaveBeenCalledWith(
-      'conductor@prueba.test',
-      'secreta123',
-    );
   });
 
-  it('con varias empresas deja elegir una', async () => {
+  it('con varias empresas deja elegir una y cambiarla', async () => {
     apiSimulada.iniciarSesionApi.mockResolvedValue({
       access_token: crearJwt(600),
       user: usuarioPrueba,
@@ -94,6 +111,9 @@ describe('App', () => {
     await render(<App />);
     await screen.findByLabelText('Correo');
     await llenarLogin();
+    await fireEvent.press(
+      await screen.findByRole('button', {name: 'Elegir empresa'}),
+    );
 
     expect(
       await screen.findByText('¿Con qué empresa trabajas hoy?'),
@@ -140,9 +160,6 @@ describe('App', () => {
       access_token: crearJwt(600),
       user: usuarioPrueba,
     });
-    apiSimulada.listarEmpresasApi.mockResolvedValue([
-      empresaPrueba(7, 'Transportes Sur'),
-    ]);
 
     await render(<App />);
     await screen.findByLabelText('Correo');

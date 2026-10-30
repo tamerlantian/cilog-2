@@ -1,15 +1,20 @@
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {useSesion} from '@/core/sesion';
 import {Boton, Pantalla, Tarjeta, Texto} from '@/ui';
 
+/** La app registra `Empresa` en su navegador; las features no importan sus rutas. */
+type Rutas = {Empresa: undefined};
+
 /** Pantalla provisional: la lista de despachos llega en la Fase 2. */
 export function InicioPantalla() {
+  const navegacion = useNavigation<NativeStackNavigationProp<Rutas>>();
   const usuario = useSesion(s => s.usuario);
   const empresa = useSesion(s => s.empresa);
   const tieneVariasEmpresas = useSesion(s => s.tieneVariasEmpresas);
-  const cambiarEmpresa = useSesion(s => s.cambiarEmpresa);
   const cerrarSesion = useSesion(s => s.cerrarSesion);
 
   return (
@@ -26,11 +31,11 @@ export function InicioPantalla() {
         <Texto negrita>Empresa</Texto>
         <Texto tono="secundario">{empresa?.tenant_nombre ?? '—'}</Texto>
       </Tarjeta>
-      {tieneVariasEmpresas ? (
+      {!empresa || tieneVariasEmpresas ? (
         <Boton
           tipo="secundario"
-          titulo="Cambiar de empresa"
-          onPress={cambiarEmpresa}
+          titulo={empresa ? 'Cambiar de empresa' : 'Elegir empresa'}
+          onPress={() => navegacion.navigate('Empresa')}
         />
       ) : null}
       <Boton

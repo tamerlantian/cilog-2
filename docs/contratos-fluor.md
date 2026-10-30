@@ -17,87 +17,31 @@ listas `{total, page, size, items}`, errores `{success:false, error:{code,messag
 | --- | --- |
 | Duración de la sesión móvil | **Resuelto en Fluor** (`1f80800`): con `client_type=api` el login devuelve `refresh_token` de 30 días y `POST /auth/seguridad/refresh` acepta `{refresh_token}` en el body. La app ya lo usa. |
 | Registro y recuperación de clave | **Resuelto en Fluor** (`329211e`): `client_type` `api`/`mobile` salta Turnstile; solo `web` lo exige. La app va como `api` y no usa WebView. |
-| Usuario con conductor | Propuesta: resolver el conductor comparando `auth_user.numero_identificacion` con `tte_conductor.numero_identificacion` en la base de la empresa. Sin cambio de esquema; el registro ya exige la identificación. Alternativa: columna `codigo_conductor_fk` en `mas_user_tenant`. **Pendiente de hablar con backend.** |
-| Varias empresas por usuario | **Pendiente.** La app mostrará selector si `GET /mas/user-tenant/lista` devuelve más de una. |
+| Usuario con despachos | **Resuelto en Fluor**: el acceso es por asignación (`mas_tenant_despacho`), no por conductor ni por `user_tenant`. |
+| Varias empresas por usuario | Despachos: no se elige empresa. Ingreso y envíos: la app muestra selector si `GET /mas/user-tenant/lista` devuelve más de una. |
 | Despachos offline de la app vieja | Se pierden al corte; no hay migración. |
 
 ---
 
 ## Prioridad 1: sin esto la app no puede entregar
 
-### 1. `POST /tte/despacho/vincular`
+### 1 a 3. Vincular, mis despachos y paquete offline: **hechos en Fluor** (`2fedfa9`…`9a16d3b`)
 
-Reemplaza `api/despacho/nuevo`. Asocia el despacho al conductor autenticado si el token coincide.
+Fluor los resolvió con otro diseño: el repartidor no se asocia a un conductor, sino a **asignaciones** en `mas_tenant_despacho` (base maestra). No necesita `user_tenant` ni `X-Tenant-ID` para sus despachos, y puede tener despachos de varias empresas. La app ya los usa (`features/despachos/api/despachos.ts`).
 
-```json
-// request
-{"numero": 12345, "token": "A1B2"}
-```
+| Endpoint | Uso en la app |
+| --- | --- |
+| `POST /mas/tenant-despacho/cargar` `{tenant_id, codigo_despacho, token_despacho}` | Vincular. 404 igual para empresa, despacho o token inválidos (o despacho cerrado/entregado); 409 si es de otro repartidor. 5/min. |
+| `GET /mas/tenant-despacho/lista` (paginado) | Mis despachos: `{id, fecha, tenant_id, tenant_nombre, codigo_despacho}`. |
+| `DELETE /mas/tenant-despacho/eliminar/{id}` | Desvincular (también lo puede hacer el control de la empresa). |
+| `GET /tte/movil/despacho/{id}/guias` | Todas las guías del despacho para trabajar sin señal, con `estado_entregado`, `estado_novedad`, recaudo, orden de ruta y coordenadas. |
 
-```json
-// 200
-{
-  "codigo_despacho_pk": 9001,
-  "numero": 12345,
-  "codigo_despacho_clase_fk": "VIA",
-  "fecha_salida": "2026-10-27T07:30:00",
-  "estado_entregado": false
-}
-```
+Pendiente o por confirmar:
 
-- 404 `NOT_FOUND` "Despacho no encontrado" si `numero` no existe. 403 `FORBIDDEN` "Token del despacho inválido" si `token` != `tte_despacho.api_token`.
-- 409 `CONFLICT` "El despacho ya está asignado a otro conductor" si ya tiene `codigo_conductor_fk` distinto. 409 si el despacho está anulado o cerrado.
-- Rate limit propio: 10/min por usuario, para que el token de 4 caracteres no se pueda adivinar por fuerza bruta.
-
-### 2. `GET /tte/despacho/mis-despachos`
-
-Despachos del conductor del usuario JWT. Query: `estado_entregado` (bool, opcional), `page`, `size`.
-
-```json
-// 200
-{
-  "total": 1, "page": 1, "size": 50,
-  "items": [{
-    "codigo_despacho_pk": 9001, "numero": 12345, "codigo_despacho_clase_fk": "VIA",
-    "fecha_salida": "2026-10-27T07:30:00", "estado_entregado": false,
-    "cantidad": 40, "cantidad_entregada": 12, "unidades": 55
-  }]
-}
-```
-
-- 404 `NOT_FOUND` "No hay un conductor asociado a tu usuario" si no se puede resolver el conductor.
-
-### 3. `GET /tte/despacho/paquete/{codigo_despacho_pk}`
-
-Todo lo que la app necesita para trabajar sin red, en una sola respuesta. Reemplaza `entrega/pendiente`, `nuevo/desconetado` y `datosoperador`.
-
-```json
-// 200
-{
-  "despacho": {"codigo_despacho_pk": 9001, "numero": 12345, "codigo_despacho_clase_fk": "VIA", "fecha_salida": "...", "estado_entregado": false, "cantidad": 40, "cantidad_entregada": 12, "unidades": 55, "peso_real": 410.5},
-  "guias": [{
-    "codigo_guia_pk": 777001,
-    "documento_cliente": "FAC-1022",
-    "nombre_remitente": "Ferretería El Tornillo",
-    "nombre_destinatario": "María Pérez",
-    "direccion_destinatario": "Cra 45 # 12-30",
-    "telefono_destinatario": "3001234567",
-    "codigo_ciudad_destino_fk": "05001",
-    "ciudad_destino_nombre": "Medellín",
-    "departamento_destino_nombre": "Antioquia",
-    "unidades": 3, "peso_real": 12.5,
-    "vr_cobro_entrega": 18000,
-    "estado_entregado": false, "estado_novedad": false, "estado_recogido": true
-  }],
-  "destinos": ["Medellín", "Bello"],
-  "novedad_tipos": [{"codigo_novedad_tipo_pk": "DIR", "nombre": "Dirección errada"}],
-  "configuracion_entrega": {"exige_imagen_entrega": true, "exige_firma_entrega": true, "entrega_con_novedad": false, "calidad_imagen": 70, "limite_imagenes": 4}
-}
-```
-
-- Solo guías del despacho (`tte_despacho_detalle`), con `estado_anulado = false`.
-- 403 `FORBIDDEN` si el despacho no está asignado al conductor del JWT.
-- `novedad_tipos` y `configuracion_entrega` son los mismos de los endpoints 7 y 9, incluidos aquí para no hacer 3 llamadas al descargar.
+- **Formato del QR** que imprime la web: debe llevar `tenant_id`, `codigo_despacho` y `token_despacho`. Mientras tanto la app vincula con ingreso manual.
+- `/lista` devuelve solo la asignación. Para pintar la lista sin descargar cada despacho convendría agregar `numero`, `fecha_salida`, `cantidad` y `cantidad_entregada` (no bloquea: la app las calcula de las guías descargadas).
+- El paquete no trae `novedad_tipos` ni `configuracion_entrega`: siguen haciendo falta los endpoints 7 y 9.
+- Las rutas nuevas de escritura (4, 5, 6, 8) deberían validar acceso igual que `/tte/movil/despacho/{id}/...` (por asignación), porque el repartidor no tiene `user_tenant`.
 
 ### 4. `POST /tte/guia/entregar`
 
@@ -274,7 +218,7 @@ Mejoras opcionales que se pueden pedir: rotar el refresh token en cada renovaci�
 ## Opcional: mejoras que reducen peticiones
 
 - `POST /tte/guia/entregar` en lote: `{"entregas": [ ... ]}` con respuesta por elemento `{id_operacion, ok, error?}`. Si no existe, la app envía una por una.
-- Soporte de `ETag`/`If-None-Match` en `GET /tte/despacho/paquete/{pk}` para no re-descargar un despacho sin cambios.
+- Soporte de `ETag`/`If-None-Match` en `GET /tte/movil/despacho/{id}/guias` para no re-descargar un despacho sin cambios.
 
 ## Qué no se pide (descartado en esta versión)
 

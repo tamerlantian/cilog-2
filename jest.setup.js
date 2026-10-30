@@ -44,3 +44,31 @@ jest.mock('react-native-toast-message', () => {
   Toast.hide = jest.fn();
   return {__esModule: true, default: Toast};
 });
+
+// op-sqlite es nativo: en Jest cada `open` es una base SQLite en memoria (libsql,
+// una sola conexión como en el teléfono, así BEGIN/COMMIT se comportan igual).
+jest.mock('@op-engineering/op-sqlite', () => {
+  const Database = require('libsql');
+  return {
+    open: () => {
+      const db = new Database(':memory:');
+      const executeRaw = async (sql, params = []) => {
+        const sentencia = db.prepare(sql);
+        if (!sentencia.reader) {
+          const {changes} = sentencia.run(params);
+          return {rowsAffected: changes, rawRows: [], columnNames: []};
+        }
+        return {
+          rowsAffected: 0,
+          rawRows: sentencia.raw(true).all(params),
+          columnNames: [],
+        };
+      };
+      return {execute: executeRaw, executeRaw};
+    },
+  };
+});
+
+jest.mock('@react-native-community/netinfo', () =>
+  require('@react-native-community/netinfo/jest/netinfo-mock.js'),
+);

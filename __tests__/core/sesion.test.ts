@@ -37,12 +37,22 @@ describe('tienda de sesión', () => {
     expect(useSesion.getState().estado).toBe('sinSesion');
   });
 
-  it('iniciar sesión guarda el token en el llavero y pide elegir empresa', async () => {
+  it('iniciar sesión guarda el token y entra sin pedir empresa', async () => {
     const nuevas = credenciales(600);
     await useSesion.getState().iniciarSesion(nuevas, usuarioPrueba);
 
-    expect(useSesion.getState().estado).toBe('sinEmpresa');
+    expect(useSesion.getState().estado).toBe('activa');
+    expect(useSesion.getState().empresa).toBeNull();
     expect(await tokenGuardado()).toBe(nuevas.token);
+  });
+
+  it('sin empresa elegida, un reinicio restaura la sesión activa', async () => {
+    await useSesion.getState().iniciarSesion(credenciales(600), usuarioPrueba);
+
+    await reabrirApp();
+
+    expect(useSesion.getState().estado).toBe('activa');
+    expect(useSesion.getState().empresa).toBeNull();
   });
 
   it('con empresa elegida, un reinicio restaura la sesión activa', async () => {
@@ -121,15 +131,19 @@ describe('tienda de sesión', () => {
     });
   });
 
-  it('cambiar de empresa conserva la sesión pero pide elegir de nuevo', async () => {
+  it('cambiar de empresa conserva la sesión', async () => {
     await useSesion.getState().iniciarSesion(credenciales(600), usuarioPrueba);
     useSesion
       .getState()
       .elegirEmpresa(empresaPrueba(7, 'Transportes Sur'), true);
-    useSesion.getState().cambiarEmpresa();
+    useSesion
+      .getState()
+      .elegirEmpresa(empresaPrueba(8, 'Logística Norte'), true);
 
-    expect(useSesion.getState().estado).toBe('sinEmpresa');
-    expect(useSesion.getState().token).not.toBeNull();
+    await reabrirApp();
+
+    expect(useSesion.getState().estado).toBe('activa');
+    expect(useSesion.getState().empresa?.tenant_id).toBe(8);
   });
 
   it('un perfil guardado con otra forma se descarta y pide login', async () => {

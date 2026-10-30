@@ -36,8 +36,11 @@ Además, en todo `src`:
 ## Reglas
 
 - Las pantallas no llaman a axios ni a SQLite. Usan hooks de su feature, y el hook decide si el dato sale de la API o de la base local.
-- Toda escritura del conductor (entregar, novedad, recogida, posición) se guarda primero en SQLite como operación pendiente y la cola de `core/sync` la envía. "Online" es solo el caso en que la cola se vacía al instante.
-- El `id_operacion` es la llave de idempotencia ante Fluor: se genera con un generador criptográfico (`react-native-get-random-values` + `uuid`, por agregar en la Fase 2), no con `Math.random` como `X-Request-ID`.
+- Toda escritura del conductor (entregar, novedad, recogida, posición) se guarda primero en SQLite como operación pendiente y la cola de `core/sync` la envía. "Online" es solo el caso en que la cola se vacía al instante. Diseño completo (estados, errores, fusión, sesión) en `docs/offline.md`.
+- El `id_operacion` es la llave de idempotencia ante Fluor: se genera con un generador criptográfico (`react-native-get-random-values`, importado primero en `index.js`, + `uuid`), no con `Math.random` como `X-Request-ID`.
+- Base local (`core/db`): op-sqlite con drizzle **sobre `sqlite-proxy`**, no sobre el driver `drizzle-orm/op-sqlite`: ese driver (0.45) llama a una API vieja de op-sqlite y su `transaction` hace COMMIT sin esperar el callback async. Con el proxy, el mismo código corre en Jest sobre `libsql` en memoria (mock de op-sqlite en `jest.setup.js`).
+- Hay una sola conexión, así que todo acceso pasa por `leer(fn)` o `escribir(fn)` (transacción), que van de a uno. No anidar: un `leer`/`escribir` dentro de otro se queda esperando. Los repositorios reciben el `db`/`tx` como parámetro.
+- El esquema real lo crean `core/db/migraciones.ts` (`PRAGMA user_version`); `esquema.ts` (drizzle) debe coincidir. Nunca se edita una migración publicada.
 - Las query keys de cada feature viven en `hooks/claves.ts` y empiezan por el nombre de la feature.
 - Cada respuesta de Fluor pasa por un esquema zod. Los tipos se derivan con `z.infer`.
 - Errores: `core/api/errores.ts` traduce los errores de Fluor y de red. Las pantallas muestran `mensajeUsuario(error)`.
@@ -55,14 +58,17 @@ Además, en todo `src`:
 | Tema y primitivas de UI | 0 | Hecho, con pruebas. Rediseño según el mockup: componentes de auth listos (Aviso, Encabezado, IconoDestacado, Avatar, Requisito, Marca, toasts) |
 | Navegación por estado de sesión (`app/navegacion`) | 1 | Hecho, con pruebas |
 | Sesión: token en llavero, perfil y empresa en MMKV (`core/sesion`) | 1 | Hecho, con pruebas |
-| Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas |
+| Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas. La empresa es opcional (solo ingreso y envíos) |
 | Firebase (push y sesión única), Sentry | 1 | Pendiente |
 | Registro, recuperación de clave y reenvío de verificación | 1 | Hecho, con pruebas. Falta probar contra el Fluor desplegado |
-| SQLite, cola y motor de sincronización | 2 | Pendiente |
+| SQLite, cola y motor de sincronización (`core/db`, `core/sync`) | 2 | Hecho, con pruebas. Sin enviadores aún: Fluor no publica entregar, novedad ni terminar |
+| Despachos: API, repositorio y casos de uso (vincular, actualizar, descargar, desvincular) | 2 | Hecho, con pruebas. Faltan pantallas y probar contra Fluor |
 
 ## Sesión y navegación
 
-- `core/sesion` guarda el estado: `iniciando`, `sinSesion`, `sinEmpresa`, `activa`. El navegador (`app/navegacion/Navegador.tsx`) muestra las pantallas que corresponden a ese estado; no se navega a mano entre login, empresa e inicio.
+- `core/sesion` guarda el estado: `iniciando`, `sinSesion`, `activa`. El navegador (`app/navegacion/Navegador.tsx`) muestra las pantallas que corresponden a ese estado; no se navega a mano entre login e inicio.
+- La empresa es **opcional**: el repartidor accede a sus despachos por la asignación (`mas_tenant_despacho`), no por `user_tenant`, y puede tener despachos de varias empresas. Tras el login se entra directo; la pantalla `Empresa` se abre desde la app solo para ingreso y envíos.
+- Al arrancar, el navegador también espera a que la base local abra y la sincronización encienda (`app/providers/useDatosLocales.ts`). Si la base no abre, muestra un error con *Reintentar*.
 - El token vive solo en el llavero (`core/storage/llavero.ts`). El usuario y la empresa elegida van en MMKV, porque no son secretos. El perfil guardado se valida con zod al leerlo; si no cuadra (p. ej. lo guardó otra versión), se descarta y se pide login.
 - `conectarSesionConApi()` corre al cargar `app/App.tsx`, antes de montar nada. Un 401 solo cierra la sesión si la petición llevaba el token actual: una respuesta tardía con un token anterior no tumba un login nuevo.
 - Con una sola empresa se elige sola y no se ofrece "Cambiar de empresa" (`tieneVariasEmpresas` en la sesión).
