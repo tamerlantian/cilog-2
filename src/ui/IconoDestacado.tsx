@@ -13,6 +13,8 @@ type Props = {
   tamano?: 'md' | 'lg';
   /** Ícono pequeño en la esquina (p. ej. un check sobre el sobre de correo). */
   insignia?: TipoIcono;
+  /** Círculo lleno del color del tono, con el ícono en blanco (entrega guardada). */
+  solido?: boolean;
 };
 
 /** Ícono grande sobre fondo suave: da el tono de una pantalla de estado o de un paso. */
@@ -21,15 +23,16 @@ export function IconoDestacado({
   tono = 'primario',
   tamano = 'md',
   insignia,
+  solido = false,
 }: Props) {
-  styles.useVariants({tono, tamano});
+  styles.useVariants({tono, tamano, solido});
   return (
     <View style={styles.contenedor}>
       {tamano === 'lg' ? <View style={styles.halo} /> : null}
       <View style={styles.fondo} />
       <Icono
-        color={tono as ColorTema}
-        grosor={1.8}
+        color={solido ? 'sobrePrimario' : (tono as ColorTema)}
+        grosor={solido ? 2.6 : 1.8}
         icono={icono}
         tamano={tamano === 'lg' ? 46 : 30}
       />
@@ -96,7 +99,35 @@ const styles = StyleSheet.create(tema => ({
         peligro: {backgroundColor: tema.colores.peligroSuave},
         info: {backgroundColor: tema.colores.infoSuave},
       },
+      solido: {true: {}, false: {}},
     },
+    compoundVariants: [
+      {
+        solido: true,
+        tono: 'primario',
+        styles: {backgroundColor: tema.colores.primario},
+      },
+      {
+        solido: true,
+        tono: 'exito',
+        styles: {backgroundColor: tema.colores.exito},
+      },
+      {
+        solido: true,
+        tono: 'advertencia',
+        styles: {backgroundColor: tema.colores.advertencia},
+      },
+      {
+        solido: true,
+        tono: 'peligro',
+        styles: {backgroundColor: tema.colores.peligro},
+      },
+      {
+        solido: true,
+        tono: 'info',
+        styles: {backgroundColor: tema.colores.info},
+      },
+    ],
   },
   insignia: {
     position: 'absolute',

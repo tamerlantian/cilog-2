@@ -1,5 +1,6 @@
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 
+import {borrarEvidencia} from '@/core/archivos';
 import {escribir} from '@/core/db';
 import {reintentar, resumenCola, sincronizarAhora} from '@/core/sync';
 
@@ -49,8 +50,11 @@ export const useAccionesEnvio = () => {
     ...opciones,
   });
   const descartarEnvioLocal = useMutation({
-    mutationFn: (idOperacion: string) =>
-      escribir(tx => descartarEnvio(tx, idOperacion)),
+    mutationFn: async (idOperacion: string) => {
+      const {rutas} = await escribir(tx => descartarEnvio(tx, idOperacion));
+      // Después de la transacción: si fallara, las fotos seguirían haciendo falta.
+      await Promise.all(rutas.map(borrarEvidencia));
+    },
     ...opciones,
   });
 

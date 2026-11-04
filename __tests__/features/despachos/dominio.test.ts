@@ -1,9 +1,12 @@
 import {enlaceLlamar, enlaceMapa} from '@/features/despachos/domain/contacto';
 import {estadoBarra} from '@/features/despachos/domain/envios';
 import {fechaCorta, numero, pesos} from '@/features/despachos/domain/formato';
+import {aCobrar} from '@/features/despachos/domain/gestion';
 import {
   contarGuias,
   filtrarGuias,
+  resumenGuias,
+  siguientePendiente,
   situacionGuia,
   type DatosGuia,
 } from '@/features/despachos/domain/guias';
@@ -49,6 +52,33 @@ describe('guías', () => {
         guia(3, {gestionLocal: 'novedad'}),
       ]),
     ).toEqual({pendientes: 1, gestionadas: 2, todas: 3});
+  });
+});
+
+describe('después de gestionar', () => {
+  const lista = [
+    guia(1, {estadoEntregado: true}),
+    guia(2),
+    guia(3, {gestionLocal: 'novedad'}),
+    guia(4),
+  ];
+
+  it('resume entregadas, novedades y pendientes', () => {
+    expect(resumenGuias(lista)).toEqual({
+      entregadas: 1,
+      novedades: 1,
+      pendientes: 2,
+    });
+  });
+
+  it('la siguiente es la próxima pendiente en el orden de la lista', () => {
+    expect(siguientePendiente(lista, 2)?.codigoGuia).toBe(4);
+    expect(siguientePendiente(lista, 4)?.codigoGuia).toBe(2);
+    expect(siguientePendiente([guia(2)], 2)).toBeUndefined();
+  });
+
+  it('se cobra el recaudo más el flete contra entrega', () => {
+    expect(aCobrar({vrRecaudo: 18000, vrCobroEntrega: 5000})).toBe(23000);
   });
 });
 

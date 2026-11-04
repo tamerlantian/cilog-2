@@ -18,6 +18,7 @@ import {
 import {CuentaPantalla} from '@/features/cuenta';
 import {
   DespachoPantalla,
+  EntregaGuardadaPantalla,
   EntregarPantalla,
   EnviosPantalla,
   GuiaPantalla,
@@ -113,6 +114,11 @@ export function Navegador() {
               component={EntregarPantalla}
               name="Entregar"
               options={{presentation: 'modal'}}
+            />
+            <Stack.Screen
+              component={EntregaGuardadaPantalla}
+              name="EntregaGuardada"
+              options={{presentation: 'modal', gestureEnabled: false}}
             />
             <Stack.Screen
               component={NovedadPantalla}

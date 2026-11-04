@@ -125,6 +125,20 @@ describe('repositorio de despachos', () => {
     expect((await guiasLocales()).map(g => g.codigoGuia)).toEqual([1, 2, 3]);
   });
 
+  it('orden de ruta 0 es "sin orden", como lo manda Fluor', async () => {
+    await fusionar([
+      guiaFluor(2, {orden_ruta: 0}),
+      guiaFluor(1, {orden_ruta: 5}),
+    ]);
+
+    expect(
+      (await guiasLocales()).map(g => [g.codigoGuia, g.ordenRuta]),
+    ).toEqual([
+      [1, 5],
+      [2, null],
+    ]);
+  });
+
   it('una descarga no pisa una entrega que aún no llega a Fluor', async () => {
     await fusionar([guiaFluor(1)]);
     await entregarLocal(1);
@@ -266,7 +280,10 @@ describe('repositorio de despachos', () => {
     await fusionar([guiaFluor(1)]);
     const id = await entregarLocal(1);
 
-    expect(await escribir(tx => descartarEnvio(tx, id))).toEqual([]);
+    expect(await escribir(tx => descartarEnvio(tx, id))).toEqual({
+      ids: [],
+      rutas: [],
+    });
     expect((await guiasLocales())[0]?.gestionLocal).toBe('entregada');
   });
 

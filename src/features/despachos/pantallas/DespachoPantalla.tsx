@@ -13,6 +13,8 @@ import {
   Buscador,
   Cargando,
   CloudOff,
+  Dialogo,
+  Flag,
   Encabezado,
   EstadoVacio,
   mostrarError,
@@ -33,7 +35,12 @@ import {FilaGuia} from '../components/FilaGuia';
 import {nombreDespacho, nombreEmpresa} from '../components/TarjetaDespacho';
 import {plural} from '../domain/envios';
 import {puedeTerminar} from '../domain/gestion';
-import {contarGuias, filtrarGuias, type FiltroGuias} from '../domain/guias';
+import {
+  contarGuias,
+  filtrarGuias,
+  resumenGuias,
+  type FiltroGuias,
+} from '../domain/guias';
 import {
   useDescargarDespacho,
   useDesvincularDespacho,
@@ -54,6 +61,7 @@ export function DespachoPantalla({navigation, route}: Props) {
   const terminar = useTerminarDespacho(tenantDespachoId);
   const [filtro, setFiltro] = useState<FiltroGuias>('pendientes');
   const [busqueda, setBusqueda] = useState('');
+  const [confirmandoTerminar, setConfirmandoTerminar] = useState(false);
 
   const visibles = useMemo(
     () => filtrarGuias(guias, filtro, busqueda),
@@ -95,22 +103,17 @@ export function DespachoPantalla({navigation, route}: Props) {
       ],
     );
 
-  const confirmarTerminar = () =>
-    Alert.alert(
-      '¿Terminar el despacho?',
-      'La empresa lo recibe como completo. Después no podrás gestionar sus guías.',
-      [
-        {text: 'Cancelar', style: 'cancel'},
-        {
-          text: 'Terminar',
-          onPress: () =>
-            terminar.mutate(undefined, {
-              onSuccess: () => mostrarExito('Despacho terminado'),
-              onError: error => mostrarError(mensajeUsuario(error)),
-            }),
-        },
-      ],
-    );
+  const terminarDespacho = () =>
+    terminar.mutate(undefined, {
+      onSuccess: () => {
+        setConfirmandoTerminar(false);
+        mostrarExito('Despacho terminado');
+      },
+      onError: error => {
+        setConfirmandoTerminar(false);
+        mostrarError(mensajeUsuario(error));
+      },
+    });
 
   if (isPending) {
     return (
@@ -171,7 +174,7 @@ export function DespachoPantalla({navigation, route}: Props) {
             disabled={!permisoTerminar.permitido}
             icono={CircleCheck}
             titulo="Terminar despacho"
-            onPress={confirmarTerminar}
+            onPress={() => setConfirmandoTerminar(true)}
           />
         </Tarjeta>
       ) : null}
@@ -207,6 +210,8 @@ export function DespachoPantalla({navigation, route}: Props) {
       />
     </View>
   );
+
+  const resumen = resumenGuias(guias);
 
   const pie = despacho.liberado ? undefined : (
     <View style={styles.pieLista}>
@@ -295,6 +300,54 @@ export function DespachoPantalla({navigation, route}: Props) {
           )}
         />
       )}
+      <Dialogo
+        acciones={
+          <>
+            <Boton
+              cargando={terminar.isPending}
+              titulo="Terminar despacho"
+              onPress={terminarDespacho}
+            />
+            <Boton
+              disabled={terminar.isPending}
+              tipo="texto"
+              titulo="Todavía no"
+              onPress={() => setConfirmandoTerminar(false)}
+            />
+          </>
+        }
+        alCerrar={() => setConfirmandoTerminar(false)}
+        icono={Flag}
+        mensaje="Ya gestionaste todas las guías. Después no podrás registrar más entregas en él."
+        titulo={`¿Terminar el ${nombreDespacho(despacho).toLowerCase()}?`}
+        visible={confirmandoTerminar}>
+        <View style={styles.resumen}>
+          <View style={[styles.cifra, styles.cifraExito]}>
+            <Texto negrita numerico tono="exito" variante="subtitulo">
+              {resumen.entregadas}
+            </Texto>
+            <Texto tono="exito" variante="pie">
+              Entregadas
+            </Texto>
+          </View>
+          <View style={[styles.cifra, styles.cifraAdvertencia]}>
+            <Texto negrita numerico tono="advertencia" variante="subtitulo">
+              {resumen.novedades}
+            </Texto>
+            <Texto tono="advertencia" variante="pie">
+              Novedades
+            </Texto>
+          </View>
+          <View style={[styles.cifra, styles.cifraNeutra]}>
+            <Texto negrita numerico tono="secundario" variante="subtitulo">
+              {resumen.pendientes}
+            </Texto>
+            <Texto tono="secundario" variante="pie">
+              Pendientes
+            </Texto>
+          </View>
+        </View>
+      </Dialogo>
     </Pantalla>
   );
 }
@@ -307,4 +360,15 @@ const styles = StyleSheet.create(tema => ({
     padding: tema.espaciado.lg,
   },
   pieLista: {gap: tema.espaciado.xs, paddingTop: tema.espaciado.lg},
+  resumen: {flexDirection: 'row', gap: tema.espaciado.sm},
+  cifra: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: tema.espaciado.md,
+    borderRadius: tema.radio.md,
+  },
+  cifraExito: {backgroundColor: tema.colores.exitoSuave},
+  cifraAdvertencia: {backgroundColor: tema.colores.advertenciaSuave},
+  cifraNeutra: {backgroundColor: tema.colores.superficie},
 }));

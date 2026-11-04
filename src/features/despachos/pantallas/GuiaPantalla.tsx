@@ -96,7 +96,7 @@ export function GuiaPantalla({navigation, route}: Props) {
               <View style={styles.accion}>
                 <Boton
                   icono={TriangleAlert}
-                  tipo="secundario"
+                  tipo="advertenciaSuave"
                   titulo="Novedad"
                   onPress={() => navigation.navigate('Novedad', route.params)}
                 />

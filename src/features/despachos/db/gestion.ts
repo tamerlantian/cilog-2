@@ -1,20 +1,30 @@
 import {and, eq} from 'drizzle-orm';
 
 import {ErrorApi} from '@/core/api';
-import {despachos, guias, type Consulta, type GestionLocal} from '@/core/db';
+import {
+  archivos,
+  despachos,
+  guias,
+  type Consulta,
+  type GestionLocal,
+} from '@/core/db';
 import {encolar} from '@/core/sync';
 
 import {claveDespacho, claveGuia} from '../domain/claves';
 import {fechaLocalIso} from '../domain/formato';
 import {
+  cuerpoArchivo,
   cuerpoEntrega,
   cuerpoNovedad,
   cuerpoTerminar,
   puedeEntregar,
   puedeReportarNovedad,
+  evidenciaFaltante,
   puedeTerminar,
   type ConfiguracionEntrega,
   type DatosEntrega,
+  type TipoArchivo,
+  type Ubicacion,
 } from '../domain/gestion';
 import {leerDespacho, leerGuia, leerGuias} from './repositorio';
 
@@ -62,20 +72,41 @@ type Gestion = {
   tenantDespachoId: number;
   codigoGuia: number;
   ahora?: number;
+  ubicacion?: Ubicacion | null;
 };
 
+/** Foto o firma ya guardada en la carpeta de evidencias. */
+export type Evidencia = {tipo: TipoArchivo; ruta: string; bytes: number};
+
+/**
+ * Cada foto y la firma son su propia operación, que depende de la entrega y
+ * tiene su propia clave: si una falla, las demás y la entrega siguen
+ * (docs/offline.md §8).
+ */
 export const registrarEntrega = async (
   tx: Consulta,
-  {usuarioId, tenantDespachoId, codigoGuia, ahora = Date.now()}: Gestion,
+  {
+    usuarioId,
+    tenantDespachoId,
+    codigoGuia,
+    ahora = Date.now(),
+    ubicacion = null,
+  }: Gestion,
   datos: DatosEntrega,
   configuracion: ConfiguracionEntrega,
+  evidencias: readonly Evidencia[] = [],
 ) => {
   const {despacho, guia} = await cargar(tx, tenantDespachoId, codigoGuia);
   const permiso = puedeEntregar(despacho, guia, configuracion);
   if (!permiso.permitido) throw rechazar(permiso.motivo);
+  const faltante = evidenciaFaltante(configuracion, {
+    fotos: evidencias.filter(e => e.tipo === 'foto').length,
+    firma: evidencias.some(e => e.tipo === 'firma'),
+  });
+  if (faltante) throw rechazar(faltante);
 
   await marcarGuia(tx, tenantDespachoId, codigoGuia, 'entregada');
-  return encolar(
+  const idEntrega = await encolar(
     tx,
     {
       usuarioId,
@@ -86,15 +117,44 @@ export const registrarEntrega = async (
         {codigoGuia, codigoDespacho: despacho.codigoDespacho},
         datos,
         fechaLocalIso(ahora),
+        ubicacion,
       ),
     },
     ahora,
   );
+
+  for (const [indice, evidencia] of evidencias.entries()) {
+    const idArchivo = await encolar(
+      tx,
+      {
+        usuarioId,
+        tipo: evidencia.tipo,
+        claveEntidad: `archivo:${idEntrega}:${indice}`,
+        tenantDespachoId,
+        dependeDe: idEntrega,
+        cuerpo: cuerpoArchivo(codigoGuia, evidencia.tipo),
+      },
+      ahora,
+    );
+    await tx.insert(archivos).values({
+      idOperacion: idArchivo,
+      ruta: evidencia.ruta,
+      tipo: evidencia.tipo === 'firma' ? 'F' : 'I',
+      bytes: evidencia.bytes,
+    });
+  }
+  return idEntrega;
 };
 
 export const registrarNovedad = async (
   tx: Consulta,
-  {usuarioId, tenantDespachoId, codigoGuia, ahora = Date.now()}: Gestion,
+  {
+    usuarioId,
+    tenantDespachoId,
+    codigoGuia,
+    ahora = Date.now(),
+    ubicacion = null,
+  }: Gestion,
   datos: {tipo: string; descripcion?: string},
 ) => {
   const {despacho, guia} = await cargar(tx, tenantDespachoId, codigoGuia);
@@ -113,6 +173,7 @@ export const registrarNovedad = async (
         {codigoGuia, codigoDespacho: despacho.codigoDespacho},
         datos,
         fechaLocalIso(ahora),
+        ubicacion,
       ),
     },
     ahora,

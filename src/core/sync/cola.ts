@@ -1,7 +1,12 @@
 import {and, asc, eq, inArray, lte, sql} from 'drizzle-orm';
 import {v4 as uuidV4} from 'uuid';
 
-import {operaciones, type Consulta, type EstadoOperacion} from '@/core/db';
+import {
+  archivos,
+  operaciones,
+  type Consulta,
+  type EstadoOperacion,
+} from '@/core/db';
 
 export type Operacion = typeof operaciones.$inferSelect;
 
@@ -209,7 +214,8 @@ export const reintentar = (
 
 /**
  * Borra una rechazada o en conflicto y todo lo que depende de ella (sus fotos).
- * Devuelve los ids borrados para que quien llama elimine los ficheros.
+ * Devuelve los ids borrados y las rutas de sus archivos: quien llama los borra
+ * del disco después de confirmar la transacción.
  */
 export const descartar = async (tx: Consulta, idOperacion: string) => {
   const filas = await tx.values<[string]>(sql`
@@ -221,10 +227,27 @@ export const descartar = async (tx: Consulta, idOperacion: string) => {
     )
     SELECT id FROM arbol`);
   const ids = filas.map(([id]) => id);
-  if (ids.length > 0) {
-    await tx.delete(operaciones).where(inArray(operaciones.idOperacion, ids));
-  }
-  return ids;
+  if (ids.length === 0) return {ids, rutas: []};
+  const rutas = await tx
+    .select({ruta: archivos.ruta})
+    .from(archivos)
+    .where(inArray(archivos.idOperacion, ids));
+  await tx.delete(operaciones).where(inArray(operaciones.idOperacion, ids));
+  return {ids, rutas: rutas.map(f => f.ruta)};
+};
+
+/**
+ * La operación ya llegó a Fluor: su archivo deja de ser necesario. Quita el
+ * registro y devuelve la ruta para borrarla del disco, o null si no tenía.
+ */
+export const soltarArchivo = async (tx: Consulta, idOperacion: string) => {
+  const [archivo] = await tx
+    .select({ruta: archivos.ruta})
+    .from(archivos)
+    .where(eq(archivos.idOperacion, idOperacion));
+  if (!archivo) return null;
+  await tx.delete(archivos).where(eq(archivos.idOperacion, idOperacion));
+  return archivo.ruta;
 };
 
 /** Cuántas operaciones sin confirmar hay, por estado. */

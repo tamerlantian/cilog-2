@@ -47,7 +47,15 @@ const llenarLogin = async () => {
 
 describe('App', () => {
   // Los temporizadores de recolección de react-query mantienen vivo el proceso de Jest.
-  afterEach(() => clienteConsultas.clear());
+  afterEach(async () => {
+    // Lo que invalidaron las mutaciones termina antes de desmontar.
+    await waitFor(() =>
+      expect(
+        clienteConsultas.isFetching() + clienteConsultas.isMutating(),
+      ).toBe(0),
+    );
+    clienteConsultas.clear();
+  });
 
   beforeEach(async () => {
     apiSimulada.iniciarSesionApi.mockReset();
@@ -109,6 +117,7 @@ describe('App', () => {
     );
 
     expect(await screen.findByText('Transportes Sur')).toBeTruthy();
+    await esperarConsultas();
     expect(useSesion.getState().empresa?.tenant_id).toBe(7);
     // Con una sola empresa no hay a cuál cambiar.
     expect(
@@ -140,6 +149,8 @@ describe('App', () => {
     await fireEvent.press(screen.getByText('Logística Norte'));
 
     expect(await screen.findByText('Logística Norte')).toBeTruthy();
+    // Elegir empresa limpia la caché: Mi cuenta vuelve a leer la cola.
+    await esperarConsultas();
     expect(useSesion.getState().empresa?.tenant_id).toBe(8);
 
     await fireEvent.press(

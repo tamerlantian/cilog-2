@@ -1,5 +1,8 @@
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 
+import {v4 as uuidV4} from 'uuid';
+
+import {borrarEvidencia, guardarEvidencia} from '@/core/archivos';
 import {escribir} from '@/core/db';
 import {sincronizarAhora} from '@/core/sync';
 
@@ -7,11 +10,13 @@ import {
   registrarEntrega,
   registrarNovedad,
   registrarTerminar,
+  type Evidencia,
 } from '../db/gestion';
 import {
   CONFIGURACION_ENTREGA_PROVISIONAL,
   TIPOS_NOVEDAD_PROVISIONALES,
   type DatosEntrega,
+  type Ubicacion,
 } from '../domain/gestion';
 import {clavesDespachos} from './claves';
 import {useUsuarioId} from './local';
@@ -42,28 +47,88 @@ const useGuardarLocal = <T>(
   });
 };
 
+export type Entrega = {
+  datos: DatosEntrega;
+  /** Archivos temporales de la cámara. */
+  fotos: readonly string[];
+  /** PNG temporal de la firma. */
+  firma: string | null;
+  ubicacion: Ubicacion | null;
+};
+
+/**
+ * Pasa las evidencias de la caché a documentos antes de guardar. Si la
+ * entrega no se guarda, se borran: no quedan archivos sin operación.
+ */
+const moverEvidencias = async ({fotos, firma}: Entrega) => {
+  const pendientes = [
+    ...fotos.map(uri => ({
+      tipo: 'foto' as const,
+      uri,
+      extension: 'jpg' as const,
+    })),
+    ...(firma
+      ? [{tipo: 'firma' as const, uri: firma, extension: 'png' as const}]
+      : []),
+  ];
+  const guardadas: Evidencia[] = [];
+  try {
+    for (const {tipo, uri, extension} of pendientes) {
+      const {ruta, bytes} = await guardarEvidencia(uri, uuidV4(), extension);
+      guardadas.push({tipo, ruta, bytes});
+    }
+  } catch (error) {
+    await Promise.all(guardadas.map(e => borrarEvidencia(e.ruta)));
+    throw error;
+  }
+  return guardadas;
+};
+
 export const useEntregar = (tenantDespachoId: number, codigoGuia: number) => {
   const configuracion = useConfiguracionEntrega();
-  return useGuardarLocal((usuarioId, datos: DatosEntrega) =>
-    escribir(tx =>
-      registrarEntrega(
-        tx,
-        {usuarioId, tenantDespachoId, codigoGuia},
-        datos,
-        configuracion,
-      ),
-    ),
-  );
+  return useGuardarLocal(async (usuarioId, entrega: Entrega) => {
+    const evidencias = await moverEvidencias(entrega);
+    try {
+      return await escribir(tx =>
+        registrarEntrega(
+          tx,
+          {
+            usuarioId,
+            tenantDespachoId,
+            codigoGuia,
+            ubicacion: entrega.ubicacion,
+          },
+          entrega.datos,
+          configuracion,
+          evidencias,
+        ),
+      );
+    } catch (error) {
+      await Promise.all(evidencias.map(e => borrarEvidencia(e.ruta)));
+      throw error;
+    }
+  });
 };
 
 export const useReportarNovedad = (
   tenantDespachoId: number,
   codigoGuia: number,
 ) =>
-  useGuardarLocal((usuarioId, datos: {tipo: string; descripcion?: string}) =>
-    escribir(tx =>
-      registrarNovedad(tx, {usuarioId, tenantDespachoId, codigoGuia}, datos),
-    ),
+  useGuardarLocal(
+    (
+      usuarioId,
+      {
+        ubicacion,
+        ...datos
+      }: {tipo: string; descripcion?: string; ubicacion: Ubicacion | null},
+    ) =>
+      escribir(tx =>
+        registrarNovedad(
+          tx,
+          {usuarioId, tenantDespachoId, codigoGuia, ubicacion},
+          datos,
+        ),
+      ),
   );
 
 export const useTerminarDespacho = (tenantDespachoId: number) =>

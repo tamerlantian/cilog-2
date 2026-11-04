@@ -1,3 +1,5 @@
+import {fireEvent} from '@testing-library/react-native';
+
 // Jest corre en Node; los tipos de React Native no declaran Buffer.
 declare const Buffer: {
   from: (texto: string) => {toString: (codificacion: 'base64url') => string};
@@ -26,3 +28,41 @@ export const empresaPrueba = (id: number, nombre: string) => ({
   tenant_nombre: nombre,
   activo: true,
 });
+
+/** Evento táctil mínimo que entiende PanResponder. */
+export const toque = (x: number, y: number, tiempo: number) => {
+  const punto = {
+    touchActive: true,
+    startPageX: x,
+    startPageY: y,
+    startTimeStamp: tiempo,
+    currentPageX: x,
+    currentPageY: y,
+    currentTimeStamp: tiempo,
+    previousPageX: x,
+    previousPageY: y,
+    previousTimeStamp: tiempo,
+  };
+  return {
+    nativeEvent: {
+      locationX: x,
+      locationY: y,
+      pageX: x,
+      pageY: y,
+      timestamp: tiempo,
+    },
+    touchHistory: {
+      touchBank: [punto],
+      numberActiveTouches: 1,
+      indexOfSingleActiveTouch: 0,
+      mostRecentTimeStamp: tiempo,
+    },
+  };
+};
+
+/** Un trazo con el dedo sobre el panel de firma. */
+export const firmar = async (lienzo: Parameters<typeof fireEvent>[0]) => {
+  await fireEvent(lienzo, 'responderGrant', toque(10, 10, 1));
+  await fireEvent(lienzo, 'responderMove', toque(40, 30, 2));
+  await fireEvent(lienzo, 'responderRelease', toque(40, 30, 3));
+};

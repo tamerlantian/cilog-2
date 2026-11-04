@@ -1,6 +1,9 @@
 import {eq} from 'drizzle-orm';
 
-import {despachos, escribir, leer, operaciones} from '@/core/db';
+import * as fs from '@dr.pogodin/react-native-fs';
+
+import {archivos, despachos, escribir, leer, operaciones} from '@/core/db';
+import {crearMotor} from '@/core/sync';
 import type {
   DespachoGuias,
   GuiaFluor,
@@ -20,6 +23,7 @@ import {fechaLocalIso} from '@/features/despachos/domain/formato';
 import {
   CONFIGURACION_ENTREGA_PROVISIONAL,
   cuerpoEntrega,
+  evidenciaFaltante,
   puedeEntregar,
   puedeTerminar,
 } from '@/features/despachos/domain/gestion';
@@ -159,6 +163,8 @@ describe('reglas de gestión', () => {
       parentesco: null,
       celular: null,
       fecha_entrega: '2026-10-30T14:05:09',
+      latitud: null,
+      longitud: null,
     });
   });
 
@@ -166,6 +172,23 @@ describe('reglas de gestión', () => {
     expect(fechaLocalIso(AHORA)).toBe('2026-10-30T14:05:09');
   });
 });
+
+describe('evidencias exigidas', () => {
+  it('pide foto o firma solo si la empresa las exige', () => {
+    const exige = {...CONFIG, exigeFoto: true, exigeFirma: true};
+    expect(evidenciaFaltante(CONFIG, {fotos: 0, firma: false})).toBeNull();
+    expect(evidenciaFaltante(exige, {fotos: 0, firma: true})).toBe(
+      'La empresa exige al menos una foto de la entrega.',
+    );
+    expect(evidenciaFaltante(exige, {fotos: 1, firma: false})).toBe(
+      'La empresa exige la firma de quien recibe.',
+    );
+    expect(evidenciaFaltante(exige, {fotos: 1, firma: true})).toBeNull();
+  });
+});
+
+/** El mock de react-native-fs guarda ruta -> tamaño. */
+const enDisco = (fs as unknown as {__archivos: Map<string, number>}).__archivos;
 
 describe('registrar gestiones', () => {
   beforeEach(abrirBaseMemoria);
@@ -231,5 +254,108 @@ describe('registrar gestiones', () => {
     await escribir(tx => descartarEnvio(tx, id));
     const [despacho] = await leer(db => db.select().from(despachos));
     expect(despacho?.terminadoEn).toBeNull();
+  });
+
+  const conEvidencias = async () => {
+    await conGuias([guiaFluor(1)]);
+    enDisco.set('/documentos/evidencias/a.jpg', 210_000);
+    enDisco.set('/documentos/evidencias/b.png', 15_000);
+    return escribir(tx =>
+      registrarEntrega(
+        tx,
+        {...gestion(1), ubicacion: {latitud: 6.25, longitud: -75.56}},
+        {},
+        CONFIG,
+        [
+          {tipo: 'foto', ruta: '/documentos/evidencias/a.jpg', bytes: 210_000},
+          {tipo: 'firma', ruta: '/documentos/evidencias/b.png', bytes: 15_000},
+        ],
+      ),
+    );
+  };
+
+  it('cada foto y la firma son operaciones aparte que esperan a la entrega', async () => {
+    const idEntrega = await conEvidencias();
+
+    const cola = await leer(db => db.select().from(operaciones));
+    expect(cola.map(o => [o.tipo, o.dependeDe])).toEqual([
+      ['entrega', null],
+      ['foto', idEntrega],
+      ['firma', idEntrega],
+    ]);
+    // Claves propias: una foto que falla no frena a las demás.
+    expect(new Set(cola.map(o => o.claveEntidad)).size).toBe(3);
+    expect(JSON.parse(cola[0]!.cuerpo)).toMatchObject({
+      latitud: 6.25,
+      longitud: -75.56,
+    });
+    expect(JSON.parse(cola[2]!.cuerpo)).toEqual({
+      codigo_modelo: 'TteGuia',
+      codigo: 1,
+      tipo: 'F',
+    });
+    expect(
+      (await leer(db => db.select().from(archivos))).map(a => a.tipo),
+    ).toEqual(['I', 'F']);
+  });
+
+  it('la guía sigue por enviar mientras falten sus fotos o su firma', async () => {
+    const idEntrega = await conEvidencias();
+    await escribir(tx =>
+      tx
+        .update(operaciones)
+        .set({estado: 'confirmada'})
+        .where(eq(operaciones.idOperacion, idEntrega)),
+    );
+
+    const [guia] = await leer(db => leerGuias(db, DESPACHO));
+    expect(guia?.envio).toBe('porEnviar');
+  });
+
+  it('sin la foto que la empresa exige no se guarda nada', async () => {
+    await conGuias([guiaFluor(1)]);
+
+    await expect(
+      escribir(tx =>
+        registrarEntrega(tx, gestion(1), {}, {...CONFIG, exigeFoto: true}),
+      ),
+    ).rejects.toThrow('La empresa exige al menos una foto de la entrega.');
+    expect(await leer(db => db.select().from(operaciones))).toEqual([]);
+  });
+
+  it('al confirmarse una foto se borra del teléfono', async () => {
+    await conEvidencias();
+    const motor = crearMotor({
+      enviadores: {
+        entrega: async () => {},
+        foto: async () => {},
+        firma: async () => {},
+      },
+      usuarioActual: () => USUARIO,
+    });
+
+    await motor.ejecutar();
+
+    expect(enDisco.has('/documentos/evidencias/a.jpg')).toBe(false);
+    expect(enDisco.has('/documentos/evidencias/b.png')).toBe(false);
+    expect(await leer(db => db.select().from(archivos))).toEqual([]);
+  });
+
+  it('descartar una entrega rechazada devuelve las rutas de sus archivos', async () => {
+    const idEntrega = await conEvidencias();
+    await escribir(tx =>
+      tx
+        .update(operaciones)
+        .set({estado: 'rechazada'})
+        .where(eq(operaciones.idOperacion, idEntrega)),
+    );
+
+    const {ids, rutas} = await escribir(tx => descartarEnvio(tx, idEntrega));
+
+    expect(ids).toHaveLength(3);
+    expect(rutas.sort()).toEqual([
+      '/documentos/evidencias/a.jpg',
+      '/documentos/evidencias/b.png',
+    ]);
   });
 });

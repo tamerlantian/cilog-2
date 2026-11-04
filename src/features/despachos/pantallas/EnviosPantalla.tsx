@@ -19,6 +19,7 @@ import {
   Trash,
 } from '@/ui';
 
+import {nombreDespacho} from '../components/TarjetaDespacho';
 import type {EnvioLocal} from '../db/repositorio';
 import {
   LIMITE_ATRASO_MS,
@@ -60,7 +61,10 @@ function FilaEnvio({
               envio.nombreDestinatario,
               envio.codigoDespacho === null
                 ? null
-                : `Despacho ${envio.codigoDespacho}`,
+                : nombreDespacho({
+                    numero: envio.numeroDespacho,
+                    codigoDespacho: envio.codigoDespacho,
+                  }),
             ]
               .filter(Boolean)
               .join(' · ')}

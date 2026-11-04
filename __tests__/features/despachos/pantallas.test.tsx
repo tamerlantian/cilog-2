@@ -6,12 +6,15 @@ import {
 } from '@testing-library/react-native';
 import {eq} from 'drizzle-orm';
 import {Alert} from 'react-native';
+import * as fs from '@dr.pogodin/react-native-fs';
+import {getFSInfo} from '@dr.pogodin/react-native-fs';
+import {launchCamera} from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
 
 import {App} from '@/app/App';
 import {clienteConsultas} from '@/core/api/clienteConsultas';
 import {ErrorApi} from '@/core/api';
-import {escribir, guias, leer, operaciones} from '@/core/db';
+import {archivos, escribir, guias, leer, operaciones} from '@/core/db';
 import {useSesion} from '@/core/sesion';
 import {encolar, obtenerMotor} from '@/core/sync';
 import * as apiAuth from '@/features/auth/api/auth';
@@ -19,13 +22,16 @@ import * as api from '@/features/despachos/api/despachos';
 import type {GuiaFluor} from '@/features/despachos/api/despachos';
 import {claveGuia} from '@/features/despachos/domain/claves';
 
-import {crearJwt, usuarioPrueba} from '../../helpers';
+import {crearJwt, firmar, usuarioPrueba} from '../../helpers';
 
 jest.mock('@/features/auth/api/auth');
 jest.mock('@/features/despachos/api/despachos');
 const apiSimulada = jest.mocked(api);
 
 const DESPACHO = 10;
+
+/** El mock de react-native-fs guarda ruta -> tamaño. */
+const enDisco = (fs as unknown as {__archivos: Map<string, number>}).__archivos;
 
 const asignacion = {
   id: DESPACHO,
@@ -149,11 +155,21 @@ describe('pantallas de despachos', () => {
       });
     }
     alerta.mockReset();
+    jest.mocked(launchCamera).mockClear();
+    enDisco.clear();
     jest.mocked(Toast.show).mockClear();
     await useSesion.getState().cerrarSesion();
     useSesion.setState({estado: 'iniciando', avisoSesion: null});
   });
-  afterEach(() => clienteConsultas.clear());
+  afterEach(async () => {
+    // Lo que invalidaron las mutaciones termina antes de desmontar.
+    await waitFor(() =>
+      expect(
+        clienteConsultas.isFetching() + clienteConsultas.isMutating(),
+      ).toBe(0),
+    );
+    clienteConsultas.clear();
+  });
 
   it('sin despachos invita a vincular uno', async () => {
     apiSimulada.listarAsignacionesApi.mockResolvedValue([]);
@@ -228,44 +244,77 @@ describe('pantallas de despachos', () => {
       await screen.findByRole('button', {name: 'Llamar al destinatario'});
     };
 
-    /** Responde al Alert de confirmación con el botón indicado. */
-    const confirmarAlerta = (boton: string) => {
-      const botones = alerta.mock.calls.at(-1)?.[2] ?? [];
-      botones.find(b => b.text === boton)?.onPress?.();
-    };
-
     const operacionesGuardadas = () =>
       leer(db => db.select().from(operaciones));
 
-    it('entregar guarda en el teléfono, encola y vuelve al despacho', async () => {
+    /** Del paso de fotos al de firma, sin llenar nada. */
+    const irAFirma = async () => {
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Siguiente'}),
+      );
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Siguiente'}),
+      );
+      await screen.findByLabelText('Paso 3 de 3, Firma');
+    };
+
+    it('entregar va por pasos, guarda en el teléfono y ofrece la siguiente guía', async () => {
       await abrirGuia('Guía 2, María Peña');
       await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
 
+      expect(await screen.findByText('Entregar a María Peña')).toBeTruthy();
+      expect(screen.getByText('Guía 2 · $ 18.000 por cobrar')).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', {name: 'Siguiente'}));
+
+      // Atajo: recibe el destinatario como titular.
+      await fireEvent.press(
+        await screen.findByRole('checkbox', {name: 'Recibe María Peña'}),
+      );
+      expect(screen.getByLabelText('Nombre de quien recibe').props.value).toBe(
+        'María Peña',
+      );
+      expect(
+        screen.getByRole('button', {name: 'Parentesco: Titular'}),
+      ).toBeTruthy();
+
       await fireEvent.changeText(
-        await screen.findByLabelText('Recibe'),
+        screen.getByLabelText('Nombre de quien recibe'),
         'Ana Gómez',
       );
       await fireEvent.press(
-        screen.getByRole('button', {name: 'Parentesco: Sin especificar'}),
+        screen.getByRole('button', {name: 'Parentesco: Titular'}),
       );
-      await fireEvent.press(await screen.findByText('Portería'));
+      expect(await screen.findByText('MÁS USADOS')).toBeTruthy();
+      await fireEvent.press(screen.getByText('Portería'));
+      await fireEvent.changeText(
+        screen.getByLabelText('Número de documento'),
+        '43A',
+      );
       await fireEvent.changeText(
         screen.getByLabelText('Celular'),
         '3001234567',
       );
+
+      // No pasa con datos inválidos.
+      await fireEvent.press(screen.getByRole('button', {name: 'Siguiente'}));
+      expect(await screen.findByText('Solo números')).toBeTruthy();
+      await fireEvent.changeText(
+        screen.getByLabelText('Número de documento'),
+        '43123456',
+      );
+      await fireEvent.press(screen.getByRole('button', {name: 'Siguiente'}));
+
+      expect(
+        await screen.findByText('Cobra $ 18.000 antes de confirmar.'),
+      ).toBeTruthy();
+      expect(screen.getByText('Ana Gómez · Portería')).toBeTruthy();
+      expect(screen.getByText('0 fotos · Doc. 43123456')).toBeTruthy();
       await fireEvent.press(
         screen.getByRole('button', {name: 'Confirmar entrega'}),
       );
-      confirmarAlerta('Entregar');
 
-      expect(
-        await screen.findByRole('button', {name: '1 por enviar'}),
-      ).toBeTruthy();
-      expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({text1: 'Entrega guardada'}),
-      );
-      expect(nombresVisibles()).toEqual(['Destinatario 3']);
-
+      expect(await screen.findByText('Entrega guardada')).toBeTruthy();
+      expect(screen.getByText('Enviando a la empresa…')).toBeTruthy();
       const [operacion] = await operacionesGuardadas();
       expect(operacion).toMatchObject({
         tipo: 'entrega',
@@ -278,18 +327,102 @@ describe('pantallas de despachos', () => {
         recibe: 'Ana Gómez',
         parentesco: 'PORTERÍA',
         celular: '3001234567',
-        numero_identificacion: null,
+        numero_identificacion: '43123456',
       });
+
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Siguiente guía'}),
+      );
+      expect(await screen.findByText('Guía 3')).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', {name: 'Volver'}));
+      await screen.findByRole('button', {name: '1 por enviar'});
+      expect(nombresVisibles()).toEqual(['Destinatario 3']);
     });
 
-    it('cancelar la confirmación no guarda nada', async () => {
+    it('la entrega lleva fotos, firma y ubicación, y las guarda en documentos', async () => {
       await abrirGuia('Guía 2, María Peña');
       await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
-      await fireEvent.press(
-        await screen.findByRole('button', {name: 'Confirmar entrega'}),
-      );
-      await waitFor(() => expect(alerta).toHaveBeenCalled());
 
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Tomar foto'}),
+      );
+      expect(await screen.findByLabelText('Foto 1')).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', {name: 'Tomar foto'}));
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Quitar foto 1'}),
+      );
+      expect(screen.getByText('1 de 4')).toBeTruthy();
+
+      await irAFirma();
+      expect(
+        screen.getByRole('button', {name: 'Borrar'}).props.accessibilityState
+          .disabled,
+      ).toBe(true);
+      await firmar(screen.getByLabelText('Espacio para firmar'));
+
+      // Volver un paso no pierde la firma: queda guardada como imagen.
+      await fireEvent.press(screen.getByRole('button', {name: 'Atrás'}));
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Siguiente'}),
+      );
+      expect(await screen.findByLabelText('Firma recogida')).toBeTruthy();
+
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Confirmar entrega'}),
+      );
+      await screen.findByText('Entrega guardada');
+
+      const cola = await operacionesGuardadas();
+      expect(cola.map(o => o.tipo)).toEqual(['entrega', 'foto', 'firma']);
+      expect(JSON.parse(cola[0]!.cuerpo)).toMatchObject({
+        latitud: 6.2442,
+        longitud: -75.5812,
+      });
+      const guardados = await leer(db => db.select().from(archivos));
+      expect(guardados.map(a => a.ruta)).toEqual([
+        expect.stringMatching(/^\/documentos\/evidencias\/.+\.jpg$/),
+        expect.stringMatching(/^\/documentos\/evidencias\/.+\.png$/),
+      ]);
+      // La foto que se quitó nunca se movió a documentos.
+      expect(
+        [...enDisco.keys()].filter(r => r.startsWith('/documentos')),
+      ).toHaveLength(2);
+    });
+
+    it('sin espacio no abre la cámara', async () => {
+      jest.mocked(getFSInfo).mockResolvedValueOnce({
+        freeSpace: 10_000_000,
+        freeSpaceEx: 10_000_000,
+        totalSpace: 64_000_000_000,
+        totalSpaceEx: 64_000_000_000,
+      });
+      await abrirGuia('Guía 2, María Peña');
+      await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
+
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Tomar foto'}),
+      );
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text1:
+              'El teléfono tiene poco espacio. Libera al menos 50 MB para tomar fotos.',
+          }),
+        ),
+      );
+      expect(launchCamera).not.toHaveBeenCalled();
+    });
+
+    it('cerrar la entrega a mitad no guarda nada', async () => {
+      await abrirGuia('Guía 2, María Peña');
+      await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
+      await irAFirma();
+
+      await fireEvent.press(screen.getByRole('button', {name: 'Cerrar'}));
+
+      await screen.findByRole('button', {name: 'Llamar al destinatario'});
+      expect(screen.getByRole('button', {name: 'Entregar'})).toBeTruthy();
       expect(await operacionesGuardadas()).toEqual([]);
     });
 
@@ -298,20 +431,23 @@ describe('pantallas de despachos', () => {
       await fireEvent.press(screen.getByRole('button', {name: 'Novedad'}));
 
       await fireEvent.press(
-        await screen.findByRole('button', {name: 'Guardar novedad'}),
+        await screen.findByRole('button', {name: 'Reportar novedad'}),
       );
       expect(await screen.findByText('Elige el tipo de novedad')).toBeTruthy();
 
       await fireEvent.press(
-        screen.getByRole('button', {name: 'Tipo de novedad: Elegir'}),
+        screen.getByRole('radio', {name: 'Destinatario ausente'}),
       );
-      await fireEvent.press(await screen.findByText('Destinatario ausente'));
+      expect(
+        screen.getByRole('radio', {name: 'Destinatario ausente'}).props
+          .accessibilityState.checked,
+      ).toBe(true);
       await fireEvent.changeText(
-        screen.getByLabelText('Descripción'),
+        screen.getByLabelText('Detalle (opcional)'),
         'Nadie atiende',
       );
       await fireEvent.press(
-        screen.getByRole('button', {name: 'Guardar novedad'}),
+        screen.getByRole('button', {name: 'Reportar novedad'}),
       );
 
       await screen.findByRole('button', {name: '1 por enviar'});
@@ -362,7 +498,14 @@ describe('pantallas de despachos', () => {
       await fireEvent.press(
         await screen.findByRole('button', {name: 'Terminar despacho'}),
       );
-      confirmarAlerta('Terminar');
+      // El diálogo resume el despacho antes de confirmar.
+      expect(
+        await screen.findByText('¿Terminar el despacho 12345?'),
+      ).toBeTruthy();
+      expect(screen.getByText('Entregadas')).toBeTruthy();
+      await fireEvent.press(
+        screen.getAllByRole('button', {name: 'Terminar despacho'}).at(-1)!,
+      );
 
       expect(await screen.findByText('Despacho terminado')).toBeTruthy();
       expect(

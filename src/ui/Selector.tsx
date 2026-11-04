@@ -1,13 +1,17 @@
 import {useMemo, useState} from 'react';
-import {FlatList, Modal, Pressable, View} from 'react-native';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
+  View,
+} from 'react-native';
+import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {Buscador} from './Buscador';
-import {Encabezado} from './Encabezado';
 import {Check, ChevronRight, CircleAlert} from './iconos';
 import {Icono} from './Icono';
-import {Pantalla} from './Pantalla';
 import {Texto} from './Texto';
 
 type Opcion = {valor: string; titulo: string};
@@ -24,7 +28,15 @@ type Props = {
   buscable?: boolean;
   /** Permite volver a "sin elegir" (campos opcionales). */
   opcional?: boolean;
+  /** Título de la hoja; por defecto, la etiqueta. */
+  pregunta?: string;
+  /** Valores que van primero, en "Más usados", mientras no se busca. */
+  destacadas?: readonly string[];
 };
+
+type Fila = {clave: string; seccion?: string; opcion?: Opcion};
+
+const SIN_DESTACADAS: readonly string[] = [];
 
 const normalizar = (texto: string) =>
   texto
@@ -32,7 +44,7 @@ const normalizar = (texto: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-/** Campo que abre una lista a pantalla completa para elegir una opción. */
+/** Campo que abre una hoja desde abajo con la lista de opciones. */
 export function Selector({
   etiqueta,
   opciones,
@@ -42,21 +54,38 @@ export function Selector({
   error,
   buscable = false,
   opcional = false,
+  pregunta = etiqueta,
+  destacadas = SIN_DESTACADAS,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const elegida = opciones.find(opcion => opcion.valor === valor);
   styles.useVariants({conError: Boolean(error), vacio: !elegida});
 
-  const visibles = useMemo(() => {
+  const filas = useMemo((): Fila[] => {
     const texto = normalizar(busqueda.trim());
-    const filtradas = texto
-      ? opciones.filter(opcion => normalizar(opcion.titulo).includes(texto))
-      : opciones;
-    return opcional && !texto
-      ? [{valor: '', titulo: 'Sin especificar'}, ...filtradas]
-      : filtradas;
-  }, [opciones, busqueda, opcional]);
+    const fila = (opcion: Opcion): Fila => ({
+      clave: opcion.valor || 'vacio',
+      opcion,
+    });
+    if (texto) {
+      return opciones
+        .filter(opcion => normalizar(opcion.titulo).includes(texto))
+        .map(fila);
+    }
+    const vacia = opcional
+      ? [fila({valor: '', titulo: 'Sin especificar'})]
+      : [];
+    const arriba = opciones.filter(o => destacadas.includes(o.valor));
+    if (arriba.length === 0) return [...vacia, ...opciones.map(fila)];
+    return [
+      ...vacia,
+      {clave: 'seccion-usados', seccion: 'Más usados'},
+      ...arriba.map(fila),
+      {clave: 'seccion-todos', seccion: 'Todos'},
+      ...opciones.filter(o => !destacadas.includes(o.valor)).map(fila),
+    ];
+  }, [opciones, busqueda, opcional, destacadas]);
 
   const cerrar = () => {
     setAbierto(false);
@@ -87,50 +116,79 @@ export function Selector({
         </View>
       ) : null}
 
-      <Modal animationType="slide" visible={abierto} onRequestClose={cerrar}>
+      <Modal
+        animationType="slide"
+        statusBarTranslucent
+        transparent
+        visible={abierto}
+        onRequestClose={cerrar}>
         <SafeAreaProvider>
-          <Pantalla>
-            <Encabezado
-              alVolver={cerrar}
-              tipoVolver="cerrar"
-              titulo={etiqueta}
+          <KeyboardAvoidingView behavior="padding" style={styles.raizHoja}>
+            <Pressable
+              accessibilityLabel="Cerrar"
+              accessibilityRole="button"
+              style={styles.velo}
+              onPress={cerrar}
             />
-            {buscable ? (
-              <View style={styles.buscador}>
-                <Buscador
-                  alCambiar={setBusqueda}
-                  etiqueta={`Buscar ${etiqueta.toLowerCase()}`}
-                  valor={busqueda}
-                />
+            <SafeAreaView edges={['bottom']} style={styles.hoja}>
+              <View style={styles.agarradera} />
+              <View style={styles.cabeceraHoja}>
+                <Texto accessibilityRole="header" negrita variante="subtitulo">
+                  {pregunta}
+                </Texto>
+                {buscable ? (
+                  <Buscador
+                    alCambiar={setBusqueda}
+                    etiqueta={`Buscar entre ${opciones.length} opciones`}
+                    valor={busqueda}
+                  />
+                ) : null}
               </View>
-            ) : null}
-            <FlatList
-              data={visibles}
-              keyboardShouldPersistTaps="handled"
-              keyExtractor={opcion => opcion.valor || 'vacio'}
-              renderItem={({item}) => {
-                const actual = item.valor === valor;
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{selected: actual}}
-                    style={({pressed}) => [
-                      styles.opcion,
-                      pressed && styles.presionada,
-                    ]}
-                    onPress={() => {
-                      alCambiar(item.valor);
-                      cerrar();
-                    }}>
-                    <Texto negrita={actual} style={styles.textoOpcion}>
-                      {item.titulo}
-                    </Texto>
-                    {actual ? <Icono color="primario" icono={Check} /> : null}
-                  </Pressable>
-                );
-              }}
-            />
-          </Pantalla>
+              <FlatList
+                contentContainerStyle={styles.lista}
+                data={filas}
+                keyboardShouldPersistTaps="handled"
+                keyExtractor={fila => fila.clave}
+                renderItem={({item}) => {
+                  if (!item.opcion) {
+                    return (
+                      <Texto
+                        negrita
+                        style={styles.seccion}
+                        tono="secundario"
+                        variante="pie">
+                        {item.seccion?.toUpperCase()}
+                      </Texto>
+                    );
+                  }
+                  const opcion = item.opcion;
+                  const actual = opcion.valor === valor;
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{selected: actual}}
+                      style={({pressed}) => [
+                        styles.opcion,
+                        actual && styles.actual,
+                        pressed && styles.presionada,
+                      ]}
+                      onPress={() => {
+                        alCambiar(opcion.valor);
+                        cerrar();
+                      }}>
+                      <Texto
+                        negrita={actual}
+                        style={styles.textoOpcion}
+                        tono={actual ? 'primario' : 'normal'}>
+                        {opcion.titulo}
+                      </Texto>
+                      {actual ? <Icono color="primario" icono={Check} /> : null}
+                    </Pressable>
+                  );
+                }}
+              />
+            </SafeAreaView>
+          </KeyboardAvoidingView>
         </SafeAreaProvider>
       </Modal>
     </View>
@@ -173,19 +231,54 @@ const styles = StyleSheet.create(tema => ({
     alignItems: 'center',
     gap: tema.espaciado.xs + 2,
   },
-  buscador: {
-    paddingHorizontal: tema.espaciado.lg,
-    paddingBottom: tema.espaciado.sm,
+  raizHoja: {flex: 1, justifyContent: 'flex-end'},
+  velo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: tema.colores.velo,
+  },
+  hoja: {
+    maxHeight: '82%',
+    paddingTop: tema.espaciado.sm + 2,
+    borderTopLeftRadius: tema.radio.xl,
+    borderTopRightRadius: tema.radio.xl,
+    backgroundColor: tema.colores.fondo,
+  },
+  agarradera: {
+    alignSelf: 'center',
+    width: 40,
+    height: 5,
+    marginBottom: tema.espaciado.md + 2,
+    borderRadius: tema.radio.pill,
+    backgroundColor: tema.colores.borde,
+  },
+  cabeceraHoja: {
+    gap: tema.espaciado.md,
+    paddingHorizontal: tema.espaciado.lg + 4,
+  },
+  lista: {
+    paddingHorizontal: tema.espaciado.sm,
+    paddingTop: tema.espaciado.md,
+    paddingBottom: tema.espaciado.lg,
+  },
+  seccion: {
+    paddingHorizontal: tema.espaciado.md,
+    paddingTop: tema.espaciado.md,
+    paddingBottom: tema.espaciado.xs + 2,
+    letterSpacing: 0.6,
   },
   opcion: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tema.espaciado.sm,
     minHeight: tema.alto.control,
-    paddingHorizontal: tema.espaciado.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: tema.colores.superficie,
+    paddingHorizontal: tema.espaciado.md,
+    borderRadius: tema.radio.md - 2,
   },
+  actual: {backgroundColor: tema.colores.primarioSuave},
   textoOpcion: {flex: 1},
   presionada: {backgroundColor: tema.colores.superficie},
 }));

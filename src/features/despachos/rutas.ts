@@ -5,6 +5,12 @@ export type RutasDespachos = {
   Despacho: {tenantDespachoId: number};
   Guia: {tenantDespachoId: number; codigoGuia: number};
   Entregar: {tenantDespachoId: number; codigoGuia: number};
+  /** `guardadaEn`: la hora que se muestra, en milisegundos. */
+  EntregaGuardada: {
+    tenantDespachoId: number;
+    codigoGuia: number;
+    guardadaEn: number;
+  };
   Novedad: {tenantDespachoId: number; codigoGuia: number};
   Envios: undefined;
   /** La registra la app (feature cuenta); aquí solo se navega a ella. */

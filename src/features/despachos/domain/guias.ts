@@ -62,3 +62,25 @@ export const contarGuias = (guias: readonly DatosGuia[]) => {
     todas: guias.length,
   };
 };
+
+/** Entregadas, con novedad y pendientes: el avance que se muestra al conductor. */
+export const resumenGuias = (guias: readonly DatosGuia[]) => {
+  const resumen = {entregadas: 0, novedades: 0, pendientes: 0};
+  for (const guia of guias) {
+    const situacion = situacionGuia(guia);
+    if (situacion === 'entregada') resumen.entregadas += 1;
+    else if (situacion === 'novedad') resumen.novedades += 1;
+    else resumen.pendientes += 1;
+  }
+  return resumen;
+};
+
+/** La próxima guía por gestionar en el orden de la lista, sin contar la actual. */
+export const siguientePendiente = <T extends DatosGuia>(
+  guias: readonly T[],
+  codigoActual: number,
+): T | undefined =>
+  guias.find(
+    guia =>
+      guia.codigoGuia !== codigoActual && situacionGuia(guia) === 'pendiente',
+  );

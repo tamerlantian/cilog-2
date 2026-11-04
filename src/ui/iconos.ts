@@ -4,6 +4,7 @@
  * Para usar uno nuevo, agrégalo aquí (nombres en https://lucide.dev/icons).
  */
 export {default as Building} from 'lucide-react-native/icons/building';
+export {default as Camera} from 'lucide-react-native/icons/camera';
 export {default as Check} from 'lucide-react-native/icons/check';
 export {default as ChevronLeft} from 'lucide-react-native/icons/chevron-left';
 export {default as ChevronRight} from 'lucide-react-native/icons/chevron-right';
@@ -14,6 +15,7 @@ export {default as Clock} from 'lucide-react-native/icons/clock';
 export {default as CloudOff} from 'lucide-react-native/icons/cloud-off';
 export {default as Eye} from 'lucide-react-native/icons/eye';
 export {default as EyeOff} from 'lucide-react-native/icons/eye-off';
+export {default as Flag} from 'lucide-react-native/icons/flag';
 export {default as Info} from 'lucide-react-native/icons/info';
 export {default as KeyRound} from 'lucide-react-native/icons/key-round';
 export {default as LogOut} from 'lucide-react-native/icons/log-out';
@@ -21,6 +23,7 @@ export {default as Mail} from 'lucide-react-native/icons/mail';
 export {default as MailWarning} from 'lucide-react-native/icons/mail-warning';
 export {default as MapPin} from 'lucide-react-native/icons/map-pin';
 export {default as Package} from 'lucide-react-native/icons/package';
+export {default as PenLine} from 'lucide-react-native/icons/pen-line';
 export {default as Phone} from 'lucide-react-native/icons/phone';
 export {default as Plus} from 'lucide-react-native/icons/plus';
 export {default as RefreshCw} from 'lucide-react-native/icons/refresh-cw';

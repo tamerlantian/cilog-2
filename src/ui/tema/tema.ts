@@ -52,6 +52,8 @@ export const temaClaro = {
     deshabilitado: '#E3E8E8',
     sobreDeshabilitado: '#5E6C6E',
     velo: 'rgba(13, 13, 13, 0.45)',
+    papel: paleta.blanco,
+    tinta: paleta.negro,
   },
 } as const;
 
@@ -84,6 +86,9 @@ export const temaOscuro = {
     deshabilitado: paleta.base[800],
     sobreDeshabilitado: '#8A9C9E',
     velo: 'rgba(0, 0, 0, 0.6)',
+    // La firma se guarda como imagen para la empresa: siempre tinta oscura sobre blanco.
+    papel: paleta.blanco,
+    tinta: paleta.negro,
   },
 } as const;
 

@@ -42,6 +42,13 @@ export const PARENTESCOS = [
   {valor: 'REGENTE', titulo: 'Regente'},
 ] as const;
 
+/** Primeros en el selector, como al inicio de la lista de la app anterior. */
+export const PARENTESCOS_FRECUENTES = ['TITULAR', 'PORTERÍA', 'VIGILANTE'];
+
+/** Lo que el conductor cobra al entregar: el recaudo más el flete contra entrega. */
+export const aCobrar = (guia: {vrRecaudo: number; vrCobroEntrega: number}) =>
+  guia.vrRecaudo + guia.vrCobroEntrega;
+
 export type TipoNovedad = {codigo: string; nombre: string};
 
 /**
@@ -73,6 +80,23 @@ export const CONFIGURACION_ENTREGA_PROVISIONAL: ConfiguracionEntrega = {
 };
 
 export const LARGO_MAXIMO_DESCRIPCION = 2000;
+
+/** Fotos por entrega, como en la app anterior. */
+export const LIMITE_FOTOS = 4;
+
+/** Lo que la empresa exige y falta para confirmar la entrega; null si está completa. */
+export const evidenciaFaltante = (
+  configuracion: ConfiguracionEntrega,
+  evidencia: {fotos: number; firma: boolean},
+) => {
+  if (configuracion.exigeFoto && evidencia.fotos === 0) {
+    return 'La empresa exige al menos una foto de la entrega.';
+  }
+  if (configuracion.exigeFirma && !evidencia.firma) {
+    return 'La empresa exige la firma de quien recibe.';
+  }
+  return null;
+};
 
 type Permiso = {permitido: true} | {permitido: false; motivo: string};
 
@@ -156,6 +180,14 @@ const opcional = (texto: string | undefined) => {
   return limpio === '' ? null : limpio;
 };
 
+export type Ubicacion = {latitud: number; longitud: number};
+
+/** Sin GPS, la operación igual sale: la ubicación es un dato extra. */
+const coordenadas = (ubicacion: Ubicacion | null) => ({
+  latitud: ubicacion?.latitud ?? null,
+  longitud: ubicacion?.longitud ?? null,
+});
+
 export type DatosEntrega = {
   recibe?: string;
   numeroIdentificacion?: string;
@@ -171,6 +203,7 @@ export const cuerpoEntrega = (
   ids: {codigoGuia: number; codigoDespacho: number},
   datos: DatosEntrega,
   fecha: string,
+  ubicacion: Ubicacion | null = null,
 ) => ({
   codigo_guia_pk: ids.codigoGuia,
   codigo_despacho_fk: ids.codigoDespacho,
@@ -179,21 +212,36 @@ export const cuerpoEntrega = (
   parentesco: opcional(datos.parentesco),
   celular: opcional(datos.celular),
   fecha_entrega: fecha,
+  ...coordenadas(ubicacion),
 });
 
 export const cuerpoNovedad = (
   ids: {codigoGuia: number; codigoDespacho: number},
   datos: {tipo: string; descripcion?: string},
   fecha: string,
+  ubicacion: Ubicacion | null = null,
 ) => ({
   codigo_guia_pk: ids.codigoGuia,
   codigo_despacho_fk: ids.codigoDespacho,
   codigo_novedad_tipo_fk: datos.tipo,
   descripcion: opcional(datos.descripcion),
   fecha,
+  ...coordenadas(ubicacion),
 });
 
 export const cuerpoTerminar = (codigoDespacho: number, fecha: string) => ({
   codigo_despacho_pk: codigoDespacho,
   fecha,
+});
+
+export type TipoArchivo = 'foto' | 'firma';
+
+/**
+ * Metadatos de una foto o firma (docs/contratos-fluor.md §5). El archivo va
+ * aparte: lo lee el enviador desde la tabla `archivos`.
+ */
+export const cuerpoArchivo = (codigoGuia: number, tipo: TipoArchivo) => ({
+  codigo_modelo: 'TteGuia',
+  codigo: codigoGuia,
+  tipo: tipo === 'firma' ? 'F' : 'I',
 });

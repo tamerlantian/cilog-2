@@ -5,7 +5,14 @@ import {Icono, type TipoIcono} from './Icono';
 import type {ColorTema} from './tema/tema';
 import {Texto} from './Texto';
 
-type Tipo = 'primario' | 'secundario' | 'advertencia' | 'peligro' | 'texto';
+/** `advertenciaSuave`: acción de aviso que no es la principal (reportar novedad). */
+type Tipo =
+  | 'primario'
+  | 'secundario'
+  | 'advertencia'
+  | 'advertenciaSuave'
+  | 'peligro'
+  | 'texto';
 
 type Props = Omit<PressableProps, 'children' | 'style'> & {
   titulo: string;
@@ -19,6 +26,7 @@ type Props = Omit<PressableProps, 'children' | 'style'> & {
 const COLOR_CONTENIDO: Record<Tipo, ColorTema> = {
   primario: 'sobrePrimario',
   advertencia: 'sobrePrimario',
+  advertenciaSuave: 'advertencia',
   peligro: 'sobrePrimario',
   secundario: 'primario',
   texto: 'primario',
@@ -98,6 +106,10 @@ const styles = StyleSheet.create(tema => ({
           backgroundColor: tema.colores.advertencia,
           borderColor: tema.colores.advertencia,
         },
+        advertenciaSuave: {
+          backgroundColor: tema.colores.advertenciaSuave,
+          borderColor: tema.colores.advertenciaBorde,
+        },
         peligro: {
           backgroundColor: tema.colores.peligro,
           borderColor: tema.colores.peligro,
@@ -125,6 +137,7 @@ const styles = StyleSheet.create(tema => ({
         primario: {color: tema.colores.sobrePrimario},
         secundario: {color: tema.colores.primario},
         advertencia: {color: tema.colores.sobrePrimario},
+        advertenciaSuave: {color: tema.colores.advertencia},
         peligro: {color: tema.colores.sobrePrimario},
         texto: {color: tema.colores.primario},
       },

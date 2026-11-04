@@ -72,3 +72,53 @@ jest.mock('@op-engineering/op-sqlite', () => {
 jest.mock('@react-native-community/netinfo', () =>
   require('@react-native-community/netinfo/jest/netinfo-mock.js'),
 );
+
+// Sistema de archivos en memoria: ruta -> tamaño. `__archivos` deja ver qué quedó.
+jest.mock('@dr.pogodin/react-native-fs', () => {
+  const archivos = new Map();
+  const carpetas = new Set();
+  return {
+    __archivos: archivos,
+    DocumentDirectoryPath: '/documentos',
+    CachesDirectoryPath: '/cache',
+    exists: jest.fn(async ruta => archivos.has(ruta) || carpetas.has(ruta)),
+    mkdir: jest.fn(async ruta => {
+      carpetas.add(ruta);
+    }),
+    // Lo que llega de la cámara o de la firma no está en el mapa: pesa 200 KB.
+    moveFile: jest.fn(async (origen, destino) => {
+      archivos.set(destino, archivos.get(origen) ?? 200_000);
+      archivos.delete(origen);
+    }),
+    stat: jest.fn(async ruta => ({size: archivos.get(ruta) ?? 0})),
+    unlink: jest.fn(async ruta => {
+      archivos.delete(ruta);
+    }),
+    getFSInfo: jest.fn(async () => ({
+      freeSpace: 4_000_000_000,
+      totalSpace: 64_000_000_000,
+    })),
+  };
+});
+
+jest.mock('@react-native-community/geolocation', () => ({
+  setRNConfiguration: jest.fn(),
+  requestAuthorization: jest.fn(),
+  getCurrentPosition: jest.fn(exito =>
+    exito({coords: {latitude: 6.2442, longitude: -75.5812}, timestamp: 0}),
+  ),
+}));
+
+jest.mock('react-native-image-picker', () => {
+  let n = 0;
+  return {
+    launchCamera: jest.fn(async () => {
+      n += 1;
+      return {assets: [{uri: `file:///cache/foto-${n}.jpg`, fileSize: 200_000}]};
+    }),
+  };
+});
+
+jest.mock('react-native-view-shot', () => ({
+  captureRef: jest.fn(async () => 'file:///cache/firma.png'),
+}));

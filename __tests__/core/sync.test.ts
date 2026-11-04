@@ -234,10 +234,10 @@ describe('cola de operaciones y motor de sincronización', () => {
     }).ejecutar();
 
     expect(fotos).not.toHaveBeenCalled();
-    expect(await escribir(tx => descartar(tx, idEntrega))).toEqual([
-      idEntrega,
-      idFoto,
-    ]);
+    expect(await escribir(tx => descartar(tx, idEntrega))).toEqual({
+      ids: [idEntrega, idFoto],
+      rutas: [],
+    });
     expect(await leer(db => db.select().from(operaciones))).toHaveLength(0);
   });
 

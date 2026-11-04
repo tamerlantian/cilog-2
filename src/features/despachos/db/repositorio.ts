@@ -133,7 +133,8 @@ const datosDeFluor = (guia: GuiaFluor) => ({
   pesoReal: guia.peso_real,
   vrRecaudo: guia.vr_recaudo,
   vrCobroEntrega: guia.vr_cobro_entrega,
-  ordenRuta: guia.orden_ruta,
+  // Fluor manda 0 cuando la guía no tiene orden asignado.
+  ordenRuta: guia.orden_ruta && guia.orden_ruta > 0 ? guia.orden_ruta : null,
   latitud: guia.latitud,
   longitud: guia.longitud,
   requiereCita: guia.requiere_cita,
@@ -263,6 +264,7 @@ export const leerDespacho = async (db: Consulta, tenantDespachoId: number) => {
   return despacho ?? null;
 };
 
+/** Las fotos y la firma cuelgan de la entrega: también cuentan para la guía. */
 const columnasGuia = {
   ...getTableColumns(guias),
   envio: sql<EnvioGuia>`(
@@ -271,7 +273,13 @@ const columnasGuia = {
       WHEN count(*) > 0 THEN 'porEnviar'
     END
     FROM ${operaciones}
-    WHERE ${operaciones.claveEntidad} = ${claveGuiaSql}
+    WHERE (
+      ${operaciones.claveEntidad} = ${claveGuiaSql}
+      OR ${operaciones.dependeDe} IN (
+        SELECT gestion.id_operacion FROM ${operaciones} AS gestion
+        WHERE gestion.clave_entidad = ${claveGuiaSql}
+      )
+    )
       AND ${inArray(operaciones.estado, SIN_CONFIRMAR)})`,
 };
 
@@ -312,6 +320,8 @@ export type EnvioLocal = Operacion & {
   codigoGuia: number | null;
   nombreDestinatario: string | null;
   codigoDespacho: number | null;
+  /** El número que ve el conductor; null si el despacho no se ha descargado. */
+  numeroDespacho: number | null;
 };
 
 /** Operaciones sin confirmar del usuario, de la más antigua a la más nueva. */
@@ -325,6 +335,7 @@ export const leerEnvios = async (
       codigoGuia: guias.codigoGuia,
       nombreDestinatario: guias.nombreDestinatario,
       codigoDespacho: despachos.codigoDespacho,
+      numeroDespacho: despachos.numero,
     })
     .from(operaciones)
     .leftJoin(
@@ -352,15 +363,16 @@ export const leerEnvios = async (
  * Descarta una operación rechazada (y lo que depende de ella). Si la guía se
  * queda sin nada por enviar, vuelve a lo que dice Fluor; un terminar
  * descartado reabre el despacho; si el despacho estaba liberado y ya no tiene
- * pendientes, se borra. Devuelve los ids descartados.
+ * pendientes, se borra. Devuelve los ids descartados y las rutas de sus
+ * archivos, para borrarlos del disco después de la transacción.
  */
 export const descartarEnvio = async (tx: Consulta, idOperacion: string) => {
   const [operacion] = await tx
     .select()
     .from(operaciones)
     .where(eq(operaciones.idOperacion, idOperacion));
-  const ids = await descartar(tx, idOperacion);
-  if (!operacion || ids.length === 0) return ids;
+  const descartadas = await descartar(tx, idOperacion);
+  if (!operacion || descartadas.ids.length === 0) return descartadas;
 
   const [quedan] = await tx
     .select({total: sql<number>`count(*)`})
@@ -392,5 +404,5 @@ export const descartarEnvio = async (tx: Consulta, idOperacion: string) => {
         and(eq(despachos.tenantDespachoId, td), eq(despachos.liberado, true)),
       );
   }
-  return ids;
+  return descartadas;
 };

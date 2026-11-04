@@ -1,6 +1,8 @@
 import {zodResolver} from '@hookform/resolvers/zod';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {Controller, useForm} from 'react-hook-form';
+import {View} from 'react-native';
+import {StyleSheet} from 'react-native-unistyles';
 
 import {mensajeUsuario} from '@/core/api';
 import {
@@ -8,15 +10,18 @@ import {
   Cargando,
   Encabezado,
   EstadoVacio,
+  Icono,
+  Info,
   Input,
+  ListaOpciones,
   mostrarError,
   mostrarExito,
   Pantalla,
-  Selector,
+  Texto,
   TriangleAlert,
 } from '@/ui';
 
-import {ResumenGuia} from '../components/ResumenGuia';
+import {destinatario} from '../components/FilaGuia';
 import {
   esquemaFormularioNovedad,
   type FormularioNovedad,
@@ -26,7 +31,12 @@ import {
   puedeReportarNovedad,
 } from '../domain/gestion';
 import {useDespacho, useGuia} from '../hooks/useDespachos';
-import {useReportarNovedad, useTiposNovedad} from '../hooks/useGestion';
+import {useUbicacion} from '../hooks/useEvidencias';
+import {
+  useConfiguracionEntrega,
+  useReportarNovedad,
+  useTiposNovedad,
+} from '../hooks/useGestion';
 import type {RutasDespachos} from '../rutas';
 
 type Props = NativeStackScreenProps<RutasDespachos, 'Novedad'>;
@@ -36,7 +46,9 @@ export function NovedadPantalla({navigation, route}: Props) {
   const {data: despacho} = useDespacho(tenantDespachoId);
   const {data: guia, isPending} = useGuia(tenantDespachoId, codigoGuia);
   const tipos = useTiposNovedad();
+  const configuracion = useConfiguracionEntrega();
   const reportar = useReportarNovedad(tenantDespachoId, codigoGuia);
+  const ubicacion = useUbicacion();
   const {control, handleSubmit} = useForm<FormularioNovedad>({
     resolver: zodResolver(esquemaFormularioNovedad),
     defaultValues: {tipo: '', descripcion: ''},
@@ -45,7 +57,11 @@ export function NovedadPantalla({navigation, route}: Props) {
   const encabezado = (
     <Encabezado
       alVolver={() => navigation.goBack()}
-      subtitulo={`Guía ${codigoGuia}`}
+      subtitulo={
+        guia
+          ? `Guía ${codigoGuia} · ${destinatario(guia)}`
+          : `Guía ${codigoGuia}`
+      }
       tipoVolver="cerrar"
       titulo="Reportar novedad"
     />
@@ -82,13 +98,16 @@ export function NovedadPantalla({navigation, route}: Props) {
 
   const guardar = () =>
     handleSubmit(datos =>
-      reportar.mutate(datos, {
-        onSuccess: () => {
-          mostrarExito('Novedad guardada');
-          navigation.popTo('Despacho', {tenantDespachoId});
+      reportar.mutate(
+        {...datos, ubicacion},
+        {
+          onSuccess: () => {
+            mostrarExito('Novedad guardada');
+            navigation.popTo('Despacho', {tenantDespachoId});
+          },
+          onError: error => mostrarError(mensajeUsuario(error)),
         },
-        onError: error => mostrarError(mensajeUsuario(error)),
-      }),
+      ),
     )();
 
   return (
@@ -97,45 +116,71 @@ export function NovedadPantalla({navigation, route}: Props) {
       pie={
         <Boton
           cargando={reportar.isPending}
-          titulo="Guardar novedad"
+          icono={TriangleAlert}
           tipo="advertencia"
+          titulo="Reportar novedad"
           onPress={guardar}
         />
       }>
       {encabezado}
-      <ResumenGuia guia={guia} />
-      <Controller
-        control={control}
-        name="tipo"
-        render={({field, fieldState}) => (
-          <Selector
-            alCambiar={field.onChange}
-            error={fieldState.error?.message}
-            etiqueta="Tipo de novedad"
-            opciones={tipos.map(tipo => ({
-              valor: tipo.codigo,
-              titulo: tipo.nombre,
-            }))}
-            valor={field.value}
-          />
+      <View style={styles.cuerpo}>
+        <Controller
+          control={control}
+          name="tipo"
+          render={({field, fieldState}) => (
+            <ListaOpciones
+              alCambiar={field.onChange}
+              error={fieldState.error?.message}
+              etiqueta="¿Qué pasó?"
+              opciones={tipos.map(tipo => ({
+                valor: tipo.codigo,
+                titulo: tipo.nombre,
+              }))}
+              tono="advertencia"
+              valor={field.value}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="descripcion"
+          render={({field, fieldState}) => (
+            <Input
+              ayuda="Lo que debe saber la oficina."
+              error={fieldState.error?.message}
+              etiqueta="Detalle (opcional)"
+              maxLength={LARGO_MAXIMO_DESCRIPCION}
+              multilinea
+              value={field.value}
+              onBlur={field.onBlur}
+              onChangeText={field.onChange}
+            />
+          )}
+        />
+        {configuracion.entregaConNovedad ? null : (
+          <View style={styles.nota}>
+            <Icono color="textoSecundario" icono={Info} tamano={18} />
+            <Texto
+              style={styles.textoNota}
+              tono="secundario"
+              variante="etiqueta">
+              Con una novedad, esta empresa no permite entregar la guía después.
+            </Texto>
+          </View>
         )}
-      />
-      <Controller
-        control={control}
-        name="descripcion"
-        render={({field, fieldState}) => (
-          <Input
-            ayuda="Opcional. Lo que debe saber la oficina."
-            error={fieldState.error?.message}
-            etiqueta="Descripción"
-            maxLength={LARGO_MAXIMO_DESCRIPCION}
-            multilinea
-            value={field.value}
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
-          />
-        )}
-      />
+      </View>
     </Pantalla>
   );
 }
+
+const styles = StyleSheet.create(tema => ({
+  cuerpo: {gap: tema.espaciado.lg, paddingHorizontal: tema.espaciado.xs},
+  nota: {
+    flexDirection: 'row',
+    gap: tema.espaciado.sm + 2,
+    padding: tema.espaciado.md,
+    borderRadius: tema.radio.md - 2,
+    backgroundColor: tema.colores.superficie,
+  },
+  textoNota: {flex: 1},
+}));

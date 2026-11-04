@@ -48,3 +48,10 @@ export const fechaLocalIso = (milisegundos: number) => {
   const d = (n: number) => String(n).padStart(2, '0');
   return `${f.getFullYear()}-${d(f.getMonth() + 1)}-${d(f.getDate())}T${d(f.getHours())}:${d(f.getMinutes())}:${d(f.getSeconds())}`;
 };
+
+/** "14:05" en la hora del teléfono. */
+export const hora = (milisegundos: number) => {
+  const fecha = new Date(milisegundos);
+  const dosDigitos = (n: number) => String(n).padStart(2, '0');
+  return `${dosDigitos(fecha.getHours())}:${dosDigitos(fecha.getMinutes())}`;
+};

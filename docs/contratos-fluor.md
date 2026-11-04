@@ -53,7 +53,8 @@ Entregar, novedad y terminar ya funcionan en la app: se guardan en el teléfono 
 | Tipos de novedad | 6 códigos inventados (`AUSENTE`, `DIRECCION`, `CERRADO`, `RECHAZO`, `AVERIA`, `OTRO`) en `domain/gestion.ts`. **No existen en Fluor**: allá los tipos son de cada empresa (`tte_novedad_tipo.codigo_empresa_fk`). | §7, descargado por empresa del despacho |
 | Configuración de entrega | Foto y firma opcionales; no se entrega una guía con novedad. | §9 |
 | Tipo de documento de quien recibe | No se pide ni se envía `codigo_identificacion_fk` (el legacy tampoco lo pedía). Fluor debería aceptarlo opcional. | Decisión de negocio |
-| Ubicación | No se envían `latitud`/`longitud` todavía (paso 3b). | Paso 3b |
+| Ubicación | Se envían `latitud`/`longitud` en entrega y novedad cuando el GPS responde; si no, van en null. | — |
+| Fotos y firma | Cada archivo es una operación (`foto` o `firma`) que depende de la entrega, con cuerpo `{codigo_modelo: "TteGuia", codigo, tipo: "I"/"F"}`; el archivo está en la tabla `archivos`. Se subirán con §5 y `Idempotency-Key` = `id_operacion`. | §5 |
 
 Lo que se encole con los tipos de novedad provisionales Fluor lo rechazaría (404). Antes de activar el envío de novedades hay que tener el catálogo real; las de prueba se descartan desde *Envíos*.
 

@@ -15,7 +15,7 @@ src/
       api/        llamadas HTTP de la feature y los esquemas zod de sus respuestas (usan core/api)
       db/         repositorio SQLite (drizzle)
       domain/     reglas puras y esquemas de formularios; sin React ni librerías nativas
-  core/       infraestructura compartida: api, config, sesion, storage, db, sync, firebase
+  core/       infraestructura compartida: api, config, sesion, storage, db, sync, archivos, ubicacion, firebase
   ui/         sistema de diseño: tema (unistyles) y primitivas
   assets/     fuentes e imágenes
 ```
@@ -50,6 +50,9 @@ Además, en todo `src`:
 - Íconos: `lucide-react-native`, pero solo a través de `ui/iconos.ts`, que importa cada ícono por su ruta. Metro no elimina código sin usar y el paquete completo suma ~2 MB al bundle; ESLint bloquea importarlo directo. Se dibujan con `Icono` (color del tema).
 - Tema (`ui/tema/tema.ts`): `exito`, `advertencia` y `peligro` son colores de texto que pasan contraste sobre `fondo`; los `*Suave` son fondos. `marca` es el verde de Cilog en ambos temas. Dirección visual en el mockup https://claude.ai/artifact/DHeeTJvpyQEjdpSax84QgP.
 - Los componentes de `ui/` se construyen cuando una pantalla los necesita, no por adelantado.
+- Evidencias (`core/archivos`): la cámara es la del sistema (`react-native-image-picker`, máx. 1.280 px, calidad 0,7, sin guardar en la galería), así que Android no declara `CAMERA`. La firma se dibuja con `react-native-svg` y se guarda como PNG con `react-native-view-shot`; usa los colores `papel`/`tinta` del tema, iguales en claro y oscuro, porque la imagen va a la empresa. Antes de guardar, los archivos pasan de la caché a `documentos/evidencias` (`@dr.pogodin/react-native-fs`); si la transacción falla, se borran. Se borran también al confirmarse en Fluor o al descartarse.
+- Ubicación (`core/ubicacion`): se pide al abrir el formulario y nunca bloquea; sin GPS la operación sale con `latitud`/`longitud` en null.
+- Versiones nativas fijadas exactas (`--save-exact`) en image-picker, geolocation, react-native-fs y view-shot: las más nuevas tenían menos de dos semanas.
 
 ## Estado de la implementación
 
@@ -66,13 +69,14 @@ Además, en todo `src`:
 | Despachos: API, repositorio y casos de uso (vincular, actualizar, descargar, desvincular) | 2 | Hecho, con pruebas. Falta probar contra Fluor |
 | Pantallas de despachos: Mis despachos, Vincular (manual), Despacho, Guía, Envíos y barra de envíos | 2 | Hecho, con pruebas. Sin escáner QR (falta el formato) |
 | Entregar, novedad y terminar despacho: guardado local + cola (`db/gestion.ts`) | 3a | Hecho, con pruebas. Sin envío (Fluor no publica los endpoints); tipos de novedad y configuración de entrega provisionales (ver `docs/contratos-fluor.md`). Fotos, firma y GPS en 3b |
+| Fotos (hasta 4), firma y ubicación de la entrega (`core/archivos`, `core/ubicacion`, `ui/PanelFirma`) | 3b | Hecho, con pruebas. Pantallas según el canvas de diseño (entrega en 3 pasos, novedad con opciones a la vista, diálogo de terminar). Probado en el emulador; falta un teléfono real |
 | Mi cuenta (`features/cuenta`): empresa y cerrar sesión con aviso de envíos pendientes | 2 | Hecho, con pruebas |
 
 ## Sesión y navegación
 
 - `core/sesion` guarda el estado: `iniciando`, `sinSesion`, `activa`. El navegador (`app/navegacion/Navegador.tsx`) muestra las pantallas que corresponden a ese estado; no se navega a mano entre login e inicio.
 - La empresa es **opcional**: el repartidor accede a sus despachos por la asignación (`mas_tenant_despacho`), no por `user_tenant`, y puede tener despachos de varias empresas. Tras el login se entra directo a *Mis despachos*; la pantalla `Empresa` se abre desde *Mi cuenta* solo para ingreso y envíos.
-- Con sesión, el stack es: `MisDespachos` (inicio) → `Despacho` → `Guia` → `Entregar` o `Novedad` (modales; al guardar vuelven a `Despacho`); `VincularDespacho`, `Envios` (desde la barra de envíos), `Cuenta` y `Empresa`. No hay pestañas: la cola se abre desde la barra, que aparece en Mis despachos, Despacho y Guía solo cuando hay algo sin confirmar.
+- Con sesión, el stack es: `MisDespachos` (inicio) → `Despacho` → `Guia` → `Entregar` o `Novedad` (modales). `Entregar` es un asistente de 3 pasos (fotos, quién recibe, firma) y al guardar se reemplaza por `EntregaGuardada`, que lleva a la siguiente guía pendiente; `Novedad` vuelve a `Despacho`. `VincularDespacho`, `Envios` (desde la barra de envíos), `Cuenta` y `Empresa`. No hay pestañas: la cola se abre desde la barra, que aparece en Mis despachos, Despacho y Guía solo cuando hay algo sin confirmar.
 - Al arrancar, el navegador también espera a que la base local abra y la sincronización encienda (`app/providers/useDatosLocales.ts`). Si la base no abre, muestra un error con *Reintentar*.
 - El token vive solo en el llavero (`core/storage/llavero.ts`). El usuario y la empresa elegida van en MMKV, porque no son secretos. El perfil guardado se valida con zod al leerlo; si no cuadra (p. ej. lo guardó otra versión), se descarta y se pide login.
 - `conectarSesionConApi()` corre al cargar `app/App.tsx`, antes de montar nada. Un 401 solo cierra la sesión si la petición llevaba el token actual: una respuesta tardía con un token anterior no tumba un login nuevo.

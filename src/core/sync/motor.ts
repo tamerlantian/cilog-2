@@ -1,3 +1,4 @@
+import {borrarEvidencia} from '@/core/archivos';
 import {escribir, leer} from '@/core/db';
 
 import {clasificarFallo} from './clasificar';
@@ -8,6 +9,7 @@ import {
   pausarUsuario,
   programarReintento,
   siguienteLista,
+  soltarArchivo,
   type Operacion,
 } from './cola';
 import {calcularEspera} from './espera';
@@ -62,9 +64,12 @@ export const crearMotor = ({
         idOperacion: operacion.idOperacion,
         cuerpo: JSON.parse(operacion.cuerpo),
       });
-      await escribir(tx =>
-        marcarConfirmada(tx, operacion.idOperacion, ahora()),
-      );
+      const ruta = await escribir(async tx => {
+        await marcarConfirmada(tx, operacion.idOperacion, ahora());
+        return soltarArchivo(tx, operacion.idOperacion);
+      });
+      // La foto ya está en Fluor: libera espacio en el teléfono.
+      if (ruta) await borrarEvidencia(ruta);
       return true;
     } catch (error) {
       const fallo = clasificarFallo(error);
