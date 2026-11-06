@@ -25,6 +25,8 @@ export type DespachoLocal = typeof despachos.$inferSelect & {
   totalGuias: number;
   /** Entregadas o con novedad, según Fluor o según lo que hizo el conductor. */
   gestionadas: number;
+  /** Las gestionadas con novedad (misma regla que `situacionGuia`). */
+  novedades: number;
   /** Operaciones del despacho que aún no confirma Fluor. */
   porEnviar: number;
 };
@@ -224,6 +226,8 @@ const consultarDespachos = async (
   condicion: SQL | undefined,
 ): Promise<DespachoLocal[]> => {
   const gestionada = sql`(${guias.gestionLocal} IS NOT NULL OR ${guias.estadoEntregado} = 1 OR ${guias.estadoNovedad} = 1)`;
+  // Lo que hizo el conductor manda sobre Fluor, igual que en `situacionGuia`.
+  const conNovedad = sql`(${guias.gestionLocal} = 'novedad' OR (${guias.gestionLocal} IS NULL AND ${guias.estadoEntregado} = 0 AND ${guias.estadoNovedad} = 1))`;
   const filas = await db
     .select({
       despacho: despachos,
@@ -235,6 +239,10 @@ const consultarDespachos = async (
         SELECT count(*) FROM ${guias}
         WHERE ${guias.tenantDespachoId} = ${despachos.tenantDespachoId}
           AND ${guias.retirada} = 0 AND ${gestionada})`,
+      novedades: sql<number>`(
+        SELECT count(*) FROM ${guias}
+        WHERE ${guias.tenantDespachoId} = ${despachos.tenantDespachoId}
+          AND ${guias.retirada} = 0 AND ${conNovedad})`,
       porEnviar: sql<number>`(
         SELECT count(*) FROM ${operaciones}
         WHERE ${operaciones.tenantDespachoId} = ${despachos.tenantDespachoId}
@@ -243,12 +251,15 @@ const consultarDespachos = async (
     .from(despachos)
     .where(condicion)
     .orderBy(desc(despachos.asignadoEn), desc(despachos.tenantDespachoId));
-  return filas.map(({despacho, totalGuias, gestionadas, porEnviar}) => ({
-    ...despacho,
-    totalGuias: Number(totalGuias),
-    gestionadas: Number(gestionadas),
-    porEnviar: Number(porEnviar),
-  }));
+  return filas.map(
+    ({despacho, totalGuias, gestionadas, novedades, porEnviar}) => ({
+      ...despacho,
+      totalGuias: Number(totalGuias),
+      gestionadas: Number(gestionadas),
+      novedades: Number(novedades),
+      porEnviar: Number(porEnviar),
+    }),
+  );
 };
 
 /** Despachos del usuario con su avance, del más reciente al más antiguo. */

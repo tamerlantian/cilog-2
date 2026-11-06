@@ -9,10 +9,19 @@ type Props = {
   /** Lo que lee el lector de pantalla: el botón no tiene texto visible. */
   etiqueta: string;
   onPress: () => void;
-  /** `suave`: círculo de color (llamar, abrir mapa). `plano`: sin fondo (volver, cerrar). */
-  variante?: 'plano' | 'suave';
+  /**
+   * `plano`: sin fondo (volver, cerrar). `suave`: círculo de color (abrir mapa).
+   * `accion`: círculo grande del color de acción (llamar al destinatario).
+   */
+  variante?: 'plano' | 'suave' | 'accion';
   color?: ColorTema;
 };
+
+const COLOR = {
+  plano: 'texto',
+  suave: 'primario',
+  accion: 'sobreAccion',
+} as const satisfies Record<NonNullable<Props['variante']>, ColorTema>;
 
 export function BotonIcono({
   icono,
@@ -30,9 +39,9 @@ export function BotonIcono({
       style={({pressed}) => [styles.base, pressed && styles.presionado]}
       onPress={onPress}>
       <Icono
-        color={color ?? (variante === 'suave' ? 'primario' : 'texto')}
+        color={color ?? COLOR[variante]}
         icono={icono}
-        tamano={variante === 'suave' ? 20 : 24}
+        tamano={variante === 'plano' ? 24 : 20}
       />
     </Pressable>
   );
@@ -53,6 +62,11 @@ const styles = StyleSheet.create(tema => ({
           width: 48,
           height: 48,
           backgroundColor: tema.colores.primarioSuave,
+        },
+        accion: {
+          width: 52,
+          height: 52,
+          backgroundColor: tema.colores.accion,
         },
       },
     },

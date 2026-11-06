@@ -25,6 +25,8 @@ type Props = TextProps & {
   centrado?: boolean;
   /** Cifras de ancho fijo para que columnas de números queden alineadas. */
   numerico?: boolean;
+  /** Fuente monoespaciada para códigos: número de despacho, guía, documento. */
+  mono?: boolean;
 };
 
 export function Texto({
@@ -34,10 +36,19 @@ export function Texto({
   media = false,
   centrado = false,
   numerico = false,
+  mono = false,
   style,
   ...resto
 }: Props) {
-  styles.useVariants({variante, tono, negrita, media, centrado, numerico});
+  styles.useVariants({
+    variante,
+    tono,
+    negrita,
+    media,
+    centrado,
+    numerico,
+    mono,
+  });
   return <Text style={[styles.texto, style]} {...resto} />;
 }
 
@@ -98,6 +109,10 @@ const styles = StyleSheet.create(tema => {
         },
         numerico: {
           true: {fontVariant: ['tabular-nums']},
+          false: {},
+        },
+        mono: {
+          true: {fontFamily: tema.tipografia.familia.mono},
           false: {},
         },
       },

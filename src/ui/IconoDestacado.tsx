@@ -4,7 +4,9 @@ import {StyleSheet} from 'react-native-unistyles';
 import {Icono, type TipoIcono} from './Icono';
 import type {ColorTema} from './tema/tema';
 
-type Tono = 'primario' | 'exito' | 'advertencia' | 'peligro' | 'info';
+/** `accion` siempre va lleno: círculo del color de acción con el ícono encima. */
+type Tono =
+  'primario' | 'accion' | 'exito' | 'advertencia' | 'peligro' | 'info';
 
 type Props = {
   icono: TipoIcono;
@@ -31,7 +33,13 @@ export function IconoDestacado({
       {tamano === 'lg' ? <View style={styles.halo} /> : null}
       <View style={styles.fondo} />
       <Icono
-        color={solido ? 'sobrePrimario' : (tono as ColorTema)}
+        color={
+          tono === 'accion'
+            ? 'sobreAccion'
+            : solido
+              ? 'sobrePrimario'
+              : (tono as ColorTema)
+        }
         grosor={solido ? 2.6 : 1.8}
         icono={icono}
         tamano={tamano === 'lg' ? 46 : 30}
@@ -72,6 +80,7 @@ const styles = StyleSheet.create(tema => ({
     variants: {
       tono: {
         primario: {backgroundColor: tema.colores.primarioSuave},
+        accion: {backgroundColor: tema.colores.accion, opacity: 0.2},
         exito: {backgroundColor: tema.colores.exitoSuave},
         advertencia: {backgroundColor: tema.colores.advertenciaSuave},
         peligro: {backgroundColor: tema.colores.peligroSuave},
@@ -94,6 +103,7 @@ const styles = StyleSheet.create(tema => ({
       },
       tono: {
         primario: {backgroundColor: tema.colores.primarioSuave},
+        accion: {backgroundColor: tema.colores.accion},
         exito: {backgroundColor: tema.colores.exitoSuave},
         advertencia: {backgroundColor: tema.colores.advertenciaSuave},
         peligro: {backgroundColor: tema.colores.peligroSuave},

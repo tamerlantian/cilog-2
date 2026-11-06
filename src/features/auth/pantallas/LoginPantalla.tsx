@@ -116,7 +116,7 @@ export function LoginPantalla() {
             tono="advertencia">
             <Boton
               tamano="compacto"
-              tipo="secundario"
+              tipo="neutro"
               titulo="Reenviar correo de verificación"
               onPress={() =>
                 navigation.navigate('ReenviarVerificacion', {

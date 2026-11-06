@@ -10,7 +10,8 @@ type Props = {
   titulo: string;
   mensaje?: string;
   icono?: TipoIcono;
-  tono?: 'primario' | 'exito' | 'advertencia' | 'peligro' | 'info';
+  /** `accion`: círculo lleno del color de acción (vacío que invita a empezar). */
+  tono?: 'primario' | 'accion' | 'exito' | 'advertencia' | 'peligro' | 'info';
   accion?: {titulo: string; alPresionar: () => void};
 };
 
@@ -20,7 +21,7 @@ export function EstadoVacio({titulo, mensaje, icono, tono, accion}: Props) {
     <View style={styles.contenedor}>
       {icono ? <IconoDestacado icono={icono} tamano="lg" tono={tono} /> : null}
       <View style={styles.textos}>
-        <Texto centrado negrita variante="subtitulo">
+        <Texto centrado style={styles.titulo} variante="titulo">
           {titulo}
         </Texto>
         {mensaje ? (
@@ -30,11 +31,9 @@ export function EstadoVacio({titulo, mensaje, icono, tono, accion}: Props) {
         ) : null}
       </View>
       {accion ? (
-        <Boton
-          tipo="secundario"
-          titulo={accion.titulo}
-          onPress={accion.alPresionar}
-        />
+        <View style={styles.accion}>
+          <Boton titulo={accion.titulo} onPress={accion.alPresionar} />
+        </View>
       ) : null}
     </View>
   );
@@ -49,4 +48,6 @@ const styles = StyleSheet.create(tema => ({
     padding: tema.espaciado.xl,
   },
   textos: {gap: tema.espaciado.sm, maxWidth: 320},
+  titulo: {fontSize: 24, lineHeight: 30, letterSpacing: -0.4},
+  accion: {alignSelf: 'stretch'},
 }));

@@ -44,6 +44,8 @@ export type Escena = {
   advertencia: string;
   advertenciaSuave: string;
   advertenciaBorde: string;
+  /** Relleno de la novedad en barras y gráficos (sin texto encima). */
+  advertenciaRelleno: string;
   peligro: string;
   peligroSuave: string;
   /** Relleno de acciones destructivas. */

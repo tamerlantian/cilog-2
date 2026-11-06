@@ -68,6 +68,7 @@ ui/tema/tema.ts    arma los temas desde PALETA_ACTIVA; espaciado, radios y tipog
 - Roles principales: `suelo` es el fondo de pantalla y `fondo` el de tarjetas, diálogos y campos elevados; `campo`/`bordeCampo` los campos de texto; `primario` es el color de marca para texto, foco, selección y progreso; `accion`/`sobreAccion` el relleno del botón principal; `acento` es decorativo. `exito`, `advertencia`, `peligro` e `info` son texto sobre `suelo` y sobre su `*Suave`.
 - `__tests__/ui/paletas.test.ts` recorre todas las paletas registradas y exige 4.5:1 en los pares de texto y 3:1 en el borde de los campos. Una paleta que no pasa no entra.
 - `papel` y `tinta` (la firma) son fijos en toda paleta (`FIRMA`).
+- Tarjetas destacadas sobre fondo claro (despacho en curso, siguiente entrega): `TarjetaDestacada` de despachos, que es `Escena` de marca con el `suelo` de esa escena.
 - La escena `oscuro` de *Bosque y lima* no está en el canvas: se derivó de la de marca.
 - `ScopedTheme` solo alcanza a los componentes de React Native que procesa el plugin de babel de unistyles. Un fondo puesto en un componente de terceros (p. ej. `SafeAreaView`) no toma la escena: por eso `Pantalla` pinta el fondo en un `View` propio.
 - El fast refresh a veces pierde la escena por zona y la pantalla sale con los colores del tema claro. Para revisar colores hay que reiniciar la app.
@@ -94,7 +95,7 @@ Inter (lectura: 400, 500, 600), Space Grotesk 700 (títulos: variantes `marca`, 
 | Registro, recuperación de clave y reenvío de verificación | 1 | Hecho, con pruebas. Falta probar contra el Fluor desplegado |
 | SQLite, cola y motor de sincronización (`core/db`, `core/sync`) | 2 | Hecho, con pruebas. Sin enviadores aún: Fluor no publica entregar, novedad ni terminar |
 | Despachos: API, repositorio y casos de uso (vincular, actualizar, descargar, desvincular) | 2 | Hecho, con pruebas. Falta probar contra Fluor |
-| Pantallas de despachos: Mis despachos, Vincular (manual), Despacho, Guía, Envíos y barra de envíos | 2 | Hecho, con pruebas. Sin escáner QR (falta el formato) |
+| Pantallas de despachos: Mis despachos, Vincular (manual), Despacho, Guía, Envíos y barra de envíos | 2 | Hecho, con pruebas. Sin escáner QR (falta el formato). Rediseño *Ruta* en Mis despachos (en curso destacado, terminados), Despacho (avance, tarjeta *Siguiente*, paradas en línea de tiempo) y Guía; Vincular y Envíos siguen con el diseño anterior |
 | Entregar, novedad y terminar despacho: guardado local + cola (`db/gestion.ts`) | 3a | Hecho, con pruebas. Sin envío (Fluor no publica los endpoints); tipos de novedad y configuración de entrega provisionales (ver `docs/contratos-fluor.md`). Fotos, firma y GPS en 3b |
 | Fotos (hasta 4), firma y ubicación de la entrega (`core/archivos`, `core/ubicacion`, `ui/PanelFirma`) | 3b | Hecho, con pruebas. Pantallas según el canvas de diseño (entrega en 3 pasos, novedad con opciones a la vista, diálogo de terminar). Probado en el emulador; falta un teléfono real |
 | Mi cuenta (`features/cuenta`): empresa y cerrar sesión con aviso de envíos pendientes | 2 | Hecho, con pruebas |

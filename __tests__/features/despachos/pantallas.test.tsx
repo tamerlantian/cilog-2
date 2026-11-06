@@ -114,12 +114,16 @@ const conDespacho = async () => {
   apiSimulada.listarAsignacionesApi.mockResolvedValue([asignacion]);
   apiSimulada.descargarGuiasApi.mockResolvedValue(descarga(GUIAS));
   await iniciarSesion();
-  return screen.findByText('Despacho 12345');
+  return botonDespacho();
 };
+
+/** La acción de la tarjeta del despacho en curso en Mis despachos. */
+const botonDespacho = () =>
+  screen.findByRole('button', {name: /^(Continuar entregas|Abrir despacho)$/});
 
 const abrirDespacho = async () => {
   await fireEvent.press(await conDespacho());
-  await screen.findByLabelText('Buscar guía, destinatario o dirección');
+  await screen.findByLabelText('Guía, documento o destinatario');
 };
 
 /** Lo que haría el paso 3 al entregar: marca la guía y encola en la misma transacción. */
@@ -192,7 +196,7 @@ describe('pantallas de despachos', () => {
   it('al entrar trae los despachos de Fluor con su avance', async () => {
     await conDespacho();
 
-    expect(screen.getByText('1 de 3')).toBeTruthy();
+    expect(screen.getByText('2 pendientes')).toBeTruthy();
     expect(apiSimulada.descargarGuiasApi).toHaveBeenCalledWith(DESPACHO);
   });
 
@@ -222,7 +226,7 @@ describe('pantallas de despachos', () => {
     await abrirDespacho();
 
     await fireEvent.changeText(
-      screen.getByLabelText('Buscar guía, destinatario o dirección'),
+      screen.getByLabelText('Guía, documento o destinatario'),
       'medellin',
     );
 
@@ -237,9 +241,9 @@ describe('pantallas de despachos', () => {
     );
 
     expect(await screen.findByText('$ 18.000')).toBeTruthy();
-    expect(screen.getByText('12,5 kg')).toBeTruthy();
+    expect(screen.getByText('2 · 12,5 kg')).toBeTruthy();
     expect(
-      screen.getByRole('button', {name: 'Llamar al destinatario'}),
+      screen.getByRole('button', {name: 'Llamar a María Peña'}),
     ).toBeTruthy();
     expect(screen.getByRole('button', {name: 'Entregar'})).toBeTruthy();
     expect(screen.getByRole('button', {name: 'Novedad'})).toBeTruthy();
@@ -249,7 +253,7 @@ describe('pantallas de despachos', () => {
     const abrirGuia = async (nombre: string) => {
       await abrirDespacho();
       await fireEvent.press(screen.getByRole('button', {name: nombre}));
-      await screen.findByRole('button', {name: 'Llamar al destinatario'});
+      await screen.findByRole('button', {name: /^Llamar a /});
     };
 
     const operacionesGuardadas = () =>
@@ -428,7 +432,7 @@ describe('pantallas de despachos', () => {
 
       await fireEvent.press(screen.getByRole('button', {name: 'Cerrar'}));
 
-      await screen.findByRole('button', {name: 'Llamar al destinatario'});
+      await screen.findByRole('button', {name: /^Llamar a /});
       expect(screen.getByRole('button', {name: 'Entregar'})).toBeTruthy();
       expect(await operacionesGuardadas()).toEqual([]);
     });
@@ -470,7 +474,7 @@ describe('pantallas de despachos', () => {
       await fireEvent.press(
         screen.getByRole('button', {name: 'Guía 3, Destinatario 3'}),
       );
-      await screen.findByRole('button', {name: 'Llamar al destinatario'});
+      await screen.findByRole('button', {name: /^Llamar a /});
       expect(screen.queryByRole('button', {name: 'Entregar'})).toBeNull();
     });
 
@@ -500,7 +504,7 @@ describe('pantallas de despachos', () => {
         ]),
       );
       await iniciarSesion();
-      await fireEvent.press(await screen.findByText('Despacho 12345'));
+      await fireEvent.press(await botonDespacho());
 
       await fireEvent.press(
         await screen.findByRole('button', {name: 'Terminar despacho'}),
@@ -673,7 +677,7 @@ describe('pantallas de despachos', () => {
         codigoDespacho: 910,
         token: 'A1B2',
       });
-      expect(screen.getByText('Despacho 12345')).toBeTruthy();
+      expect(screen.getByText('Despacho #12345')).toBeTruthy();
     });
   });
 });

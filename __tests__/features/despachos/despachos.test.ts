@@ -191,14 +191,16 @@ describe('repositorio de despachos', () => {
       guiaFluor(1, {estado_entregado: true}),
       guiaFluor(2),
       guiaFluor(3),
+      guiaFluor(4, {estado_novedad: true}),
     ]);
     await entregarLocal(2);
 
     const [despacho] = await leer(db => leerDespachos(db, USUARIO));
 
     expect(despacho).toMatchObject({
-      totalGuias: 3,
-      gestionadas: 2,
+      totalGuias: 4,
+      gestionadas: 3,
+      novedades: 1,
       porEnviar: 1,
       numero: 12345,
     });

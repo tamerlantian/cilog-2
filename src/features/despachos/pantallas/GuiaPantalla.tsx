@@ -37,13 +37,22 @@ const abrir = (url: string) =>
     mostrarError('No encontramos una app para abrir esto.'),
   );
 
-function Dato({etiqueta, children}: {etiqueta: string; children: ReactNode}) {
+/** Fila etiqueta–valor de la tarjeta de datos. */
+function Dato({
+  etiqueta,
+  children,
+  mono = false,
+}: {
+  etiqueta: string;
+  children: ReactNode;
+  mono?: boolean;
+}) {
   return (
     <View style={styles.dato}>
       <Texto tono="secundario" variante="etiqueta">
         {etiqueta}
       </Texto>
-      <Texto numerico style={styles.valor}>
+      <Texto mono={mono} negrita numerico style={styles.valor}>
         {children}
       </Texto>
     </View>
@@ -86,103 +95,135 @@ export function GuiaPantalla({navigation, route}: Props) {
     : sinDespacho;
   const novedad = despacho ? puedeReportarNovedad(despacho, guia) : sinDespacho;
 
+  const acciones =
+    entrega.permitido || novedad.permitido ? (
+      <>
+        <Texto centrado tono="secundario" variante="etiqueta">
+          Se guarda en el teléfono aunque no haya señal.
+        </Texto>
+        <View style={styles.acciones}>
+          {novedad.permitido ? (
+            <View style={styles.novedad}>
+              <Boton
+                icono={TriangleAlert}
+                tipo="neutro"
+                titulo="Novedad"
+                onPress={() => navigation.navigate('Novedad', route.params)}
+              />
+            </View>
+          ) : null}
+          {entrega.permitido ? (
+            <View style={styles.entregar}>
+              <Boton
+                icono={CircleCheck}
+                titulo="Entregar"
+                onPress={() => navigation.navigate('Entregar', route.params)}
+              />
+            </View>
+          ) : null}
+        </View>
+      </>
+    ) : undefined;
+
+  const datos = [
+    guia.nombreRemitente
+      ? {etiqueta: 'Remitente', valor: guia.nombreRemitente}
+      : null,
+    guia.documentoCliente
+      ? {etiqueta: 'Documento', valor: guia.documentoCliente, mono: true}
+      : null,
+    {
+      etiqueta: 'Unidades · peso',
+      valor: `${numero(guia.unidades)} · ${numero(guia.pesoReal)} kg`,
+    },
+    guia.vrRecaudo > 0
+      ? {etiqueta: 'Recaudo', valor: pesos(guia.vrRecaudo)}
+      : null,
+    guia.vrCobroEntrega > 0
+      ? {etiqueta: 'Cobro en la entrega', valor: pesos(guia.vrCobroEntrega)}
+      : null,
+    guia.requiereCita ? {etiqueta: 'Cita', valor: 'Requiere cita'} : null,
+    guia.fechaEntrega
+      ? {etiqueta: 'Entregada el', valor: fechaCorta(guia.fechaEntrega)}
+      : null,
+  ].filter(dato => dato !== null);
+
   return (
-    <Pantalla
-      desplazable
-      pie={
-        entrega.permitido || novedad.permitido ? (
-          <View style={styles.acciones}>
-            {novedad.permitido ? (
-              <View style={styles.accion}>
-                <Boton
-                  icono={TriangleAlert}
-                  tipo="advertenciaSuave"
-                  titulo="Novedad"
-                  onPress={() => navigation.navigate('Novedad', route.params)}
-                />
-              </View>
-            ) : null}
-            {entrega.permitido ? (
-              <View style={styles.accion}>
-                <Boton
-                  icono={CircleCheck}
-                  titulo="Entregar"
-                  onPress={() => navigation.navigate('Entregar', route.params)}
-                />
-              </View>
-            ) : null}
-          </View>
-        ) : undefined
-      }>
-      <Encabezado
-        alVolver={volver}
-        subtitulo={`Guía ${guia.codigoGuia}`}
-        titulo={destinatario(guia)}
-      />
+    <Pantalla desplazable pie={acciones}>
+      <Encabezado alVolver={volver} titulo={`Guía ${guia.codigoGuia}`} />
       <BarraEnvios sangria={false} />
       <EstadoGuia guia={guia} />
 
-      <Tarjeta>
-        <View style={styles.contacto}>
-          <View style={styles.direccion}>
-            <Texto negrita>{destinatario(guia)}</Texto>
-            {guia.direccionDestinatario ? (
-              <Texto>{guia.direccionDestinatario}</Texto>
-            ) : null}
-            {guia.ciudadDestino ? (
-              <Texto tono="secundario">{guia.ciudadDestino}</Texto>
-            ) : null}
+      <Tarjeta style={styles.tarjeta}>
+        <View style={styles.fila}>
+          <View style={styles.flex}>
+            <Texto tono="secundario" variante="pie">
+              Destinatario
+            </Texto>
+            <Texto style={styles.nombre} variante="titulo">
+              {destinatario(guia)}
+            </Texto>
             {guia.telefonoDestinatario ? (
-              <Texto numerico tono="secundario">
+              <Texto mono tono="secundario" variante="etiqueta">
                 {guia.telefonoDestinatario}
               </Texto>
             ) : null}
           </View>
           {llamar ? (
             <BotonIcono
-              etiqueta="Llamar al destinatario"
+              etiqueta={`Llamar a ${destinatario(guia)}`}
               icono={Phone}
-              variante="suave"
+              variante="accion"
               onPress={() => abrir(llamar)}
             />
           ) : null}
-          {mapa ? (
-            <BotonIcono
-              etiqueta="Abrir en el mapa"
-              icono={MapPin}
-              variante="suave"
-              onPress={() => abrir(mapa)}
-            />
-          ) : null}
         </View>
+        {guia.direccionDestinatario || guia.ciudadDestino ? (
+          <>
+            <View style={styles.separador} />
+            <View style={styles.fila}>
+              <View style={styles.flex}>
+                <Texto tono="secundario" variante="pie">
+                  Dirección
+                </Texto>
+                {guia.direccionDestinatario ? (
+                  <Texto media style={styles.direccion}>
+                    {guia.direccionDestinatario}
+                  </Texto>
+                ) : null}
+                {guia.ciudadDestino ? (
+                  <Texto media style={styles.direccion}>
+                    {guia.ciudadDestino}
+                  </Texto>
+                ) : null}
+              </View>
+              {mapa ? (
+                <BotonIcono
+                  etiqueta="Abrir en el mapa"
+                  icono={MapPin}
+                  variante="suave"
+                  onPress={() => abrir(mapa)}
+                />
+              ) : null}
+            </View>
+          </>
+        ) : null}
       </Tarjeta>
 
-      <Tarjeta>
-        {guia.documentoCliente ? (
-          <Dato etiqueta="Documento">{guia.documentoCliente}</Dato>
-        ) : null}
-        {guia.nombreRemitente ? (
-          <Dato etiqueta="Remitente">{guia.nombreRemitente}</Dato>
-        ) : null}
-        <Dato etiqueta="Unidades">{numero(guia.unidades)}</Dato>
-        <Dato etiqueta="Peso">{numero(guia.pesoReal)} kg</Dato>
-        {guia.vrRecaudo > 0 ? (
-          <Dato etiqueta="Recaudo">{pesos(guia.vrRecaudo)}</Dato>
-        ) : null}
-        {guia.vrCobroEntrega > 0 ? (
-          <Dato etiqueta="Cobro en la entrega">
-            {pesos(guia.vrCobroEntrega)}
-          </Dato>
-        ) : null}
-        {guia.requiereCita ? <Dato etiqueta="Cita">Requiere cita</Dato> : null}
-        {guia.fechaEntrega ? (
-          <Dato etiqueta="Entregada el">{fechaCorta(guia.fechaEntrega)}</Dato>
-        ) : null}
+      <Tarjeta style={styles.datos}>
+        {datos.map((dato, indice) => (
+          <View key={dato.etiqueta}>
+            {indice > 0 ? <View style={styles.separador} /> : null}
+            <Dato etiqueta={dato.etiqueta} mono={dato.mono}>
+              {dato.valor}
+            </Dato>
+          </View>
+        ))}
       </Tarjeta>
 
       {guia.comentario ? (
         <Tarjeta>
-          <Texto tono="secundario" variante="etiqueta">
+          <Texto tono="secundario" variante="pie">
             Comentario
           </Texto>
           <Texto>{guia.comentario}</Texto>
@@ -193,18 +234,21 @@ export function GuiaPantalla({navigation, route}: Props) {
 }
 
 const styles = StyleSheet.create(tema => ({
-  contacto: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tema.espaciado.sm,
-  },
-  direccion: {flex: 1, gap: 2},
+  flex: {flex: 1, gap: 2},
+  tarjeta: {gap: tema.espaciado.md + 2},
+  fila: {flexDirection: 'row', alignItems: 'center', gap: tema.espaciado.md},
+  nombre: {fontSize: 26, lineHeight: 32, letterSpacing: -0.6},
+  direccion: {fontSize: tema.tipografia.tamano.campo, lineHeight: 23},
+  separador: {height: 1, backgroundColor: tema.colores.borde},
+  datos: {gap: 0, paddingVertical: tema.espaciado.xs},
   dato: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: tema.espaciado.md,
+    paddingVertical: tema.espaciado.md - 1,
   },
   valor: {flexShrink: 1, textAlign: 'right'},
-  acciones: {flexDirection: 'row', gap: tema.espaciado.md},
-  accion: {flex: 1},
+  acciones: {flexDirection: 'row', gap: tema.espaciado.sm + 2},
+  novedad: {flex: 1},
+  entregar: {flex: 1.6},
 }));

@@ -30,11 +30,21 @@ import {
   Unlink,
 } from '@/ui';
 
+import {BarraAvance, Leyenda} from '../components/BarraAvance';
 import {BarraEnvios} from '../components/BarraEnvios';
 import {FilaGuia} from '../components/FilaGuia';
-import {nombreDespacho, nombreEmpresa} from '../components/TarjetaDespacho';
+import {SiguienteGuia} from '../components/SiguienteGuia';
+import {
+  codigoDespacho,
+  nombreDespacho,
+  nombreEmpresa,
+} from '../components/TarjetaDespacho';
 import {plural} from '../domain/envios';
-import {puedeTerminar} from '../domain/gestion';
+import {
+  puedeEntregar,
+  puedeReportarNovedad,
+  puedeTerminar,
+} from '../domain/gestion';
 import {
   contarGuias,
   filtrarGuias,
@@ -46,7 +56,10 @@ import {
   useDesvincularDespacho,
 } from '../hooks/useAccionesDespacho';
 import {useDespacho, useGuias} from '../hooks/useDespachos';
-import {useTerminarDespacho} from '../hooks/useGestion';
+import {
+  useConfiguracionEntrega,
+  useTerminarDespacho,
+} from '../hooks/useGestion';
 import type {RutasDespachos} from '../rutas';
 
 type Props = NativeStackScreenProps<RutasDespachos, 'Despacho'>;
@@ -59,6 +72,7 @@ export function DespachoPantalla({navigation, route}: Props) {
   const descargar = useDescargarDespacho(tenantDespachoId);
   const desvincular = useDesvincularDespacho(tenantDespachoId);
   const terminar = useTerminarDespacho(tenantDespachoId);
+  const configuracion = useConfiguracionEntrega();
   const [filtro, setFiltro] = useState<FiltroGuias>('pendientes');
   const [busqueda, setBusqueda] = useState('');
   const [confirmandoTerminar, setConfirmandoTerminar] = useState(false);
@@ -68,6 +82,7 @@ export function DespachoPantalla({navigation, route}: Props) {
     [guias, filtro, busqueda],
   );
   const cuentas = useMemo(() => contarGuias(guias), [guias]);
+  const resumen = useMemo(() => resumenGuias(guias), [guias]);
 
   const volver = () => navigation.goBack();
 
@@ -147,6 +162,15 @@ export function DespachoPantalla({navigation, route}: Props) {
     cuentas.todas > 0 &&
     cuentas.pendientes === 0;
 
+  // La próxima parada sale de la lista y va arriba, con sus acciones a la mano.
+  const siguiente =
+    filtro === 'pendientes' && busqueda === '' && !terminado
+      ? visibles[0]
+      : undefined;
+  const lista = siguiente ? visibles.slice(1) : visibles;
+  const irAGuia = (codigoGuia: number) =>
+    navigation.navigate('Guia', {tenantDespachoId, codigoGuia});
+
   const cabecera = (
     <View style={styles.cabecera}>
       {terminado ? (
@@ -188,9 +212,49 @@ export function DespachoPantalla({navigation, route}: Props) {
       ) : null}
       <Buscador
         alCambiar={setBusqueda}
-        etiqueta="Buscar guía, destinatario o dirección"
+        etiqueta="Guía, documento o destinatario"
         valor={busqueda}
       />
+      <View style={styles.resumen}>
+        <View style={styles.filaResumen}>
+          <Texto negrita numerico>
+            {plural(resumen.pendientes, 'pendiente', 'pendientes')}
+          </Texto>
+          <Leyenda
+            entregadas={resumen.entregadas}
+            novedades={resumen.novedades}
+          />
+        </View>
+        <BarraAvance
+          entregadas={resumen.entregadas}
+          novedades={resumen.novedades}
+          total={cuentas.todas}
+        />
+      </View>
+      {siguiente ? (
+        <SiguienteGuia
+          alAbrir={() => irAGuia(siguiente.codigoGuia)}
+          alEntregar={
+            puedeEntregar(despacho, siguiente, configuracion).permitido
+              ? () =>
+                  navigation.navigate('Entregar', {
+                    tenantDespachoId,
+                    codigoGuia: siguiente.codigoGuia,
+                  })
+              : undefined
+          }
+          alReportarNovedad={
+            puedeReportarNovedad(despacho, siguiente).permitido
+              ? () =>
+                  navigation.navigate('Novedad', {
+                    tenantDespachoId,
+                    codigoGuia: siguiente.codigoGuia,
+                  })
+              : undefined
+          }
+          guia={siguiente}
+        />
+      ) : null}
       <Segmentos
         alCambiar={setFiltro}
         opciones={[
@@ -210,8 +274,6 @@ export function DespachoPantalla({navigation, route}: Props) {
       />
     </View>
   );
-
-  const resumen = resumenGuias(guias);
 
   const pie = despacho.liberado ? undefined : (
     <View style={styles.pieLista}>
@@ -244,7 +306,7 @@ export function DespachoPantalla({navigation, route}: Props) {
         }
         alVolver={volver}
         subtitulo={nombreEmpresa(despacho)}
-        titulo={nombreDespacho(despacho)}
+        titulo={`Despacho ${codigoDespacho(despacho)}`}
       />
       <BarraEnvios />
       {sinDescargar ? (
@@ -257,25 +319,27 @@ export function DespachoPantalla({navigation, route}: Props) {
       ) : (
         <FlatList
           contentContainerStyle={styles.lista}
-          data={visibles}
+          data={lista}
           keyboardShouldPersistTaps="handled"
           keyExtractor={guia => String(guia.codigoGuia)}
           ListEmptyComponent={
-            <EstadoVacio
-              icono={Search}
-              mensaje={
-                busqueda
-                  ? 'Prueba con otro nombre, número o dirección.'
-                  : undefined
-              }
-              titulo={
-                busqueda
-                  ? 'Ninguna guía coincide'
-                  : filtro === 'pendientes'
-                    ? 'No quedan guías pendientes'
-                    : 'Sin guías aquí'
-              }
-            />
+            siguiente ? undefined : (
+              <EstadoVacio
+                icono={Search}
+                mensaje={
+                  busqueda
+                    ? 'Prueba con otro nombre, número o dirección.'
+                    : undefined
+                }
+                titulo={
+                  busqueda
+                    ? 'Ninguna guía coincide'
+                    : filtro === 'pendientes'
+                      ? 'No quedan guías pendientes'
+                      : 'Sin guías aquí'
+                }
+              />
+            )
           }
           ListFooterComponent={pie}
           ListHeaderComponent={cabecera}
@@ -289,12 +353,7 @@ export function DespachoPantalla({navigation, route}: Props) {
           }
           renderItem={({item}) => (
             <FilaGuia
-              alPresionar={() =>
-                navigation.navigate('Guia', {
-                  tenantDespachoId,
-                  codigoGuia: item.codigoGuia,
-                })
-              }
+              alPresionar={() => irAGuia(item.codigoGuia)}
               guia={item}
             />
           )}
@@ -321,7 +380,7 @@ export function DespachoPantalla({navigation, route}: Props) {
         mensaje="Ya gestionaste todas las guías. Después no podrás registrar más entregas en él."
         titulo={`¿Terminar el ${nombreDespacho(despacho).toLowerCase()}?`}
         visible={confirmandoTerminar}>
-        <View style={styles.resumen}>
+        <View style={styles.cifras}>
           <View style={[styles.cifra, styles.cifraExito]}>
             <Texto negrita numerico tono="exito" variante="subtitulo">
               {resumen.entregadas}
@@ -353,14 +412,22 @@ export function DespachoPantalla({navigation, route}: Props) {
 }
 
 const styles = StyleSheet.create(tema => ({
-  cabecera: {gap: tema.espaciado.md, paddingBottom: tema.espaciado.xs},
+  cabecera: {gap: tema.espaciado.md + 2, paddingBottom: tema.espaciado.md},
   lista: {
     flexGrow: 1,
-    gap: tema.espaciado.md,
-    padding: tema.espaciado.lg,
+    paddingHorizontal: tema.espaciado.lg,
+    paddingTop: tema.espaciado.xs,
+    paddingBottom: tema.espaciado.lg,
+  },
+  resumen: {gap: tema.espaciado.sm, paddingHorizontal: tema.espaciado.xs},
+  filaResumen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tema.espaciado.sm,
   },
   pieLista: {gap: tema.espaciado.xs, paddingTop: tema.espaciado.lg},
-  resumen: {flexDirection: 'row', gap: tema.espaciado.sm},
+  cifras: {flexDirection: 'row', gap: tema.espaciado.sm},
   cifra: {
     flex: 1,
     alignItems: 'center',

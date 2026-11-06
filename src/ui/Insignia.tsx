@@ -6,7 +6,13 @@ import type {ColorTema} from './tema/tema';
 import {Texto} from './Texto';
 
 type Tono =
-  'neutro' | 'primario' | 'exito' | 'advertencia' | 'peligro' | 'info';
+  | 'neutro'
+  | 'primario'
+  | 'accion'
+  | 'exito'
+  | 'advertencia'
+  | 'peligro'
+  | 'info';
 
 type Props = {
   texto: string;
@@ -17,6 +23,7 @@ type Props = {
 const COLOR: Record<Tono, ColorTema> = {
   neutro: 'textoSecundario',
   primario: 'primario',
+  accion: 'sobreAccion',
   exito: 'exito',
   advertencia: 'advertencia',
   peligro: 'peligro',
@@ -49,6 +56,7 @@ const styles = StyleSheet.create(tema => ({
       tono: {
         neutro: {backgroundColor: tema.colores.superficie},
         primario: {backgroundColor: tema.colores.primarioSuave},
+        accion: {backgroundColor: tema.colores.accion},
         exito: {backgroundColor: tema.colores.exitoSuave},
         advertencia: {backgroundColor: tema.colores.advertenciaSuave},
         peligro: {backgroundColor: tema.colores.peligroSuave},
@@ -61,6 +69,7 @@ const styles = StyleSheet.create(tema => ({
       tono: {
         neutro: {color: tema.colores.textoSecundario},
         primario: {color: tema.colores.primario},
+        accion: {color: tema.colores.sobreAccion},
         exito: {color: tema.colores.exito},
         advertencia: {color: tema.colores.advertencia},
         peligro: {color: tema.colores.peligro},

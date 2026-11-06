@@ -6,9 +6,11 @@ import type {ColorTema} from './tema/tema';
 import {Texto} from './Texto';
 
 /** `advertenciaSuave`: acción de aviso que no es la principal (reportar novedad). */
+/** `neutro`: acción de igual peso que la principal pero sin color (novedad junto a entregar). */
 type Tipo =
   | 'primario'
   | 'secundario'
+  | 'neutro'
   | 'advertencia'
   | 'advertenciaSuave'
   | 'peligro'
@@ -31,6 +33,7 @@ const COLOR_CONTENIDO: Record<Tipo, ColorTema> = {
   advertenciaSuave: 'advertencia',
   peligro: 'sobrePrimario',
   secundario: 'primario',
+  neutro: 'texto',
   texto: 'primario',
 };
 
@@ -47,7 +50,8 @@ export function Boton({
 }: Props) {
   const {theme} = useUnistyles();
   const inactivo = Boolean(disabled) || cargando;
-  const relleno = tipo !== 'secundario' && tipo !== 'texto';
+  const relleno =
+    tipo !== 'secundario' && tipo !== 'neutro' && tipo !== 'texto';
   styles.useVariants({tipo, tamano, inactivo: inactivo && relleno});
   const colorContenido: ColorTema =
     inactivo && relleno ? 'sobreDeshabilitado' : COLOR_CONTENIDO[tipo];
@@ -108,6 +112,11 @@ const styles = StyleSheet.create(tema => ({
           backgroundColor: 'transparent',
           borderColor: tema.colores.primario,
         },
+        neutro: {
+          backgroundColor: tema.colores.campo,
+          borderColor: tema.colores.bordeCampo,
+          borderWidth: 1,
+        },
         advertencia: {
           backgroundColor: tema.colores.advertencia,
           borderColor: tema.colores.advertencia,
@@ -142,6 +151,7 @@ const styles = StyleSheet.create(tema => ({
       tipo: {
         primario: {color: tema.colores.sobreAccion},
         secundario: {color: tema.colores.primario},
+        neutro: {color: tema.colores.texto},
         advertencia: {color: tema.colores.sobrePrimario},
         advertenciaSuave: {color: tema.colores.advertencia},
         peligro: {color: tema.colores.sobrePrimario},

@@ -1,5 +1,5 @@
-import {useEffect} from 'react';
-import {FlatList, RefreshControl, View} from 'react-native';
+import {useEffect, useMemo} from 'react';
+import {RefreshControl, SectionList, View} from 'react-native';
 import {StyleSheet, useUnistyles} from 'react-native-unistyles';
 
 import {mensajeUsuario} from '@/core/api';
@@ -18,11 +18,23 @@ import {
 } from '@/ui';
 
 import {BarraEnvios} from '../components/BarraEnvios';
-import {TarjetaDespacho} from '../components/TarjetaDespacho';
+import {EtiquetaSeccion} from '../components/EtiquetaSeccion';
+import {
+  DespachoDestacado,
+  FilaDespachoTerminado,
+  TarjetaDespacho,
+} from '../components/TarjetaDespacho';
+import type {DespachoLocal} from '../db/repositorio';
 import {useActualizarDespachos} from '../hooks/useAccionesDespacho';
 import {useDespachos} from '../hooks/useDespachos';
 import {useEscucharCola} from '../hooks/local';
 import {useNavegacionDespachos} from '../hooks/useNavegacionDespachos';
+
+type Seccion = {
+  clave: 'enCurso' | 'terminados';
+  titulo: string;
+  data: DespachoLocal[];
+};
 
 /** Pantalla principal: los despachos guardados en el teléfono, sirve sin señal. */
 export function MisDespachosPantalla() {
@@ -39,31 +51,21 @@ export function MisDespachosPantalla() {
     actualizarAhora();
   }, [actualizarAhora]);
 
-  const vincular = () => navegacion.navigate('VincularDespacho');
+  const secciones = useMemo<Seccion[]>(() => {
+    const lista = despachos ?? [];
+    const enCurso = lista.filter(d => d.terminadoEn === null);
+    const terminados = lista.filter(d => d.terminadoEn !== null);
+    return [
+      {clave: 'enCurso' as const, titulo: 'En curso', data: enCurso},
+      {clave: 'terminados' as const, titulo: 'Terminados', data: terminados},
+    ].filter(seccion => seccion.data.length > 0);
+  }, [despachos]);
 
-  const encabezado = (
-    <View style={styles.encabezado}>
-      <View style={styles.titulo}>
-        <Texto negrita variante="titulo">
-          Mis despachos
-        </Texto>
-        <BotonIcono
-          etiqueta="Mi cuenta"
-          icono={UserRound}
-          variante="suave"
-          onPress={() => navegacion.navigate('Cuenta')}
-        />
-      </View>
-      {actualizar.error ? (
-        <Aviso
-          icono={CloudOff}
-          mensaje={`${mensajeUsuario(actualizar.error)} Lo que ves es lo guardado en el teléfono.`}
-          titulo="No pudimos actualizar"
-          tono="advertencia"
-        />
-      ) : null}
-    </View>
-  );
+  const vincular = () => navegacion.navigate('VincularDespacho');
+  const abrir = (despacho: DespachoLocal) =>
+    navegacion.navigate('Despacho', {
+      tenantDespachoId: despacho.tenantDespachoId,
+    });
 
   if (isPending) {
     return (
@@ -73,46 +75,82 @@ export function MisDespachosPantalla() {
     );
   }
 
+  const vacio = secciones.length === 0;
+
   return (
     <Pantalla
       pie={
-        <Boton icono={Plus} titulo="Vincular despacho" onPress={vincular} />
+        vacio ? undefined : (
+          <Boton
+            icono={Plus}
+            tipo="neutro"
+            titulo="Vincular despacho"
+            onPress={vincular}
+          />
+        )
       }>
-      {encabezado}
+      <View style={styles.encabezado}>
+        <View style={styles.titulo}>
+          <Texto variante="display">Mis despachos</Texto>
+          <BotonIcono
+            etiqueta="Mi cuenta"
+            icono={UserRound}
+            variante="suave"
+            onPress={() => navegacion.navigate('Cuenta')}
+          />
+        </View>
+        {actualizar.error ? (
+          <Aviso
+            icono={CloudOff}
+            mensaje={`${mensajeUsuario(actualizar.error)} Lo que ves es lo guardado en el teléfono.`}
+            titulo="No pudimos actualizar"
+            tono="advertencia"
+          />
+        ) : null}
+      </View>
       <BarraEnvios />
-      <FlatList
+      <SectionList
         contentContainerStyle={styles.lista}
-        data={despachos ?? []}
         keyExtractor={despacho => String(despacho.tenantDespachoId)}
         ListEmptyComponent={
           actualizar.isPending ? (
             <Cargando mensaje="Buscando tus despachos…" />
           ) : (
             <EstadoVacio
+              accion={{titulo: 'Vincular despacho', alPresionar: vincular}}
               icono={Truck}
-              mensaje="Vincula un despacho con el operador, el número y el token que te dio la empresa."
+              mensaje="Cuando el despachador te asigne uno, vincúlalo con los datos del manifiesto."
               titulo="Aún no tienes despachos"
+              tono="accion"
             />
           )
         }
         refreshControl={
           <RefreshControl
             colors={[theme.colores.primario]}
-            refreshing={actualizar.isPending && (despachos?.length ?? 0) > 0}
+            refreshing={actualizar.isPending && !vacio}
             tintColor={theme.colores.primario}
             onRefresh={() => actualizarAhora()}
           />
         }
-        renderItem={({item}) => (
-          <TarjetaDespacho
-            alPresionar={() =>
-              navegacion.navigate('Despacho', {
-                tenantDespachoId: item.tenantDespachoId,
-              })
-            }
-            despacho={item}
-          />
+        renderItem={({item, index, section}) => {
+          const props = {despacho: item, alPresionar: () => abrir(item)};
+          if (section.clave === 'terminados') {
+            return <FilaDespachoTerminado {...props} />;
+          }
+          return index === 0 ? (
+            <DespachoDestacado {...props} />
+          ) : (
+            <TarjetaDespacho {...props} />
+          );
+        }}
+        renderSectionHeader={({section}) => (
+          <View style={styles.seccion}>
+            <EtiquetaSeccion texto={section.titulo} />
+          </View>
         )}
+        sections={secciones}
+        stickySectionHeadersEnabled={false}
       />
     </Pantalla>
   );
@@ -121,9 +159,9 @@ export function MisDespachosPantalla() {
 const styles = StyleSheet.create(tema => ({
   encabezado: {
     gap: tema.espaciado.md,
-    paddingHorizontal: tema.espaciado.lg,
-    paddingTop: tema.espaciado.lg,
-    paddingBottom: tema.espaciado.md,
+    paddingHorizontal: tema.espaciado.lg + 4,
+    paddingTop: tema.espaciado.xl,
+    paddingBottom: tema.espaciado.xs,
   },
   titulo: {
     flexDirection: 'row',
@@ -132,7 +170,12 @@ const styles = StyleSheet.create(tema => ({
   },
   lista: {
     flexGrow: 1,
-    gap: tema.espaciado.md,
-    padding: tema.espaciado.lg,
+    gap: tema.espaciado.sm + 2,
+    paddingHorizontal: tema.espaciado.lg,
+    paddingBottom: tema.espaciado.lg,
+  },
+  seccion: {
+    paddingHorizontal: tema.espaciado.xs,
+    paddingTop: tema.espaciado.md,
   },
 }));
