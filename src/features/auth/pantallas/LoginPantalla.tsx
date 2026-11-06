@@ -6,17 +6,19 @@ import {StyleSheet} from 'react-native-unistyles';
 
 import {useSesion} from '@/core/sesion';
 import {
+  ArrowRight,
   Aviso,
   Boton,
   Input,
   Marca,
   mostrarInfo,
-  Pantalla,
   PROPS_CORREO,
   Texto,
   Mail,
 } from '@/ui';
 
+import {IlustracionRuta} from '../components/IlustracionRuta';
+import {PantallaAcceso} from '../components/PantallaAcceso';
 import {
   esquemaFormularioLogin,
   type FormularioLogin,
@@ -45,21 +47,17 @@ export function LoginPantalla() {
   const correoEscrito = () => getValues('email').trim();
 
   return (
-    <Pantalla
-      bordes={['top', 'left', 'right']}
-      desplazable
-      estiloContenido={styles.contenido}
-      fondo="marca">
-      <View style={styles.marca}>
-        <Marca />
-        <Texto tono="sobreMarcaSecundario" variante="subtitulo">
-          Tus entregas del día, en orden.
-        </Texto>
+    <PantallaAcceso desplazable estiloContenido={styles.contenido}>
+      <View style={styles.portada}>
+        <IlustracionRuta />
+        <View style={styles.marca}>
+          <Marca />
+        </View>
       </View>
 
-      <View style={styles.hoja}>
-        <Texto negrita variante="subtitulo">
-          Inicia sesión
+      <View style={styles.formulario}>
+        <Texto style={styles.lema} tono="secundario">
+          Tus entregas del día, en orden.
         </Texto>
         <Controller
           control={control}
@@ -129,7 +127,13 @@ export function LoginPantalla() {
           </Aviso>
         ) : null}
 
-        <Boton cargando={isPending} titulo="Iniciar sesión" onPress={enviar} />
+        <Boton
+          cargando={isPending}
+          icono={ArrowRight}
+          posicionIcono="fin"
+          titulo="Iniciar sesión"
+          onPress={enviar}
+        />
 
         <View style={styles.registro}>
           <Texto tono="secundario">¿Eres nuevo?</Texto>
@@ -141,27 +145,29 @@ export function LoginPantalla() {
           />
         </View>
       </View>
-    </Pantalla>
+    </PantallaAcceso>
   );
 }
 
-const styles = StyleSheet.create((tema, rt) => ({
+const styles = StyleSheet.create(tema => ({
   contenido: {padding: 0, gap: 0},
+  portada: {height: IlustracionRuta.alto, justifyContent: 'flex-end'},
   marca: {
-    gap: tema.espaciado.sm,
-    paddingHorizontal: tema.espaciado.xl + 4,
-    paddingTop: tema.espaciado.xxl + tema.espaciado.lg,
-    paddingBottom: tema.espaciado.xxl,
+    position: 'absolute',
+    left: tema.espaciado.xl + 4,
+    bottom: 0,
   },
-  hoja: {
+  formulario: {
     flexGrow: 1,
     gap: tema.espaciado.lg + 2,
-    backgroundColor: tema.colores.fondo,
-    borderTopLeftRadius: tema.radio.xl + 4,
-    borderTopRightRadius: tema.radio.xl + 4,
-    paddingHorizontal: tema.espaciado.xl,
-    paddingTop: tema.espaciado.xxl,
-    paddingBottom: tema.espaciado.xl + rt.insets.bottom,
+    paddingHorizontal: tema.espaciado.xl + 4,
+    paddingTop: tema.espaciado.sm,
+    paddingBottom: tema.espaciado.xl,
+  },
+  lema: {
+    fontSize: tema.tipografia.tamano.campo,
+    lineHeight: 24,
+    marginBottom: tema.espaciado.sm + 2,
   },
   olvido: {alignItems: 'flex-end'},
   registro: {

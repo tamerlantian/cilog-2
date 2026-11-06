@@ -6,11 +6,11 @@ import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {
+  ArrowRight,
   Boton,
   Encabezado,
   IconoDestacado,
   Input,
-  Pantalla,
   PROPS_CORREO,
   Texto,
   type TipoIcono,
@@ -19,6 +19,7 @@ import {
 } from '@/ui';
 
 import {CorreoEnviado} from '../components/CorreoEnviado';
+import {PantallaAcceso} from '../components/PantallaAcceso';
 import {
   esquemaFormularioCorreo,
   type FormularioCorreo,
@@ -102,12 +103,18 @@ function SolicitarCorreo({
   }
 
   return (
-    <Pantalla
+    <PantallaAcceso
       desplazable
       estiloContenido={styles.contenido}
       pie={
         <>
-          <Boton cargando={isPending} titulo={textos.boton} onPress={enviar} />
+          <Boton
+            cargando={isPending}
+            icono={ArrowRight}
+            posicionIcono="fin"
+            titulo={textos.boton}
+            onPress={enviar}
+          />
           <Boton
             tamano="compacto"
             tipo="texto"
@@ -142,7 +149,7 @@ function SolicitarCorreo({
           )}
         />
       </View>
-    </Pantalla>
+    </PantallaAcceso>
   );
 }
 

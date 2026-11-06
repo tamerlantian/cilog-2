@@ -7,14 +7,13 @@ import {
   Icono,
   IconoDestacado,
   mostrarExito,
-  Pantalla,
   Texto,
-  Check,
   Info,
   Mail,
 } from '@/ui';
 
 import {formatoMinutos, useCuentaRegresiva} from '../hooks/useCuentaRegresiva';
+import {PantallaAcceso} from './PantallaAcceso';
 
 /** Fluor permite un reenvío por minuto; esperar evita un "Demasiados intentos". */
 const ESPERA_REENVIO_SEGUNDOS = 60;
@@ -47,7 +46,7 @@ export function CorreoEnviado({
   };
 
   return (
-    <Pantalla
+    <PantallaAcceso
       estiloContenido={styles.contenido}
       pie={
         <>
@@ -66,7 +65,7 @@ export function CorreoEnviado({
           />
         </>
       }>
-      <IconoDestacado icono={Mail} insignia={Check} tamano="lg" />
+      <IconoDestacado icono={Mail} solido tamano="lg" />
       <View style={styles.textos}>
         <Texto centrado negrita variante="titulo">
           Revisa tu correo
@@ -81,7 +80,7 @@ export function CorreoEnviado({
           ¿No aparece? Revisa la carpeta de spam.
         </Texto>
       </View>
-    </Pantalla>
+    </PantallaAcceso>
   );
 }
 

@@ -5,16 +5,17 @@ import {type TextInput, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {
+  ArrowRight,
   Boton,
   Encabezado,
   Input,
-  Pantalla,
   PROPS_CORREO,
   Requisito,
   Texto,
 } from '@/ui';
 
 import {CorreoEnviado} from '../components/CorreoEnviado';
+import {PantallaAcceso} from '../components/PantallaAcceso';
 import {
   esquemaFormularioRegistro,
   LARGO_MINIMO_CLAVE,
@@ -136,13 +137,15 @@ export function RegistroPantalla() {
   };
 
   return (
-    <Pantalla
+    <PantallaAcceso
       desplazable
       estiloContenido={styles.contenido}
       pie={
         <>
           <Boton
             cargando={registro.isPending}
+            icono={ArrowRight}
+            posicionIcono="fin"
             titulo="Crear cuenta"
             onPress={enviar}
           />
@@ -183,7 +186,7 @@ export function RegistroPantalla() {
         </View>
         {campo('confirmarClave')}
       </View>
-    </Pantalla>
+    </PantallaAcceso>
   );
 }
 
