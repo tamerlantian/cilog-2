@@ -49,7 +49,10 @@ export function PasoFirma({
   return (
     <View style={styles.paso}>
       <View style={styles.titulo}>
-        <Texto accessibilityRole="header" negrita variante="subtitulo">
+        <Texto
+          accessibilityRole="header"
+          style={styles.encabezado}
+          variante="titulo">
           Firma de quien recibe
         </Texto>
         <Boton
@@ -91,7 +94,9 @@ export function PasoFirma({
             icono={MapPin}
             tamano={18}
           />
-          <Texto tono={conUbicacion ? 'exito' : 'secundario'}>
+          <Texto
+            tono={conUbicacion ? 'exito' : 'secundario'}
+            variante="etiqueta">
             {conUbicacion
               ? 'Ubicación registrada'
               : 'Sin ubicación: se guarda igual'}
@@ -99,7 +104,7 @@ export function PasoFirma({
         </View>
         <View style={styles.dato}>
           <Icono color="textoSecundario" icono={Camera} tamano={18} />
-          <Texto numerico tono="secundario">
+          <Texto numerico tono="secundario" variante="etiqueta">
             {resumen}
           </Texto>
         </View>
@@ -123,14 +128,15 @@ const styles = StyleSheet.create(tema => ({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  encabezado: {flex: 1, fontSize: 26, lineHeight: 32, letterSpacing: -0.6},
   lienzo: {height: 230},
   firma: {
     flex: 1,
     borderRadius: tema.radio.lg,
-    borderWidth: 1.5,
-    borderColor: tema.colores.borde,
+    borderWidth: 1,
+    borderColor: tema.colores.bordeCampo,
     backgroundColor: tema.colores.papel,
   },
-  resumen: {gap: tema.espaciado.sm},
+  resumen: {gap: tema.espaciado.xs + 2},
   dato: {flexDirection: 'row', alignItems: 'center', gap: tema.espaciado.sm},
 }));

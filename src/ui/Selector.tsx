@@ -133,7 +133,10 @@ export function Selector({
             <SafeAreaView edges={['bottom']} style={styles.hoja}>
               <View style={styles.agarradera} />
               <View style={styles.cabeceraHoja}>
-                <Texto accessibilityRole="header" negrita variante="subtitulo">
+                <Texto
+                  accessibilityRole="header"
+                  style={styles.pregunta}
+                  variante="titulo">
                   {pregunta}
                 </Texto>
                 {buscable ? (
@@ -153,7 +156,7 @@ export function Selector({
                   if (!item.opcion) {
                     return (
                       <Texto
-                        negrita
+                        mono
                         style={styles.seccion}
                         tono="secundario"
                         variante="pie">
@@ -264,6 +267,7 @@ const styles = StyleSheet.create(tema => ({
     paddingTop: tema.espaciado.md,
     paddingBottom: tema.espaciado.lg,
   },
+  pregunta: {fontSize: 22, lineHeight: 28, letterSpacing: -0.4},
   seccion: {
     paddingHorizontal: tema.espaciado.md,
     paddingTop: tema.espaciado.md,

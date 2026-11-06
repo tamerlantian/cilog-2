@@ -57,10 +57,8 @@ export function NovedadPantalla({navigation, route}: Props) {
   const encabezado = (
     <Encabezado
       alVolver={() => navigation.goBack()}
-      subtitulo={
-        guia
-          ? `Guía ${codigoGuia} · ${destinatario(guia)}`
-          : `Guía ${codigoGuia}`
+      detalle={
+        guia ? `${codigoGuia} · ${destinatario(guia)}` : String(codigoGuia)
       }
       tipoVolver="cerrar"
       titulo="Reportar novedad"
@@ -159,7 +157,7 @@ export function NovedadPantalla({navigation, route}: Props) {
         />
         {configuracion.entregaConNovedad ? null : (
           <View style={styles.nota}>
-            <Icono color="textoSecundario" icono={Info} tamano={18} />
+            <Icono color="textoSecundario" icono={Info} tamano={16} />
             <Texto
               style={styles.textoNota}
               tono="secundario"
@@ -175,12 +173,6 @@ export function NovedadPantalla({navigation, route}: Props) {
 
 const styles = StyleSheet.create(tema => ({
   cuerpo: {gap: tema.espaciado.lg, paddingHorizontal: tema.espaciado.xs},
-  nota: {
-    flexDirection: 'row',
-    gap: tema.espaciado.sm + 2,
-    padding: tema.espaciado.md,
-    borderRadius: tema.radio.md - 2,
-    backgroundColor: tema.colores.superficie,
-  },
+  nota: {flexDirection: 'row', gap: tema.espaciado.sm},
   textoNota: {flex: 1},
 }));

@@ -48,7 +48,10 @@ export function Dialogo({
         <View accessibilityViewIsModal style={styles.tarjeta}>
           {icono ? <IconoDestacado icono={icono} /> : null}
           <View style={styles.textos}>
-            <Texto accessibilityRole="header" negrita variante="subtitulo">
+            <Texto
+              accessibilityRole="header"
+              style={styles.titulo}
+              variante="titulo">
               {titulo}
             </Texto>
             {mensaje ? <Texto tono="secundario">{mensaje}</Texto> : null}
@@ -67,6 +70,7 @@ const styles = StyleSheet.create(tema => ({
     justifyContent: 'center',
     padding: tema.espaciado.lg + 4,
   },
+  titulo: {fontSize: 26, lineHeight: 32, letterSpacing: -0.6},
   velo: {
     position: 'absolute',
     top: 0,

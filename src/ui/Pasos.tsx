@@ -33,10 +33,10 @@ export function Pasos({pasos, actual}: Props) {
 
 const styles = StyleSheet.create(tema => ({
   contenedor: {gap: tema.espaciado.sm, paddingHorizontal: tema.espaciado.md},
-  barras: {flexDirection: 'row', gap: tema.espaciado.xs + 2},
+  barras: {flexDirection: 'row', gap: tema.espaciado.xs},
   barra: {
     flex: 1,
-    height: 5,
+    height: 6,
     borderRadius: tema.radio.pill,
     backgroundColor: tema.colores.borde,
   },

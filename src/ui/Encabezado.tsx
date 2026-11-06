@@ -11,7 +11,10 @@ type Props = {
   /** `cerrar` para flujos que se abandonan (entrega, novedad); `volver` para navegar atrás. */
   tipoVolver?: 'volver' | 'cerrar';
   titulo?: string;
+  /** Línea pequeña sobre el título (empresa, contexto). */
   subtitulo?: string;
+  /** Código bajo el título, en mono ("777001 · $ 18.000 por cobrar"). */
+  detalle?: string;
   accion?: ReactNode;
 };
 
@@ -21,6 +24,7 @@ export function Encabezado({
   tipoVolver = 'volver',
   titulo,
   subtitulo,
+  detalle,
   accion,
 }: Props) {
   return (
@@ -39,8 +43,13 @@ export function Encabezado({
           </Texto>
         ) : null}
         {titulo ? (
-          <Texto negrita numberOfLines={1}>
+          <Texto negrita numberOfLines={1} style={styles.titulo}>
             {titulo}
+          </Texto>
+        ) : null}
+        {detalle ? (
+          <Texto mono numberOfLines={1} tono="secundario" variante="pie">
+            {detalle}
           </Texto>
         ) : null}
       </View>
@@ -57,5 +66,6 @@ const styles = StyleSheet.create(tema => ({
     minHeight: 52,
     paddingHorizontal: tema.espaciado.md,
   },
-  textos: {flex: 1},
+  textos: {flex: 1, gap: 1},
+  titulo: {fontSize: tema.tipografia.tamano.campo},
 }));

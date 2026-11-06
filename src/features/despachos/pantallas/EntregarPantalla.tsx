@@ -7,6 +7,7 @@ import {StyleSheet} from 'react-native-unistyles';
 
 import {mensajeUsuario} from '@/core/api';
 import {
+  ArrowRight,
   Boton,
   Cargando,
   Check,
@@ -232,20 +233,30 @@ export function EntregarPantalla({navigation, route}: Props) {
 
   const pie =
     paso === FOTOS ? (
-      <Boton titulo="Siguiente" onPress={siguiente} />
+      <Boton
+        icono={ArrowRight}
+        posicionIcono="fin"
+        titulo="Siguiente"
+        onPress={siguiente}
+      />
     ) : (
       <View style={styles.acciones}>
         <View style={styles.atras}>
           <Boton
             disabled={entregar.isPending}
-            tipo="secundario"
+            tipo="neutro"
             titulo="Atrás"
             onPress={atras}
           />
         </View>
         <View style={styles.adelante}>
           {paso === RECIBE ? (
-            <Boton titulo="Siguiente" onPress={siguiente} />
+            <Boton
+              icono={ArrowRight}
+              posicionIcono="fin"
+              titulo="Siguiente"
+              onPress={siguiente}
+            />
           ) : (
             <Boton
               cargando={entregar.isPending}
@@ -266,10 +277,10 @@ export function EntregarPantalla({navigation, route}: Props) {
       pie={pie}>
       <Encabezado
         alVolver={cerrar}
-        subtitulo={
+        detalle={
           cobro > 0
-            ? `Guía ${codigoGuia} · ${pesos(cobro)} por cobrar`
-            : `Guía ${codigoGuia}`
+            ? `${codigoGuia} · ${pesos(cobro)} por cobrar`
+            : String(codigoGuia)
         }
         tipoVolver="cerrar"
         titulo={`Entregar a ${destinatario(guia)}`}
@@ -297,14 +308,14 @@ export function EntregarPantalla({navigation, route}: Props) {
                 <View style={[styles.casilla, recibeTitular && styles.marcada]}>
                   {recibeTitular ? (
                     <Icono
-                      color="sobrePrimario"
+                      color="sobreAccion"
                       grosor={3}
                       icono={Check}
-                      tamano={16}
+                      tamano={15}
                     />
                   ) : null}
                 </View>
-                <Texto negrita style={styles.textoAtajo} tono="primario">
+                <Texto negrita style={styles.textoAtajo}>
                   Recibe {nombre}
                 </Texto>
               </Pressable>
@@ -367,7 +378,7 @@ export function EntregarPantalla({navigation, route}: Props) {
                 <Input
                   ref={celularRef}
                   error={fieldState.error?.message}
-                  etiqueta="Celular"
+                  etiqueta="Celular (opcional)"
                   keyboardType="phone-pad"
                   returnKeyType="done"
                   value={field.value}
@@ -405,29 +416,27 @@ const styles = StyleSheet.create(tema => ({
   atajo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tema.espaciado.md,
-    minHeight: tema.alto.boton,
-    paddingHorizontal: tema.espaciado.lg,
-    borderRadius: tema.radio.lg - 2,
-    borderWidth: 1.5,
-    borderColor: tema.colores.borde,
+    gap: tema.espaciado.sm + 2,
+    minHeight: tema.alto.control,
+    paddingHorizontal: tema.espaciado.md + 2,
+    borderRadius: tema.radio.md,
+    borderWidth: 1,
+    borderColor: tema.colores.bordeCampo,
+    backgroundColor: tema.colores.campo,
   },
-  atajoActivo: {
-    borderColor: tema.colores.primarioSuave,
-    backgroundColor: tema.colores.primarioSuave,
-  },
+  atajoActivo: {borderWidth: 2, borderColor: tema.colores.primario},
   casilla: {
     width: 24,
     height: 24,
-    borderRadius: 7,
+    borderRadius: tema.radio.pill,
     borderWidth: 2,
-    borderColor: tema.colores.primario,
+    borderColor: tema.colores.bordeCampo,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  marcada: {backgroundColor: tema.colores.primario},
+  marcada: {borderWidth: 0, backgroundColor: tema.colores.accion},
   textoAtajo: {flex: 1},
-  acciones: {flexDirection: 'row', gap: tema.espaciado.md - 2},
+  acciones: {flexDirection: 'row', gap: tema.espaciado.sm + 2},
   atras: {flex: 1},
-  adelante: {flex: 2},
+  adelante: {flex: 1.6},
 }));

@@ -3,6 +3,7 @@ import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {
+  ArrowRight,
   Boton,
   Check,
   CircleCheck,
@@ -72,6 +73,8 @@ export function EntregaGuardadaPantalla({navigation, route}: Props) {
         <>
           {siguiente ? (
             <Boton
+              icono={ArrowRight}
+              posicionIcono="fin"
               titulo="Siguiente guía"
               onPress={() =>
                 navigation.popTo('Guia', {
@@ -94,13 +97,13 @@ export function EntregaGuardadaPantalla({navigation, route}: Props) {
         </>
       }>
       <View style={styles.cuerpo}>
-        <IconoDestacado icono={Check} solido tamano="lg" tono="exito" />
+        <IconoDestacado icono={Check} tamano="lg" tono="accion" />
         <View style={styles.textos}>
-          <Texto accessibilityRole="header" centrado negrita variante="titulo">
+          <Texto accessibilityRole="header" centrado variante="titulo">
             Entrega guardada
           </Texto>
-          <Texto centrado numerico tono="secundario">
-            Guía {codigoGuia}
+          <Texto centrado mono tono="secundario" variante="pie">
+            {codigoGuia}
             {guia ? ` · ${destinatario(guia)}` : ''} · {hora(guardadaEn)}
           </Texto>
         </View>
@@ -145,8 +148,10 @@ const styles = StyleSheet.create(tema => ({
   envio: {
     alignSelf: 'stretch',
     padding: tema.espaciado.lg - 2,
-    borderRadius: tema.radio.lg,
-    backgroundColor: tema.colores.superficie,
+    borderRadius: tema.radio.lg - 2,
+    borderWidth: 1,
+    borderColor: tema.colores.borde,
+    backgroundColor: tema.colores.fondo,
   },
   filaEnvio: {
     flexDirection: 'row',

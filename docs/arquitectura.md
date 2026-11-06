@@ -97,7 +97,7 @@ Inter (lectura: 400, 500, 600), Space Grotesk 700 (títulos: variantes `marca`, 
 | Despachos: API, repositorio y casos de uso (vincular, actualizar, descargar, desvincular) | 2 | Hecho, con pruebas. Falta probar contra Fluor |
 | Pantallas de despachos: Mis despachos, Vincular (manual), Despacho, Guía, Envíos y barra de envíos | 2 | Hecho, con pruebas. Sin escáner QR (falta el formato). Rediseño *Ruta* en Mis despachos (en curso destacado, terminados), Despacho (avance, tarjeta *Siguiente*, paradas en línea de tiempo) y Guía; Vincular y Envíos siguen con el diseño anterior |
 | Entregar, novedad y terminar despacho: guardado local + cola (`db/gestion.ts`) | 3a | Hecho, con pruebas. Sin envío (Fluor no publica los endpoints); tipos de novedad y configuración de entrega provisionales (ver `docs/contratos-fluor.md`). Fotos, firma y GPS en 3b |
-| Fotos (hasta 4), firma y ubicación de la entrega (`core/archivos`, `core/ubicacion`, `ui/PanelFirma`) | 3b | Hecho, con pruebas. Pantallas según el canvas de diseño (entrega en 3 pasos, novedad con opciones a la vista, diálogo de terminar). Probado en el emulador; falta un teléfono real |
+| Fotos (hasta 4), firma y ubicación de la entrega (`core/archivos`, `core/ubicacion`, `ui/PanelFirma`) | 3b | Hecho, con pruebas. Pantallas según el canvas de diseño (entrega en 3 pasos, novedad con opciones a la vista, diálogo de terminar), con el estilo *Ruta · Bosque y lima*. Probado en el emulador; falta un teléfono real |
 | Mi cuenta (`features/cuenta`): empresa y cerrar sesión con aviso de envíos pendientes | 2 | Hecho, con pruebas |
 
 ## Sesión y navegación

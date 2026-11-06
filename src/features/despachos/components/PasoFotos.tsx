@@ -61,8 +61,8 @@ export function PasoFotos({fotos, alCambiar, exigida}: Props) {
           <Cargando />
         ) : (
           <>
-            <Icono color="primario" icono={Camera} tamano={28} />
-            <Texto negrita tono="primario">
+            <Icono color="sobreAccion" icono={Camera} tamano={28} />
+            <Texto negrita style={styles.textoTomar}>
               Tomar foto
             </Texto>
           </>
@@ -70,18 +70,27 @@ export function PasoFotos({fotos, alCambiar, exigida}: Props) {
       </Pressable>,
     );
   }
+  // Lo que falta para el límite se ve como casillas vacías.
+  for (let libre = casillas.length; libre < LIMITE_FOTOS; libre += 1) {
+    casillas.push(
+      <View key={`libre-${libre}`} style={[styles.casilla, styles.libre]} />,
+    );
+  }
 
   return (
     <View style={styles.paso}>
       <View style={styles.titulo}>
-        <Texto accessibilityRole="header" negrita variante="subtitulo">
+        <Texto
+          accessibilityRole="header"
+          style={styles.encabezado}
+          variante="titulo">
           Fotos de la entrega
         </Texto>
-        <Texto numerico tono="secundario" variante="etiqueta">
+        <Texto mono tono="secundario" variante="etiqueta">
           {fotos.length} de {LIMITE_FOTOS}
         </Texto>
       </View>
-      <Texto tono="secundario" variante="etiqueta">
+      <Texto tono="secundario">
         Que se vean el paquete y la fachada.
         {exigida ? ' La empresa pide al menos una.' : ''}
       </Texto>
@@ -120,21 +129,26 @@ const styles = StyleSheet.create(tema => ({
     position: 'absolute',
     top: tema.espaciado.sm,
     right: tema.espaciado.sm,
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: tema.radio.pill,
     backgroundColor: tema.colores.velo,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  encabezado: {fontSize: 26, lineHeight: 32, letterSpacing: -0.6},
   tomar: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: tema.espaciado.sm,
-    borderWidth: 2,
+    backgroundColor: tema.colores.accion,
+  },
+  textoTomar: {color: tema.colores.sobreAccion},
+  libre: {
+    borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: tema.colores.primario,
-    backgroundColor: tema.colores.primarioSuave,
+    borderColor: tema.colores.bordeCampo,
+    backgroundColor: 'transparent',
   },
   presionada: {opacity: 0.85},
 }));

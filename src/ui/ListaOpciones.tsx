@@ -29,7 +29,7 @@ export function ListaOpciones({
 }: Props) {
   return (
     <View accessibilityRole="radiogroup" style={styles.contenedor}>
-      <Texto negrita style={styles.pregunta} variante="subtitulo">
+      <Texto style={styles.pregunta} variante="titulo">
         {etiqueta}
       </Texto>
       {opciones.map(opcion => {
@@ -91,7 +91,12 @@ export function ListaOpciones({
 
 const styles = StyleSheet.create(tema => ({
   contenedor: {gap: tema.espaciado.sm},
-  pregunta: {marginBottom: tema.espaciado.xs},
+  pregunta: {
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: -0.6,
+    marginBottom: tema.espaciado.xs,
+  },
   opcion: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -99,9 +104,9 @@ const styles = StyleSheet.create(tema => ({
     minHeight: 54,
     paddingHorizontal: tema.espaciado.md + 2,
     borderRadius: tema.radio.md,
-    borderWidth: 1.5,
-    borderColor: tema.colores.borde,
-    backgroundColor: tema.colores.fondo,
+    borderWidth: 1,
+    borderColor: tema.colores.bordeCampo,
+    backgroundColor: tema.colores.campo,
   },
   elegidaPrimario: {
     borderWidth: 2,

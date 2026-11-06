@@ -275,7 +275,7 @@ describe('pantallas de despachos', () => {
       await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
 
       expect(await screen.findByText('Entregar a María Peña')).toBeTruthy();
-      expect(screen.getByText('Guía 2 · $ 18.000 por cobrar')).toBeTruthy();
+      expect(screen.getByText('2 · $ 18.000 por cobrar')).toBeTruthy();
       await fireEvent.press(screen.getByRole('button', {name: 'Siguiente'}));
 
       // Atajo: recibe el destinatario como titular.
@@ -303,7 +303,7 @@ describe('pantallas de despachos', () => {
         '43A',
       );
       await fireEvent.changeText(
-        screen.getByLabelText('Celular'),
+        screen.getByLabelText('Celular (opcional)'),
         '3001234567',
       );
 
