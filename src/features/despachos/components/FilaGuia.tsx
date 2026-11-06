@@ -5,6 +5,7 @@ import {Insignia, Texto} from '@/ui';
 
 import type {GuiaLocal} from '../db/repositorio';
 import {pesos} from '../domain/formato';
+import {aCobrar} from '../domain/gestion';
 import {situacionGuia} from '../domain/guias';
 import {EstadoGuia} from './EstadoGuia';
 
@@ -12,12 +13,6 @@ type Props = {guia: GuiaLocal; alPresionar: () => void};
 
 export const destinatario = (guia: {nombreDestinatario: string | null}) =>
   guia.nombreDestinatario?.trim() || 'Sin destinatario';
-
-/** Lo que el conductor recibe en la puerta: recaudo más cobro de la entrega. */
-export const valorACobrar = (guia: {
-  vrRecaudo: number;
-  vrCobroEntrega: number;
-}) => guia.vrRecaudo + guia.vrCobroEntrega;
 
 export const ubicacionGuia = (guia: {
   direccionDestinatario: string | null;
@@ -32,7 +27,7 @@ export const referenciaGuia = (guia: {codigoGuia: number; unidades: number}) =>
 /** Parada de la ruta: número de orden en una línea de tiempo y los datos de la guía. */
 export function FilaGuia({guia, alPresionar}: Props) {
   const ubicacion = ubicacionGuia(guia);
-  const cobro = valorACobrar(guia);
+  const cobro = aCobrar(guia);
   const pendiente = situacionGuia(guia) === 'pendiente';
   return (
     <Pressable
@@ -42,9 +37,13 @@ export function FilaGuia({guia, alPresionar}: Props) {
       onPress={alPresionar}>
       <View style={styles.ruta}>
         <View style={styles.parada}>
-          <Texto mono numerico style={styles.numero}>
-            {guia.ordenRuta ?? '–'}
-          </Texto>
+          {guia.ordenRuta === null ? (
+            <View style={styles.punto} />
+          ) : (
+            <Texto mono numerico style={styles.numero}>
+              {guia.ordenRuta}
+            </Texto>
+          )}
         </View>
         <View style={styles.linea} />
       </View>
@@ -100,6 +99,12 @@ const styles = StyleSheet.create(tema => ({
     justifyContent: 'center',
   },
   numero: {fontSize: 11, lineHeight: 14},
+  punto: {
+    width: 6,
+    height: 6,
+    borderRadius: tema.radio.pill,
+    backgroundColor: tema.colores.textoSecundario,
+  },
   linea: {flex: 1, width: 2, backgroundColor: tema.colores.borde},
   datos: {
     flex: 1,

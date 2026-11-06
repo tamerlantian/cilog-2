@@ -1,8 +1,8 @@
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {Alert, FlatList, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {
+  BORDES_PESTANA,
   Aviso,
   Boton,
   Cargando,
@@ -30,9 +30,6 @@ import {
 } from '../domain/envios';
 import {fechaHora} from '../domain/formato';
 import {useAccionesEnvio, useEnvios} from '../hooks/useEnvios';
-import type {RutasDespachos} from '../rutas';
-
-type Props = NativeStackScreenProps<RutasDespachos, 'Envios'>;
 
 const titulo = (envio: EnvioLocal) =>
   envio.codigoGuia === null
@@ -108,7 +105,7 @@ function FilaEnvio({
 }
 
 /** La cola del conductor: qué falta por llegar a Fluor y por qué (docs/offline.md §13). */
-export function EnviosPantalla({navigation}: Props) {
+export function EnviosPantalla() {
   const {data: envios = [], isPending} = useEnvios();
   const acciones = useAccionesEnvio();
 
@@ -133,6 +130,7 @@ export function EnviosPantalla({navigation}: Props) {
 
   return (
     <Pantalla
+      bordes={BORDES_PESTANA}
       pie={
         envios.length > 0 ? (
           <Boton
@@ -143,7 +141,7 @@ export function EnviosPantalla({navigation}: Props) {
           />
         ) : undefined
       }>
-      <Encabezado alVolver={() => navigation.goBack()} titulo="Envíos" />
+      <Encabezado grande titulo="Envíos" />
       {isPending ? (
         <Cargando />
       ) : (

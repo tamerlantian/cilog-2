@@ -6,7 +6,7 @@ import {mensajeUsuario} from '@/core/api';
 import {
   Aviso,
   Boton,
-  BotonIcono,
+  BORDES_PESTANA,
   Cargando,
   CloudOff,
   EstadoVacio,
@@ -14,7 +14,6 @@ import {
   Plus,
   Texto,
   Truck,
-  UserRound,
 } from '@/ui';
 
 import {BarraEnvios} from '../components/BarraEnvios';
@@ -69,7 +68,7 @@ export function MisDespachosPantalla() {
 
   if (isPending) {
     return (
-      <Pantalla>
+      <Pantalla bordes={BORDES_PESTANA}>
         <Cargando />
       </Pantalla>
     );
@@ -79,6 +78,7 @@ export function MisDespachosPantalla() {
 
   return (
     <Pantalla
+      bordes={BORDES_PESTANA}
       pie={
         vacio ? undefined : (
           <Boton
@@ -90,15 +90,9 @@ export function MisDespachosPantalla() {
         )
       }>
       <View style={styles.encabezado}>
-        <View style={styles.titulo}>
-          <Texto variante="display">Mis despachos</Texto>
-          <BotonIcono
-            etiqueta="Mi cuenta"
-            icono={UserRound}
-            variante="suave"
-            onPress={() => navegacion.navigate('Cuenta')}
-          />
-        </View>
+        <Texto accessibilityRole="header" variante="display">
+          Mis despachos
+        </Texto>
         {actualizar.error ? (
           <Aviso
             icono={CloudOff}
@@ -162,11 +156,6 @@ const styles = StyleSheet.create(tema => ({
     paddingHorizontal: tema.espaciado.lg + 4,
     paddingTop: tema.espaciado.xl,
     paddingBottom: tema.espaciado.xs,
-  },
-  titulo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
   lista: {
     flexGrow: 1,

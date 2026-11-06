@@ -5,12 +5,8 @@ import {Boton, Insignia, Texto} from '@/ui';
 
 import type {GuiaLocal} from '../db/repositorio';
 import {pesos} from '../domain/formato';
-import {
-  destinatario,
-  referenciaGuia,
-  ubicacionGuia,
-  valorACobrar,
-} from './FilaGuia';
+import {aCobrar} from '../domain/gestion';
+import {destinatario, referenciaGuia, ubicacionGuia} from './FilaGuia';
 import {TarjetaDestacada} from './TarjetaDestacada';
 
 type Props = {
@@ -28,7 +24,7 @@ export function SiguienteGuia({
   alEntregar,
   alReportarNovedad,
 }: Props) {
-  const cobro = valorACobrar(guia);
+  const cobro = aCobrar(guia);
   const ubicacion = ubicacionGuia(guia);
   return (
     <TarjetaDestacada etiqueta="Siguiente entrega">

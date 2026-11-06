@@ -74,7 +74,7 @@ export function BarraEnvios({sangria = true}: Props) {
       accessibilityLabel={texto}
       accessibilityRole="button"
       style={({pressed}) => [styles.barra, pressed && styles.presionada]}
-      onPress={() => navegacion.navigate('Envios')}>
+      onPress={() => navegacion.navigate('Inicio', {screen: 'Envios'})}>
       <Icono color={color} icono={icono} tamano={18} />
       <View style={styles.texto}>
         <Texto

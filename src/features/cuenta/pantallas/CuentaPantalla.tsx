@@ -6,6 +6,7 @@ import {StyleSheet} from 'react-native-unistyles';
 import {useSesion} from '@/core/sesion';
 import {
   Avatar,
+  BORDES_PESTANA,
   Boton,
   Building,
   Encabezado,
@@ -31,6 +32,7 @@ export function CuentaPantalla() {
 
   return (
     <Pantalla
+      bordes={BORDES_PESTANA}
       desplazable
       pie={
         <Boton
@@ -40,7 +42,7 @@ export function CuentaPantalla() {
           onPress={cerrar}
         />
       }>
-      <Encabezado alVolver={() => navegacion.goBack()} titulo="Mi cuenta" />
+      <Encabezado grande sangria={false} titulo="Mi cuenta" />
       <View style={styles.usuario}>
         <Avatar forma="circulo" nombre={correo} />
         <Texto negrita>{correo}</Texto>

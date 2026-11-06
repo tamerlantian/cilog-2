@@ -83,7 +83,7 @@ const GUIAS = [
   guia(2, {
     nombre_destinatario: 'María Peña',
     ciudad_destino: 'Medellín',
-    vr_recaudo: 18000,
+    vr_cobro_entrega: 18000,
   }),
   guia(3),
 ];
@@ -101,7 +101,7 @@ const iniciarSesion = async () => {
   await fireEvent.changeText(screen.getByLabelText('Clave'), 'secreta123');
   await fireEvent.press(screen.getByRole('button', {name: 'Iniciar sesión'}));
   // Mis despachos lee la base y la cola al montar: que termine dentro de act.
-  await screen.findByRole('button', {name: 'Mi cuenta'});
+  await screen.findByLabelText('Despachos');
   await waitFor(() =>
     expect(clienteConsultas.isFetching() + clienteConsultas.isMutating()).toBe(
       0,

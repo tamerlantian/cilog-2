@@ -16,6 +16,10 @@ type Props = {
   /** Código bajo el título, en mono ("777001 · $ 18.000 por cobrar"). */
   detalle?: string;
   accion?: ReactNode;
+  /** Título de pantalla principal (las de pestaña): grande y sin volver. */
+  grande?: boolean;
+  /** Margen lateral propio; sin él, en pantallas cuyo contenido ya tiene margen. */
+  sangria?: boolean;
 };
 
 /** Barra superior de una pantalla interna. Va dentro de `Pantalla`, que ya respeta la safe area. */
@@ -26,7 +30,22 @@ export function Encabezado({
   subtitulo,
   detalle,
   accion,
+  grande = false,
+  sangria = true,
 }: Props) {
+  if (grande) {
+    return (
+      <View style={[styles.fila, styles.grande, sangria && styles.sangria]}>
+        <Texto
+          accessibilityRole="header"
+          style={styles.textos}
+          variante="display">
+          {titulo}
+        </Texto>
+        {accion}
+      </View>
+    );
+  }
   return (
     <View style={styles.fila}>
       {alVolver ? (
@@ -67,5 +86,11 @@ const styles = StyleSheet.create(tema => ({
     paddingHorizontal: tema.espaciado.md,
   },
   textos: {flex: 1, gap: 1},
+  grande: {
+    paddingHorizontal: 0,
+    paddingTop: tema.espaciado.xl,
+    paddingBottom: tema.espaciado.sm,
+  },
+  sangria: {paddingHorizontal: tema.espaciado.lg + 4},
   titulo: {fontSize: tema.tipografia.tamano.campo},
 }));

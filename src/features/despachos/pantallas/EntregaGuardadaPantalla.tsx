@@ -91,7 +91,7 @@ export function EntregaGuardadaPantalla({navigation, route}: Props) {
             titulo="Ver envíos"
             onPress={() => {
               alDespacho();
-              navigation.navigate('Envios');
+              navigation.navigate('Inicio', {screen: 'Envios'});
             }}
           />
         </>

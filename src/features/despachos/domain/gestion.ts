@@ -45,9 +45,12 @@ export const PARENTESCOS = [
 /** Primeros en el selector, como al inicio de la lista de la app anterior. */
 export const PARENTESCOS_FRECUENTES = ['TITULAR', 'PORTERÍA', 'VIGILANTE'];
 
-/** Lo que el conductor cobra al entregar: el recaudo más el flete contra entrega. */
-export const aCobrar = (guia: {vrRecaudo: number; vrCobroEntrega: number}) =>
-  guia.vrRecaudo + guia.vrCobroEntrega;
+/**
+ * Lo que el conductor cobra al entregar: `vr_cobro_entrega`, como en la app
+ * anterior (que no mostraba el recaudo). Si el recaudo también se cobra en la
+ * puerta está pendiente de confirmar con operaciones (docs/contratos-fluor.md).
+ */
+export const aCobrar = (guia: {vrCobroEntrega: number}) => guia.vrCobroEntrega;
 
 export type TipoNovedad = {codigo: string; nombre: string};
 

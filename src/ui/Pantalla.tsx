@@ -27,6 +27,9 @@ type Props = {
 
 const TODOS_LOS_BORDES: readonly Edge[] = ['top', 'bottom', 'left', 'right'];
 
+/** Para las pantallas con barra de pestañas: la barra ya respeta el borde de abajo. */
+export const BORDES_PESTANA: readonly Edge[] = ['top', 'left', 'right'];
+
 /** Contenedor base de toda pantalla: safe areas, teclado, scroll y pie opcionales. */
 export function Pantalla({
   children,

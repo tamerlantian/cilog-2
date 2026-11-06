@@ -31,7 +31,7 @@ const esperarConsultas = () =>
   );
 
 const abrirCuenta = async () => {
-  await fireEvent.press(await screen.findByRole('button', {name: 'Mi cuenta'}));
+  await fireEvent.press(await screen.findByLabelText('Cuenta'));
   await screen.findByText('Empresa para ingreso y envíos');
   await esperarConsultas();
 };

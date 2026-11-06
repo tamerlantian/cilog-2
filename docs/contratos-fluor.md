@@ -21,6 +21,10 @@ listas `{total, page, size, items}`, errores `{success:false, error:{code,messag
 
 ---
 
+## Pendiente de confirmar con operaciones
+
+- **Recaudo en la entrega.** Cada guía trae `vr_recaudo` y `vr_cobro_entrega`. La app anterior solo mostraba `vr_cobro_entrega` como "Cobro" y no leía el recaudo; la app nueva hace lo mismo para "por cobrar" (`aCobrar` en `features/despachos/domain/gestion.ts`) y muestra el recaudo solo como dato en el detalle de la guía. Falta confirmar si el conductor también cobra el recaudo en la puerta: si es así, `aCobrar` debe sumarlo.
+
 ## Prioridad 1: sin esto la app no puede entregar
 
 ### 1 a 3. Vincular, mis despachos y paquete offline: **hechos en Fluor** (`2fedfa9`…`9a16d3b`)

@@ -15,14 +15,11 @@ import {
   RegistroPantalla,
   ReenviarVerificacionPantalla,
 } from '@/features/auth';
-import {CuentaPantalla} from '@/features/cuenta';
 import {
   DespachoPantalla,
   EntregaGuardadaPantalla,
   EntregarPantalla,
-  EnviosPantalla,
   GuiaPantalla,
-  MisDespachosPantalla,
   NovedadPantalla,
   VincularDespachoPantalla,
 } from '@/features/despachos';
@@ -30,6 +27,7 @@ import {Cargando, CloudOff, EstadoVacio, Pantalla} from '@/ui';
 
 import {useDatosLocales} from '../providers/useDatosLocales';
 
+import {Pestanas} from './Pestanas';
 import type {ParametrosRutas} from './rutas';
 
 const Stack = createNativeStackNavigator<ParametrosRutas>();
@@ -100,10 +98,7 @@ export function Navegador() {
           </>
         ) : (
           <>
-            <Stack.Screen
-              component={MisDespachosPantalla}
-              name="MisDespachos"
-            />
+            <Stack.Screen component={Pestanas} name="Inicio" />
             <Stack.Screen
               component={VincularDespachoPantalla}
               name="VincularDespacho"
@@ -125,8 +120,6 @@ export function Navegador() {
               name="Novedad"
               options={{presentation: 'modal'}}
             />
-            <Stack.Screen component={EnviosPantalla} name="Envios" />
-            <Stack.Screen component={CuentaPantalla} name="Cuenta" />
             <Stack.Screen component={EmpresaPantalla} name="Empresa" />
           </>
         )}

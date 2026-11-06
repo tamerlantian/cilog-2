@@ -22,7 +22,7 @@ export {
   mostrarInfo,
 } from './mensajes';
 export {PanelFirma, type ControlFirma} from './PanelFirma';
-export {Pantalla} from './Pantalla';
+export {BORDES_PESTANA, Pantalla} from './Pantalla';
 export {Pasos} from './Pasos';
 export {Requisito} from './Requisito';
 export {Segmentos} from './Segmentos';

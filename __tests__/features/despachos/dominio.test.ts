@@ -77,8 +77,8 @@ describe('después de gestionar', () => {
     expect(siguientePendiente([guia(2)], 2)).toBeUndefined();
   });
 
-  it('se cobra el recaudo más el flete contra entrega', () => {
-    expect(aCobrar({vrRecaudo: 18000, vrCobroEntrega: 5000})).toBe(23000);
+  it('se cobra el cobro de la entrega, no el recaudo (como la app anterior)', () => {
+    expect(aCobrar({vrCobroEntrega: 5000})).toBe(5000);
   });
 });
 
