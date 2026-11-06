@@ -7,3 +7,4 @@ export {MisDespachosPantalla} from './pantallas/MisDespachosPantalla';
 export {NovedadPantalla} from './pantallas/NovedadPantalla';
 export {VincularDespachoPantalla} from './pantallas/VincularDespachoPantalla';
 export type {RutasDespachos} from './rutas';
+export {enviadoresDespachos} from './sync/enviadores';

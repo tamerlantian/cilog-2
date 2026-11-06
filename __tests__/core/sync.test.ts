@@ -63,14 +63,18 @@ describe('cola de operaciones y motor de sincronización', () => {
   });
 
   it('con señal envía al instante con su id_operacion y la confirma', async () => {
-    const enviar = jest.fn<Promise<void>, Parameters<Enviador>>(async () => {});
+    const enviar = jest.fn<ReturnType<Enviador>, Parameters<Enviador>>(
+      async () => {},
+    );
     const id = await encolarEn(entrega(1));
 
     await motorCon({entrega: enviar}).ejecutar();
 
     expect(enviar).toHaveBeenCalledWith({
       idOperacion: id,
+      tenantDespachoId: 10,
       cuerpo: {codigo_guia: 1},
+      archivos: [],
     });
     expect(await leerOperacion(id)).toMatchObject({
       estado: 'confirmada',
@@ -215,7 +219,7 @@ describe('cola de operaciones y motor de sincronización', () => {
     expect(await leerOperacion(id)).toMatchObject({estado: 'conflicto'});
   });
 
-  it('una foto no sale antes que su entrega, y descartar la entrega borra la foto', async () => {
+  it('una operación no sale antes que aquella de la que depende, y descartar arrastra a sus dependientes', async () => {
     const idEntrega = await encolarEn(entrega(1));
     const idFoto = await encolarEn(
       entrega(1, {
@@ -259,20 +263,40 @@ describe('cola de operaciones y motor de sincronización', () => {
   it('si la sesión no sirve pausa la cola del usuario y la reanuda al volver a entrar', async () => {
     const primera = await encolarEn(entrega(1));
     const segunda = await encolarEn(entrega(2));
+    let conSesion = true;
     const enviar = jest.fn<Promise<void>, []>(async () => {
+      // El cliente cierra la sesión cuando no puede renovarla.
+      conSesion = false;
       throw error('NO_AUTENTICADO', 401);
     });
-    const motor = motorCon({entrega: enviar});
+    const motor = motorCon({entrega: enviar}, () => (conSesion ? 1 : null));
 
     await motor.ejecutar();
     expect(await leerOperacion(primera)).toMatchObject({estado: 'pausada'});
     expect(await leerOperacion(segunda)).toMatchObject({estado: 'pausada'});
     expect(enviar).toHaveBeenCalledTimes(1);
 
+    conSesion = true;
     await escribir(tx => reanudarUsuario(tx, 1, reloj));
     enviar.mockImplementation(async () => {});
     await motor.ejecutar();
     expect(await leerOperacion(segunda)).toMatchObject({estado: 'confirmada'});
+  });
+
+  it('un 401 con la sesión todavía abierta se reintenta en vez de pausar la cola', async () => {
+    const id = await encolarEn(entrega(1));
+
+    await motorCon({
+      entrega: async () => {
+        throw error('NO_AUTENTICADO', 401);
+      },
+    }).ejecutar();
+
+    expect(await leerOperacion(id)).toMatchObject({
+      estado: 'pendiente',
+      intentos: 1,
+      proximoIntento: reloj + 5_000,
+    });
   });
 
   it('nunca envía la cola de otro usuario', async () => {

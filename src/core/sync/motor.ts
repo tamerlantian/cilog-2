@@ -3,25 +3,38 @@ import {escribir, leer} from '@/core/db';
 
 import {clasificarFallo} from './clasificar';
 import {
+  archivosDe,
   marcarConfirmada,
   marcarEnviando,
   marcarFallida,
   pausarUsuario,
   programarReintento,
   siguienteLista,
-  soltarArchivo,
+  soltarArchivos,
+  type ArchivoOperacion,
   type Operacion,
 } from './cola';
 import {calcularEspera} from './espera';
 
+export type ResultadoEnvio = {
+  /**
+   * Fluor la dio por recibida pero puede faltarle algún archivo: se conservan
+   * en el teléfono hasta que se purgue la operación (docs/offline.md §8).
+   */
+  conservarArchivos?: boolean;
+};
+
 /**
- * Envía una operación a Fluor. Debe lanzar el error de la API tal cual (el
- * motor lo clasifica) y mandar `operacion.idOperacion` como `id_operacion`.
+ * Envía una operación a Fluor. Si Fluor no la acepta, lanza el error de la
+ * API tal cual: el motor lo clasifica. Si la operación ya estaba aplicada en
+ * Fluor (un reenvío), debe resolver, no lanzar.
  */
 export type Enviador = (operacion: {
   idOperacion: string;
+  tenantDespachoId: number | null;
   cuerpo: unknown;
-}) => Promise<void>;
+  archivos: ArchivoOperacion[];
+}) => Promise<ResultadoEnvio | void>;
 
 export type DependenciasMotor = {
   /** Por tipo de operación. Un tipo sin enviador espera en la cola (p. ej. un endpoint que Fluor aún no publica). */
@@ -60,20 +73,28 @@ export const crearMotor = ({
     await escribir(tx => marcarEnviando(tx, operacion.idOperacion));
     avisar();
     try {
-      await enviador({
+      const archivos = await leer(db => archivosDe(db, operacion.idOperacion));
+      const resultado = await enviador({
         idOperacion: operacion.idOperacion,
+        tenantDespachoId: operacion.tenantDespachoId,
         cuerpo: JSON.parse(operacion.cuerpo),
+        archivos,
       });
-      const ruta = await escribir(async tx => {
+      const conservar = resultado?.conservarArchivos ?? false;
+      const rutas = await escribir(async tx => {
         await marcarConfirmada(tx, operacion.idOperacion, ahora());
-        return soltarArchivo(tx, operacion.idOperacion);
+        return conservar ? [] : soltarArchivos(tx, operacion.idOperacion);
       });
-      // La foto ya está en Fluor: libera espacio en el teléfono.
-      if (ruta) await borrarEvidencia(ruta);
+      // Las fotos ya están en Fluor: libera espacio en el teléfono.
+      await Promise.all(rutas.map(borrarEvidencia));
       return true;
     } catch (error) {
       const fallo = clasificarFallo(error);
-      if (fallo.clase === 'transitorio') {
+      // Si la sesión no sirve, el cliente la cierra. Un 401 con la sesión aún
+      // abierta es de un token que ya se renovó: se reintenta, no se pausa.
+      const sesionAbierta =
+        fallo.clase === 'sesion' && usuarioActual() === usuarioId;
+      if (fallo.clase === 'transitorio' || sesionAbierta) {
         const espera = calcularEspera(
           operacion.intentos + 1,
           aleatorio,

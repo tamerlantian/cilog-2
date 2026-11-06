@@ -2,12 +2,13 @@ import {useCallback, useEffect, useState} from 'react';
 
 import {abrirBase} from '@/core/db';
 import {iniciarSincronizacion, type Enviador} from '@/core/sync';
+import {enviadoresDespachos} from '@/features/despachos';
 
 /**
- * Enviadores por tipo de operación. Vacío hasta que Fluor publique entregar,
- * novedad y terminar: lo que se encole antes espera en la cola.
+ * Enviadores por tipo de operación. Un tipo sin enviador (novedad y terminar,
+ * hasta que Fluor los publique) espera en la cola.
  */
-const ENVIADORES: Record<string, Enviador> = {};
+const ENVIADORES: Record<string, Enviador> = {...enviadoresDespachos};
 
 export type EstadoDatos = 'abriendo' | 'listos' | 'error';
 

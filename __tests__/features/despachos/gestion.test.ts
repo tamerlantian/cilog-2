@@ -3,7 +3,8 @@ import {eq} from 'drizzle-orm';
 import * as fs from '@dr.pogodin/react-native-fs';
 
 import {archivos, despachos, escribir, leer, operaciones} from '@/core/db';
-import {crearMotor} from '@/core/sync';
+import {crearMotor, type Enviador} from '@/core/sync';
+import {purgarConfirmadas} from '@/core/sync/cola';
 import type {
   DespachoGuias,
   GuiaFluor,
@@ -148,21 +149,20 @@ describe('reglas de gestión', () => {
     expect(puedeTerminar(conteo, []).permitido).toBe(false);
   });
 
-  it('los campos vacíos viajan como null', () => {
+  it('la entrega usa los campos de Fluor y los vacíos viajan como null', () => {
     expect(
       cuerpoEntrega(
-        {codigoGuia: 1, codigoDespacho: 910},
-        {recibe: '  ', parentesco: ''},
+        1,
+        {recibe: ' Ana Gómez ', parentesco: 'PORTERÍA', celular: ''},
         '2026-10-30T14:05:09',
       ),
     ).toEqual({
-      codigo_guia_pk: 1,
-      codigo_despacho_fk: 910,
-      recibe: null,
-      numero_identificacion: null,
-      parentesco: null,
-      celular: null,
+      guia: 1,
       fecha_entrega: '2026-10-30T14:05:09',
+      recibe: 'Ana Gómez',
+      recibe_parentesco: 'PORTERÍA',
+      recibe_numero_identificacion: null,
+      recibe_celular: null,
       latitud: null,
       longitud: null,
     });
@@ -274,42 +274,25 @@ describe('registrar gestiones', () => {
     );
   };
 
-  it('cada foto y la firma son operaciones aparte que esperan a la entrega', async () => {
+  it('la entrega lleva sus fotos y su firma en la misma operación', async () => {
     const idEntrega = await conEvidencias();
 
     const cola = await leer(db => db.select().from(operaciones));
-    expect(cola.map(o => [o.tipo, o.dependeDe])).toEqual([
-      ['entrega', null],
-      ['foto', idEntrega],
-      ['firma', idEntrega],
-    ]);
-    // Claves propias: una foto que falla no frena a las demás.
-    expect(new Set(cola.map(o => o.claveEntidad)).size).toBe(3);
+    expect(cola.map(o => [o.tipo, o.versionCuerpo])).toEqual([['entrega', 2]]);
     expect(JSON.parse(cola[0]!.cuerpo)).toMatchObject({
+      guia: 1,
       latitud: 6.25,
       longitud: -75.56,
     });
-    expect(JSON.parse(cola[2]!.cuerpo)).toEqual({
-      codigo_modelo: 'TteGuia',
-      codigo: 1,
-      tipo: 'F',
-    });
     expect(
-      (await leer(db => db.select().from(archivos))).map(a => a.tipo),
-    ).toEqual(['I', 'F']);
-  });
-
-  it('la guía sigue por enviar mientras falten sus fotos o su firma', async () => {
-    const idEntrega = await conEvidencias();
-    await escribir(tx =>
-      tx
-        .update(operaciones)
-        .set({estado: 'confirmada'})
-        .where(eq(operaciones.idOperacion, idEntrega)),
-    );
-
-    const [guia] = await leer(db => leerGuias(db, DESPACHO));
-    expect(guia?.envio).toBe('porEnviar');
+      (await leer(db => db.select().from(archivos))).map(a => [
+        a.idOperacion,
+        a.tipo,
+      ]),
+    ).toEqual([
+      [idEntrega, 'I'],
+      [idEntrega, 'F'],
+    ]);
   });
 
   it('sin la foto que la empresa exige no se guarda nada', async () => {
@@ -323,21 +306,49 @@ describe('registrar gestiones', () => {
     expect(await leer(db => db.select().from(operaciones))).toEqual([]);
   });
 
-  it('al confirmarse una foto se borra del teléfono', async () => {
+  it('al confirmarse la entrega sus fotos se borran del teléfono', async () => {
     await conEvidencias();
-    const motor = crearMotor({
-      enviadores: {
-        entrega: async () => {},
-        foto: async () => {},
-        firma: async () => {},
-      },
+    const enviar = jest.fn<ReturnType<Enviador>, Parameters<Enviador>>(
+      async () => {},
+    );
+
+    await crearMotor({
+      enviadores: {entrega: enviar},
       usuarioActual: () => USUARIO,
-    });
+    }).ejecutar();
 
-    await motor.ejecutar();
-
+    expect(enviar.mock.calls[0]?.[0].archivos).toEqual([
+      {ruta: '/documentos/evidencias/a.jpg', tipo: 'I', bytes: 210_000},
+      {ruta: '/documentos/evidencias/b.png', tipo: 'F', bytes: 15_000},
+    ]);
     expect(enDisco.has('/documentos/evidencias/a.jpg')).toBe(false);
     expect(enDisco.has('/documentos/evidencias/b.png')).toBe(false);
+    expect(await leer(db => db.select().from(archivos))).toEqual([]);
+  });
+
+  it('si Fluor no guardó algún archivo, se conservan hasta la purga', async () => {
+    const idEntrega = await conEvidencias();
+
+    await crearMotor({
+      enviadores: {entrega: async () => ({conservarArchivos: true})},
+      usuarioActual: () => USUARIO,
+      ahora: () => AHORA,
+    }).ejecutar();
+
+    const [operacion] = await leer(db =>
+      db
+        .select()
+        .from(operaciones)
+        .where(eq(operaciones.idOperacion, idEntrega)),
+    );
+    expect(operacion?.estado).toBe('confirmada');
+    expect(enDisco.has('/documentos/evidencias/a.jpg')).toBe(true);
+
+    const rutas = await escribir(tx => purgarConfirmadas(tx, AHORA));
+    expect(rutas.sort()).toEqual([
+      '/documentos/evidencias/a.jpg',
+      '/documentos/evidencias/b.png',
+    ]);
     expect(await leer(db => db.select().from(archivos))).toEqual([]);
   });
 
@@ -352,7 +363,7 @@ describe('registrar gestiones', () => {
 
     const {ids, rutas} = await escribir(tx => descartarEnvio(tx, idEntrega));
 
-    expect(ids).toHaveLength(3);
+    expect(ids).toEqual([idEntrega]);
     expect(rutas.sort()).toEqual([
       '/documentos/evidencias/a.jpg',
       '/documentos/evidencias/b.png',

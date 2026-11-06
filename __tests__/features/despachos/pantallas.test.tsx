@@ -20,12 +20,14 @@ import {encolar, obtenerMotor} from '@/core/sync';
 import * as apiAuth from '@/features/auth/api/auth';
 import * as api from '@/features/despachos/api/despachos';
 import type {GuiaFluor} from '@/features/despachos/api/despachos';
+import * as apiEntrega from '@/features/despachos/api/entrega';
 import {claveGuia} from '@/features/despachos/domain/claves';
 
 import {crearJwt, firmar, usuarioPrueba} from '../../helpers';
 
 jest.mock('@/features/auth/api/auth');
 jest.mock('@/features/despachos/api/despachos');
+jest.mock('@/features/despachos/api/entrega');
 const apiSimulada = jest.mocked(api);
 
 const DESPACHO = 10;
@@ -155,6 +157,12 @@ describe('pantallas de despachos', () => {
       });
     }
     alerta.mockReset();
+    // Sin señal: lo que se entrega queda en la cola.
+    jest
+      .mocked(apiEntrega)
+      .entregarGuiaApi.mockRejectedValue(
+        new ErrorApi({codigo: 'SIN_CONEXION', mensaje: 'Sin red'}),
+      );
     jest.mocked(launchCamera).mockClear();
     enDisco.clear();
     jest.mocked(Toast.show).mockClear();
@@ -322,12 +330,11 @@ describe('pantallas de despachos', () => {
         claveEntidad: claveGuia(DESPACHO, 2),
       });
       expect(JSON.parse(operacion!.cuerpo)).toMatchObject({
-        codigo_guia_pk: 2,
-        codigo_despacho_fk: 910,
+        guia: 2,
         recibe: 'Ana Gómez',
-        parentesco: 'PORTERÍA',
-        celular: '3001234567',
-        numero_identificacion: '43123456',
+        recibe_parentesco: 'PORTERÍA',
+        recibe_celular: '3001234567',
+        recibe_numero_identificacion: '43123456',
       });
 
       await fireEvent.press(
@@ -373,7 +380,7 @@ describe('pantallas de despachos', () => {
       await screen.findByText('Entrega guardada');
 
       const cola = await operacionesGuardadas();
-      expect(cola.map(o => o.tipo)).toEqual(['entrega', 'foto', 'firma']);
+      expect(cola.map(o => o.tipo)).toEqual(['entrega']);
       expect(JSON.parse(cola[0]!.cuerpo)).toMatchObject({
         latitud: 6.2442,
         longitud: -75.5812,

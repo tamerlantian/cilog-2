@@ -109,6 +109,16 @@ describe('cliente API', () => {
     expect(config.headers.get('X-Tenant-ID')).toBe('7');
   });
 
+  it('una petición de otra empresa conserva su X-Tenant-ID', async () => {
+    crearSesion();
+    const {config} = await cliente.post(
+      '/tte/guia/entrega',
+      {},
+      {adapter: adaptadorEco(), headers: {'X-Tenant-ID': '12'}},
+    );
+    expect(config.headers.get('X-Tenant-ID')).toBe('12');
+  });
+
   it('no envía Authorization ni X-Tenant-ID sin sesión', async () => {
     const {config} = await cliente.post(
       '/auth/seguridad/login',
@@ -221,6 +231,41 @@ describe('cliente API', () => {
       expect(renovacion).toHaveBeenCalledTimes(1);
       expect(a.autorizaciones[1]).toBe('Bearer jwt-nuevo');
       expect(b.autorizaciones[1]).toBe('Bearer jwt-nuevo');
+    });
+
+    it('un 401 que llega mientras se guarda el token renovado reintenta con el nuevo', async () => {
+      const estado = {token: 'jwt-123'};
+      let tokenCambiado!: () => void;
+      const cambio = new Promise<void>(r => (tokenCambiado = r));
+      let soltarGuardado!: () => void;
+      const guardado = new Promise<void>(r => (soltarGuardado = r));
+      const sesion = crearSesion({
+        obtenerToken: () => estado.token,
+        obtenerTokenRenovacion: () => 'refresh-1',
+        // Como la sesión real: el token cambia en memoria y luego se escribe en el llavero.
+        alRenovarToken: jest.fn(async (token: string) => {
+          estado.token = token;
+          tokenCambiado();
+          await guardado;
+        }),
+      });
+      renovacionResponde(200, {access_token: 'jwt-nuevo'});
+      const a = adaptadorSecuencia(401, 200);
+      const autorizacionesB: unknown[] = [];
+      const adaptadorB = async (config: InternalAxiosRequestConfig) => {
+        autorizacionesB.push(config.headers.get('Authorization'));
+        if (autorizacionesB.length > 1) return responder(config, 200, {});
+        await cambio;
+        return responder(config, 401, NO_AUTENTICADO);
+      };
+
+      const pa = cliente.get('/a', {adapter: a.adaptador});
+      await cliente.get('/b', {adapter: adaptadorB});
+      soltarGuardado();
+      await pa;
+
+      expect(autorizacionesB).toEqual(['Bearer jwt-123', 'Bearer jwt-nuevo']);
+      expect(sesion.alSesionInvalida).not.toHaveBeenCalled();
     });
 
     it('si el reintento con el token nuevo también da 401, cierra la sesión', async () => {

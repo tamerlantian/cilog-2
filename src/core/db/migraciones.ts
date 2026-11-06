@@ -76,4 +76,34 @@ export const MIGRACIONES: readonly (readonly string[])[] = [
   ],
   // 2: el conductor terminó el despacho (la operación puede seguir en la cola)
   ['ALTER TABLE despachos ADD COLUMN terminado_en INTEGER'],
+  // 3: las fotos y la firma viajan con la entrega (POST /tte/guia/entrega).
+  // Los archivos pasan de su propia operación a la entrega de la que dependían;
+  // se conservan todas las filas, solo cambia a qué operación cuelgan.
+  [
+    `CREATE TABLE archivos_entrega (
+      ruta TEXT PRIMARY KEY NOT NULL,
+      id_operacion TEXT NOT NULL REFERENCES operaciones_pendientes (id_operacion) ON DELETE CASCADE,
+      tipo TEXT NOT NULL,
+      bytes INTEGER NOT NULL
+    )`,
+    `INSERT INTO archivos_entrega (ruta, id_operacion, tipo, bytes)
+      SELECT a.ruta, COALESCE(o.depende_de, a.id_operacion), a.tipo, a.bytes
+      FROM archivos a JOIN operaciones_pendientes o ON o.id_operacion = a.id_operacion`,
+    'DROP TABLE archivos',
+    'ALTER TABLE archivos_entrega RENAME TO archivos',
+    'CREATE INDEX archivos_operacion ON archivos (id_operacion)',
+    "DELETE FROM operaciones_pendientes WHERE tipo IN ('foto', 'firma')",
+    // Cuerpo de la entrega con los nombres de Fluor (versión 2).
+    `UPDATE operaciones_pendientes SET version_cuerpo = 2, cuerpo = json_object(
+      'guia', json_extract(cuerpo, '$.codigo_guia_pk'),
+      'fecha_entrega', json_extract(cuerpo, '$.fecha_entrega'),
+      'recibe', json_extract(cuerpo, '$.recibe'),
+      'recibe_parentesco', json_extract(cuerpo, '$.parentesco'),
+      'recibe_numero_identificacion', json_extract(cuerpo, '$.numero_identificacion'),
+      'recibe_celular', json_extract(cuerpo, '$.celular'),
+      'latitud', json_extract(cuerpo, '$.latitud'),
+      'longitud', json_extract(cuerpo, '$.longitud')
+    )
+    WHERE tipo = 'entrega' AND version_cuerpo = 1`,
+  ],
 ];

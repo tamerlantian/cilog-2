@@ -195,25 +195,34 @@ export type DatosEntrega = {
   celular?: string;
 };
 
+/** Formato del cuerpo de la entrega: 2 = `POST /tte/guia/entrega`. */
+export const VERSION_CUERPO_ENTREGA = 2;
+
 /**
- * Cuerpos de las operaciones (docs/contratos-fluor.md §4, §6 y §8), sin
- * `id_operacion`: lo agrega el enviador. Se guardan ya listos para Fluor.
+ * Campo `datos` de `POST /tte/guia/entrega` (docs/offline.md §12.1). Se guarda
+ * ya listo para Fluor; las fotos y la firma van aparte, como archivos.
  */
 export const cuerpoEntrega = (
-  ids: {codigoGuia: number; codigoDespacho: number},
+  codigoGuia: number,
   datos: DatosEntrega,
   fecha: string,
   ubicacion: Ubicacion | null = null,
 ) => ({
-  codigo_guia_pk: ids.codigoGuia,
-  codigo_despacho_fk: ids.codigoDespacho,
-  recibe: opcional(datos.recibe),
-  numero_identificacion: opcional(datos.numeroIdentificacion),
-  parentesco: opcional(datos.parentesco),
-  celular: opcional(datos.celular),
+  guia: codigoGuia,
   fecha_entrega: fecha,
+  recibe: opcional(datos.recibe),
+  recibe_parentesco: opcional(datos.parentesco),
+  recibe_numero_identificacion: opcional(datos.numeroIdentificacion),
+  recibe_celular: opcional(datos.celular),
   ...coordenadas(ubicacion),
 });
+
+export type CuerpoEntrega = ReturnType<typeof cuerpoEntrega>;
+
+/**
+ * Cuerpos de novedad y terminar (docs/contratos-fluor.md §6 y §8). Provisionales
+ * hasta que Fluor publique esos endpoints.
+ */
 
 export const cuerpoNovedad = (
   ids: {codigoGuia: number; codigoDespacho: number},
@@ -235,13 +244,3 @@ export const cuerpoTerminar = (codigoDespacho: number, fecha: string) => ({
 });
 
 export type TipoArchivo = 'foto' | 'firma';
-
-/**
- * Metadatos de una foto o firma (docs/contratos-fluor.md §5). El archivo va
- * aparte: lo lee el enviador desde la tabla `archivos`.
- */
-export const cuerpoArchivo = (codigoGuia: number, tipo: TipoArchivo) => ({
-  codigo_modelo: 'TteGuia',
-  codigo: codigoGuia,
-  tipo: tipo === 'firma' ? 'F' : 'I',
-});

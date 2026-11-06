@@ -16,10 +16,15 @@ export type NuevaOperacion = {
   /** Entidad afectada; sus operaciones se envían en el orden en que se crearon. */
   claveEntidad: string;
   tenantDespachoId?: number | null;
-  /** Operación que debe confirmarse antes (p. ej. la entrega antes de su foto). */
+  /** Operación que debe confirmarse antes (p. ej. las entregas antes de terminar). */
   dependeDe?: string | null;
   cuerpo: unknown;
+  /** Formato del cuerpo; cambia cuando cambia el contrato con Fluor (docs/offline.md §11). */
+  versionCuerpo?: number;
 };
+
+/** Foto o firma que viaja con su operación. */
+export type ArchivoOperacion = {ruta: string; tipo: 'F' | 'I'; bytes: number};
 
 /** Estados que todavía no llegaron a Fluor (o que Fluor rechazó y guardan evidencia). */
 export const SIN_CONFIRMAR: EstadoOperacion[] = [
@@ -33,7 +38,7 @@ export const SIN_CONFIRMAR: EstadoOperacion[] = [
 /**
  * Agrega una operación a la cola. Se llama dentro de la misma transacción que
  * guarda el cambio local, para que ambos queden o ninguno. Devuelve su
- * `id_operacion`, que viaja a Fluor como llave de idempotencia.
+ * `id_operacion`, la llave de la operación en la cola.
  */
 export const encolar = async (
   tx: Consulta,
@@ -49,6 +54,7 @@ export const encolar = async (
     tenantDespachoId: nueva.tenantDespachoId ?? null,
     dependeDe: nueva.dependeDe ?? null,
     cuerpo: JSON.stringify(nueva.cuerpo),
+    versionCuerpo: nueva.versionCuerpo ?? 1,
     estado: 'pendiente',
     proximoIntento: ahora,
     creadaEn: ahora,
@@ -188,7 +194,8 @@ export const reanudarUsuario = (
 
 /**
  * Al abrir la app: lo que quedó `enviando` es de una ejecución que murió sin
- * respuesta. Se reenvía; el `id_operacion` evita el duplicado en Fluor.
+ * respuesta. Se reenvía; si Fluor ya la tenía, el enviador lo reconoce
+ * (p. ej. el 409 con `entrega: true`) y no se duplica.
  */
 export const recuperarInterrumpidas = (tx: Consulta) =>
   tx
@@ -213,7 +220,7 @@ export const reintentar = (
     );
 
 /**
- * Borra una rechazada o en conflicto y todo lo que depende de ella (sus fotos).
+ * Borra una rechazada o en conflicto y todo lo que depende de ella.
  * Devuelve los ids borrados y las rutas de sus archivos: quien llama los borra
  * del disco después de confirmar la transacción.
  */
@@ -236,18 +243,25 @@ export const descartar = async (tx: Consulta, idOperacion: string) => {
   return {ids, rutas: rutas.map(f => f.ruta)};
 };
 
+/** Fotos y firma que viajan con la operación. */
+export const archivosDe = (db: Consulta, idOperacion: string) =>
+  db
+    .select({ruta: archivos.ruta, tipo: archivos.tipo, bytes: archivos.bytes})
+    .from(archivos)
+    .where(eq(archivos.idOperacion, idOperacion))
+    .orderBy(sql`archivos.rowid`);
+
 /**
- * La operación ya llegó a Fluor: su archivo deja de ser necesario. Quita el
- * registro y devuelve la ruta para borrarla del disco, o null si no tenía.
+ * La operación ya llegó a Fluor con sus archivos: dejan de ser necesarios.
+ * Quita los registros y devuelve las rutas para borrarlas del disco.
  */
-export const soltarArchivo = async (tx: Consulta, idOperacion: string) => {
-  const [archivo] = await tx
+export const soltarArchivos = async (tx: Consulta, idOperacion: string) => {
+  const rutas = await tx
     .select({ruta: archivos.ruta})
     .from(archivos)
     .where(eq(archivos.idOperacion, idOperacion));
-  if (!archivo) return null;
   await tx.delete(archivos).where(eq(archivos.idOperacion, idOperacion));
-  return archivo.ruta;
+  return rutas.map(f => f.ruta);
 };
 
 /** Cuántas operaciones sin confirmar hay, por estado. */
@@ -284,13 +298,20 @@ export const sinConfirmarDelDespacho = async (
   return Number(fila?.total ?? 0);
 };
 
-/** Las confirmadas se guardan un tiempo para soporte y luego se borran. */
-export const purgarConfirmadas = (tx: Consulta, antesDe: number) =>
-  tx
-    .delete(operaciones)
-    .where(
-      and(
-        eq(operaciones.estado, 'confirmada'),
-        lte(operaciones.confirmadaEn, antesDe),
-      ),
-    );
+/**
+ * Las confirmadas se guardan un tiempo para soporte y luego se borran, con
+ * los archivos que conservaban. Devuelve sus rutas para borrarlas del disco.
+ */
+export const purgarConfirmadas = async (tx: Consulta, antesDe: number) => {
+  const vencidas = and(
+    eq(operaciones.estado, 'confirmada'),
+    lte(operaciones.confirmadaEn, antesDe),
+  );
+  const rutas = await tx
+    .select({ruta: archivos.ruta})
+    .from(archivos)
+    .innerJoin(operaciones, eq(operaciones.idOperacion, archivos.idOperacion))
+    .where(vencidas);
+  await tx.delete(operaciones).where(vencidas);
+  return rutas.map(f => f.ruta);
+};

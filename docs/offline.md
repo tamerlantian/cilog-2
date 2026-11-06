@@ -3,6 +3,8 @@
 Cómo la app guarda y envía las entregas, novedades y demás acciones del conductor cuando la red falla: túneles, zonas rurales, señal intermitente, teléfono reiniciado.
 Es el diseño que se implementa en `core/db` y `core/sync`. Cualquier cambio a estas reglas se discute aquí antes de tocar código.
 
+> **6 nov 2026**: Fluor publicó `POST /tte/guia/entrega` (entrega, fotos y firma en una sola petición) y backend decidió no implementar `id_operacion` ni códigos de error propios. Este documento ya refleja esa decisión (§7.2, §7.3, §8 y §12).
+
 > Los diagramas están en Mermaid: se ven en GitHub y en VS Code (con la vista previa de Markdown).
 
 ## 1. Garantías
@@ -12,26 +14,30 @@ Son las promesas que la app le hace al conductor y a la empresa. Todo el diseño
 | # | Garantía | Cómo se cumple |
 | --- | --- | --- |
 | G1 | **Una entrega registrada nunca se pierde**, aunque se cierre la app, se apague el teléfono o se venza la sesión. | Se escribe en SQLite (transacción) antes de mostrar "Entregada". La cola solo borra una operación cuando Fluor la confirma. |
-| G2 | **Una entrega nunca se registra dos veces** en Fluor, aunque se reenvíe. | Cada operación lleva un `id_operacion` (UUID v4) que Fluor usa como llave de idempotencia. |
+| G2 | **Una entrega nunca se registra dos veces** en Fluor, aunque se reenvíe. | Fluor bloquea la guía y responde `409` con `entrega: true` si ya estaba entregada. La app toma esa respuesta como confirmada (§7.2). El `id_operacion` (UUID v4) es la llave local de la cola; Fluor no lo recibe. |
 | G3 | **El conductor nunca espera a la red** para seguir trabajando. | La pantalla lee y escribe en SQLite. La red solo la usa el motor de sincronización, en segundo plano. |
 | G4 | **El conductor siempre sabe qué falta por enviar** y si algo falló. | Cada guía muestra su estado de envío; la pestaña *Envíos* lista la cola y los errores. |
 | G5 | **Fluor es la verdad final.** | Si Fluor rechaza una operación de forma definitiva, la app no la oculta ni la reintenta para siempre: la marca y pide atención. |
 
-Lo que **no** se garantiza: que dos conductores no entreguen la misma guía (lo decide Fluor con un `409`), ni que la hora del teléfono sea correcta (ver §10).
+Lo que **no** se garantiza:
+
+- Que la app detecte que **otra persona** entregó la guía: Fluor responde igual a un reintento propio que a una entrega ajena, y la app la marca enviada (§7.3). Riesgo aceptado por backend el 6 nov 2026.
+- Que la hora del teléfono sea correcta (§10).
 
 ## 2. Escenarios que cubre
 
 | Escenario | Qué ve el conductor | Qué pasa por dentro |
 | --- | --- | --- |
 | Túnel de 30 s mientras entrega | Nada distinto: la guía queda "Entregada · por enviar". | La operación queda `pendiente`; se envía al volver la señal. |
-| La señal se cae **justo después** de enviar (la respuesta no llega) | "Por enviar" unos segundos más. | Se reintenta con el mismo `id_operacion`; Fluor responde 200 sin duplicar (§7.2). |
+| La señal se cae **justo después** de enviar (la respuesta no llega) | "Por enviar" unos segundos más. | Se reintenta; Fluor responde `409` con `entrega: true` y la app la marca enviada, sin duplicar (§7.2). |
 | Zona rural varias horas | Barra "Sin conexión · 12 por enviar". | La cola crece; el motor reintenta con espera creciente. |
 | Señal "falsa" (barras llenas, sin internet) | Igual que sin señal. | El motor no confía en el indicador de red: intenta, y el *timeout* lo clasifica como error de red. |
 | El sistema cierra la app o el teléfono se reinicia | Al abrir, todo sigue ahí. | SQLite persiste; las operaciones que estaban `enviando` vuelven a `pendiente` (§6.4). |
 | El access token (60 min) vence sin señal | Nada. | Al volver la red, el 401 dispara la renovación con el refresh token (ya implementado). |
 | El refresh token (30 días) vence o lo revocan | Pide iniciar sesión, **sin perder** la cola. | La cola se pausa; al entrar el mismo usuario se reanuda (§9). |
 | El control de la empresa libera el despacho mientras el conductor está sin señal | La guía queda en "No se pudo enviar". | Fluor responde 404; la operación queda `rechazada` con su evidencia guardada (§7.3). |
-| Otro conductor u oficina ya entregó la guía | "Ya estaba entregada". | `409` con otro `id_operacion` → `conflicto` (§7.3). |
+| Otro conductor u oficina ya entregó la guía | "Enviada", igual que un reintento propio. | `409` con `entrega: true` → `confirmada`. La evidencia local se conserva 7 días para soporte (§7.3). |
+| Fluor guarda la entrega pero falla al guardar una foto o la firma | "Enviada". | `200` con `ficheros_con_error > 0` → `confirmada`; se reporta y los archivos locales se conservan 7 días. La recuperación la maneja backend (§8). |
 | Se actualiza la app con envíos pendientes | Nada. | Las migraciones de SQLite conservan la cola (§11). |
 | Poco espacio en el teléfono | Aviso antes de tomar fotos. | Se revisa el espacio libre antes de capturar (§8). |
 
@@ -49,7 +55,7 @@ flowchart LR
         A[Archivos<br/>fotos y firma] --- DB
         R[Disparadores<br/>red, primer plano, timer] --> M
     end
-    M -->|HTTPS + Bearer + id_operacion| F[Fluor]
+    M -->|HTTPS + Bearer| F[Fluor]
     H -->|descarga guías| F
 ```
 
@@ -87,7 +93,7 @@ erDiagram
     operaciones_pendientes {
         string id_operacion PK "UUID v4"
         int usuario_id
-        string tipo "entrega | novedad | archivo | terminar | ..."
+        string tipo "entrega | novedad | terminar | ..."
         string clave_entidad "guia:777001 / despacho:9001"
         string depende_de "id_operacion o null"
         json cuerpo
@@ -100,8 +106,8 @@ erDiagram
         datetime confirmada_en
     }
     archivos {
-        string id_operacion PK
-        string ruta "documentos de la app"
+        string ruta PK "documentos de la app"
+        string id_operacion FK "la entrega"
         string tipo "F firma | I imagen"
         int bytes
     }
@@ -111,7 +117,8 @@ Reglas del modelo:
 
 - **Lo que dijo Fluor y lo que hizo el conductor van en columnas distintas.** `estado_entregado` se sobreescribe al descargar; `gestion_local` no. La pantalla muestra `gestion_local ?? estado del servidor`. Así una descarga nunca borra una entrega que aún no se envió.
 - `usuario_id` en cada operación: el motor solo envía las del usuario con sesión (§9).
-- `depende_de`: una foto no se sube antes de que exista la entrega; "terminar" no sale mientras haya entregas sin confirmar del despacho.
+- Las fotos y la firma son **archivos de la operación de entrega**, no operaciones aparte: viajan en la misma petición (§8).
+- `depende_de`: "terminar" no sale mientras haya entregas sin confirmar del despacho.
 - Base en modo **WAL** y toda escritura del conductor en **una transacción**: guía + operación + archivos se guardan juntos o no se guarda nada.
 
 ## 5. Descarga de guías y fusión
@@ -145,11 +152,11 @@ stateDiagram-v2
     pendiente --> bloqueada: depende de otra sin confirmar
     bloqueada --> pendiente: la dependencia se confirma
     pendiente --> enviando: el motor la toma
-    enviando --> confirmada: 2xx (incluye repetida idempotente)
+    enviando --> confirmada: 2xx, o 409 con entrega true
     enviando --> pendiente: red, timeout, 5xx o 429 (espera creciente)
     enviando --> pausada: sesión rechazada (refresh inválido)
     pausada --> pendiente: el mismo usuario inicia sesión
-    enviando --> conflicto: 409 (otro ya la gestionó)
+    enviando --> conflicto: otro 409 de la novedad o el terminar
     enviando --> rechazada: 400, 403, 404, 422
     rechazada --> pendiente: el conductor toca Reintentar
     conflicto --> [*]: el conductor la descarta
@@ -184,18 +191,15 @@ sequenceDiagram
     H->>DB: BEGIN
     H->>DB: guias.gestion_local = 'entregada'
     H->>DB: INSERT operación entrega (id_operacion = UUID)
-    H->>DB: INSERT operaciones archivo (depende_de = entrega)
+    H->>DB: INSERT archivos de la entrega
     H->>DB: COMMIT
     H-->>P: listo
     P-->>C: "Entregada · por enviar"
     H->>M: despertar()
     alt hay señal
-        M->>F: POST entregar (id_operacion)
+        M->>F: POST /tte/guia/entrega (datos + imagenes + firma)
         F-->>M: 200
-        M->>DB: entrega = confirmada, archivos = pendiente
-        M->>F: POST archivo (Idempotency-Key) × n
-        F-->>M: 201
-        M->>DB: archivos = confirmada, borra el fichero local
+        M->>DB: entrega = confirmada, borra los ficheros locales
         M-->>P: "Enviada"
     else sin señal
         M->>DB: entrega = pendiente, proximo_intento = +5 s
@@ -214,9 +218,9 @@ flowchart TD
     S -- no --> Z([Sale])
     S -- sí --> N[Siguiente operación lista:<br/>pendiente, sin dependencia abierta,<br/>proximo_intento ≤ ahora,<br/>orden por creada_en]
     N -- no hay --> Fin([Sale; si alguien pidió<br/>'volver a correr', repite])
-    N -- hay --> E[estado = enviando<br/>envía con timeout 20 s]
+    N -- hay --> E[estado = enviando<br/>envía con timeout 20 s<br/>60 s la entrega]
     E --> R{Resultado}
-    R -- 2xx --> OK[confirmada<br/>libera dependientes] --> N
+    R -- 2xx o 409 entrega true --> OK[confirmada<br/>libera dependientes] --> N
     R -- red / timeout / 5xx / 429 --> T[pendiente, intentos+1<br/>backoff] --> Fin
     R -- sesión rechazada --> PA[pausa toda la cola<br/>del usuario] --> Fin
     R -- 409 --> CF[conflicto] --> N
@@ -249,13 +253,13 @@ NetInfo se usa **solo como disparador**, nunca para decidir "no intentar": su in
 ```mermaid
 flowchart LR
     A[App abre] --> B[Operaciones en 'enviando'<br/>de una ejecución anterior] --> C[Vuelven a 'pendiente']
-    C --> D[Se reenvían con el<br/>mismo id_operacion]
-    D --> E{Fluor ya la tenía?}
-    E -- sí --> F[200 con la respuesta original]
+    C --> D[Se reenvían]
+    D --> E{¿Fluor ya la tenía?}
+    E -- sí --> F[409 con entrega true<br/>= confirmada]
     E -- no --> G[La procesa por primera vez]
 ```
 
-Una operación solo queda en `enviando` si la app murió entre el envío y la respuesta. No se sabe si Fluor la recibió, y no importa: la idempotencia hace seguro reenviarla.
+Una operación solo queda en `enviando` si la app murió entre el envío y la respuesta. No se sabe si Fluor la recibió, y no importa: si ya la tenía responde `409` con `entrega: true` y la app la da por confirmada.
 
 ## 7. Errores
 
@@ -268,13 +272,16 @@ Una operación solo queda en `enviando` si la app murió entre el envío y la re
 | `429` | Transitorio | Reintentar respetando `Retry-After` | (no se muestra) |
 | `401` con refresh válido | Transparente | El cliente renueva y reintenta (ya implementado) | — |
 | `401`/`403` del refresh | Sesión | `pausada`; pedir login | "Inicia sesión para enviar tus entregas." |
-| `409` y el cuerpo es de **otra** operación | Conflicto | `conflicto` | "Esta guía ya estaba entregada." |
+| `409` con `entrega: true` (entrega) | Ya aplicada | `confirmada` | "Enviada" |
+| Otro `409` (p. ej. "La guía no está despachada") | Definitivo | `rechazada` | Mensaje de Fluor. |
 | `404` (despacho liberado, guía inexistente) | Definitivo | `rechazada` | "El despacho ya no está asignado a ti." |
 | `400`, `403`, `422` | Definitivo | `rechazada` + reporte a Sentry | Mensaje de Fluor (`mensajeUsuario`). |
 
 Un `422` casi siempre es un error de la app (cuerpo mal armado), no del conductor: se reporta con `id_operacion` y `request_id`.
 
-### 7.2 Respuesta perdida (la razón de `id_operacion`)
+Fluor no manda códigos propios (`error.code` es genérico: `CONFLICT`, `NOT_FOUND`…). La app clasifica por el estado HTTP y, en la entrega, por la marca `entrega: true` del `409`. No se compara el texto del mensaje.
+
+### 7.2 Respuesta perdida
 
 ```mermaid
 sequenceDiagram
@@ -282,30 +289,32 @@ sequenceDiagram
     participant F as Fluor
     participant BD as Base de la empresa
 
-    M->>F: POST entregar (id_operacion = A)
-    F->>BD: guarda entrega + registra A
+    M->>F: POST /tte/guia/entrega
+    F->>BD: guarda la entrega, las fotos y la firma
     F--xM: (la respuesta se pierde en el túnel)
     Note over M: timeout → pendiente
-    M->>F: POST entregar (id_operacion = A) de nuevo
-    F->>BD: ¿A ya existe? sí
-    F-->>M: 200 con la respuesta guardada de A
+    M->>F: POST /tte/guia/entrega de nuevo
+    F->>BD: ¿la guía ya está entregada? sí
+    F-->>M: 409 con entrega true
     Note over M: confirmada, sin duplicado
 ```
 
-Sin esto, la app vieja podía registrar la misma entrega dos veces o marcar error una entrega que sí entró.
+Fluor bloquea la fila de la guía al entregar, así que dos envíos de la misma entrega nunca cuentan doble. Backend decidió no implementar `id_operacion` (6 nov 2026): con `entrega: true` la app sabe que la guía quedó entregada, aunque no sabe por quién (§7.3).
 
 ### 7.3 Conflictos y despachos liberados
 
-- **Guía entregada por otro** (`409`): la guía muestra "Ya estaba gestionada". El conductor la descarta; las fotos y la firma locales se borran al descartar. Se reporta a Sentry para seguimiento.
+- **Guía entregada por otro**: Fluor responde lo mismo que a un reintento propio (`409` con `entrega: true`), así que la app la marca `confirmada` y el conductor no ve un aviso. Las fotos, la firma y los datos de quien recibe **no** llegan a Fluor. Para no perder esa evidencia, la app conserva los archivos locales hasta que se purga la operación (7 días) y reporta el `409` a Sentry. Lo detecta y resuelve la oficina; es un riesgo aceptado por backend.
 - **Despacho liberado** (`404` en cualquier operación del despacho): todas sus operaciones quedan `rechazada`; el despacho se muestra como "Liberado" y **no se borra** hasta que el conductor lo descarte o llame a la oficina. La evidencia (recibe, fotos, firma, hora) sigue en el teléfono y se puede exportar si hace falta.
-- **Guía con novedad y luego entregada**: se envían en orden. Si la empresa no permite entregar con novedad, Fluor responde `409` y queda `conflicto`.
+- **Guía con novedad y luego entregada**: se envían en orden. Hoy Fluor no revisa la regla de entregar con novedad; la app la aplica antes de guardar.
 
 ## 8. Fotos y firma
 
 - Se guardan en el **directorio de documentos** de la app, no en la caché (el sistema borra la caché cuando le falta espacio, y la app vieja perdía fotos así).
 - Se comprimen al capturar (máx. 1.280 px, calidad de la configuración de entrega) para que una foto pese ~200 KB y suba con señal débil.
-- Cada archivo es su propia operación con `depende_de` = la entrega. Si falla una foto, la entrega sigue confirmada y solo esa foto se reintenta.
-- El fichero local se borra cuando su operación queda `confirmada`.
+- Viajan **en la misma petición que la entrega** (`multipart/form-data`): `datos` (JSON), hasta 4 `imagenes` (JPEG, PNG o WebP) y una `firma` (PNG), máximo 30 MB en total. Con 1.280 px una entrega completa pesa alrededor de 1 MB.
+- Fluor valida los archivos antes de tocar la guía: uno inválido rechaza la entrega completa (`400`/`422`) y no la deja a medias.
+- Fluor sube los archivos **después** de guardar la entrega. Si uno falla responde `200` con `ficheros_con_error > 0`; la app no puede reenviarlo (reintentar daría `409`). Backend se encarga de ese caso. La app lo reporta a Sentry y conserva los ficheros locales hasta la purga (7 días).
+- Con `ficheros_con_error = 0`, el fichero local se borra cuando la entrega queda `confirmada`.
 - Antes de abrir la cámara se revisa que haya al menos 50 MB libres.
 
 ## 9. Sesión y cola
@@ -329,7 +338,8 @@ flowchart TD
 ## 10. Fechas y hora del teléfono
 
 - Cada operación lleva la hora **del momento en que el conductor la hizo** (`fecha_entrega`, `fecha`), no la del envío. Una entrega hecha a las 10:42 en un túnel y enviada a las 11:30 queda a las 10:42.
-- La hora del teléfono puede estar mal. Se envía también `enviado_en` (hora del teléfono al enviar) para que Fluor pueda corregir: `hora_real ≈ fecha_entrega + (recibido_en_servidor − enviado_en)`. Se pide a Fluor guardar `recibido_en` (§12).
+- Fluor guarda la hora del servidor en el seguimiento (`fecha`) junto a la que manda el teléfono (`fecha_seguimiento` = `fecha_entrega`). Con eso la oficina ve cuándo llegó cada entrega.
+- La hora del teléfono puede estar mal. Fluor no recibe `enviado_en`, así que no se corrige automáticamente.
 
 ## 11. Actualizaciones de la app y migraciones
 
@@ -338,15 +348,41 @@ flowchart TD
 
 ## 12. Lo que esto exige a Fluor
 
-Para que las garantías se cumplan, cada endpoint de escritura debe:
+### 12.1 Entrega: `POST /tte/guia/entrega`
 
-1. **Idempotencia por `id_operacion`**: si ya lo procesó, responder 200 con la misma respuesta (ya está en `contratos-fluor.md`). Debe guardarse por al menos 30 días: un teléfono puede volver a enviar después de días sin señal.
-2. **`409` solo cuando otra operación** ya gestionó la entidad, con un `code` distinguible (`YA_ENTREGADA`, `DESPACHO_LIBERADO`…) para que la app no dependa del texto.
+`multipart/form-data` con `datos` (JSON), `imagenes` (0 a 4) y `firma` (opcional). Respuesta `200`: `{codigo_guia_pk, estado_entregado, fecha_entrega, estado_digitalizado, estado_firma, ficheros_con_error}`.
+
+| Campo de `datos` | Lo que manda la app |
+| --- | --- |
+| `guia` | `codigo_guia` (obligatorio) |
+| `fecha_entrega` | Hora local del teléfono al confirmar, sin zona (`2026-11-06T10:42:13`) |
+| `recibe`, `recibe_parentesco`, `recibe_numero_identificacion`, `recibe_celular` | Lo que capturó el conductor; los vacíos viajan como `null` |
+| `latitud`, `longitud` | De la ubicación al confirmar; `null` sin GPS |
+| `usuario`, `usuario_nombre`, `usuario_correo` | No se mandan: Fluor toma el usuario del token |
+
+Va con `X-Tenant-ID` = la empresa **del despacho** (no la empresa activa de la sesión) y un timeout de 60 s, porque pesa alrededor de 1 MB. Se implementa en `features/despachos/api/entrega.ts` y `features/despachos/sync/enviadores.ts`.
+
+| Respuesta | Qué hace la app |
+| --- | --- |
+| `200`, `ficheros_con_error = 0` | `confirmada`; borra los ficheros locales |
+| `200`, `ficheros_con_error > 0` | `confirmada`; reporta y conserva los ficheros 7 días |
+| `409` con `entrega: true` | `confirmada` (reintento propio u otra persona; no se distingue) |
+| `409` sin `entrega` ("no está despachada") | `rechazada` |
+| `404` "Guía no encontrada" | `rechazada` |
+
+### 12.2 Decidido por backend (6 nov 2026)
+
+- **Sin `id_operacion`** ni `Idempotency-Key`: la idempotencia de la entrega sale de `409` + `entrega: true`.
+- **Sin códigos de error propios**: la app clasifica por estado HTTP y la marca `entrega`.
+- **Sin endpoint aparte para reenviar archivos**: si falla un archivo después de guardar la entrega, lo resuelve backend.
+
+### 12.3 Pendiente en Fluor
+
+1. **Acceso por asignación** (bloqueante): `/tte/guia/entrega` usa `get_tenant_db` (`X-Tenant-ID` + `user_tenant`) y el conductor, que no es usuario de la empresa, recibe `403`. Debe validarse como `GET /tte/movil/despacho/{id}/guias`, y que la guía pertenezca a ese despacho.
+2. Endpoints de novedad, tipos de novedad, configuración de entrega y terminar despacho (`contratos-fluor.md`). Se espera el mismo patrón: un `409` reconocible cuando la acción ya estaba aplicada.
 3. **Aceptar operaciones tardías**: una entrega con `fecha_entrega` de ayer, o que llega después de que el despacho se terminó desde la web, no debe rechazarse por eso.
-4. **Guardar `recibido_en`** (hora del servidor) junto a la hora que reporta el teléfono.
-5. **`Retry-After` en los `429`.**
-6. **Entrega antes que archivos**: `POST /doc/fichero/cargar` con `Idempotency-Key` y `tipo` (contrato 5).
-7. Que la descarga de guías (`/tte/movil/despacho/{id}/guias`) incluya las guías ya entregadas o con novedad (ya lo hace) para que la fusión (§5) sepa qué confirmó el servidor.
+4. **`Retry-After` en los `429`.**
+5. Que la descarga de guías (`/tte/movil/despacho/{id}/guias`) siga incluyendo las ya entregadas o con novedad, para que la fusión (§5) sepa qué confirmó el servidor (ya lo hace).
 
 ## 13. Lo que ve el conductor
 
@@ -372,7 +408,8 @@ Después, si hace falta: Android WorkManager (tarea periódica con condición "h
 | Prueba | Cómo |
 | --- | --- |
 | Motor, clasificación de errores, backoff, dependencias, fusión | Unitarias en Jest con SQLite en memoria y adaptador HTTP falso. |
-| Respuesta perdida | Adaptador que guarda en el "servidor" y luego lanza timeout; verificar que el reenvío no duplica. |
+| Respuesta perdida | Adaptador que guarda en el "servidor" y luego lanza timeout; verificar que el reenvío recibe `409` con `entrega: true` y queda `confirmada`. |
+| Archivo fallido | Respuesta `200` con `ficheros_con_error: 1`; verificar `confirmada` y que los ficheros locales se conservan. |
 | App cerrada a mitad de envío | Dejar una operación en `enviando`, reiniciar el motor, verificar que vuelve a `pendiente`. |
 | Túnel real | Modo avión en el emulador mientras se entrega; quitarlo y ver que se envía. |
 | Señal débil | Android Emulator → *Cellular* → *Network type* EDGE / *Signal* Poor. |
@@ -384,6 +421,7 @@ Después, si hace falta: Android WorkManager (tarea periódica con condición "h
 | Tema | Propuesta | Quién decide |
 | --- | --- | --- |
 | ¿Se permite terminar el despacho con entregas aún sin enviar? | No: terminar exige cola vacía del despacho. **Aplicado en la app** (paso 3a); falta que negocio lo confirme. | Negocio |
-| ¿Cuánto tiempo guarda Fluor los `id_operacion`? | 30 días. | Backend |
+| ¿Idempotencia con `id_operacion`? | **Decidido**: no. Se usa `409` + `entrega: true` y se acepta no detectar entregas ajenas (§7.3). | Backend, 6 nov 2026 |
+| ¿Reenviar archivos que fallaron? | **Decidido**: lo maneja backend; la app conserva los ficheros 7 días. | Backend, 6 nov 2026 |
 | ¿Envío en segundo plano en Android desde la primera versión? | No; evaluarlo con el uso real. | Producto |
 | Exportar la evidencia de un despacho liberado | Compartir un ZIP con JSON + fotos. | Producto |

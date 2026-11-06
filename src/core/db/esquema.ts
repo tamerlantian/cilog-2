@@ -109,15 +109,22 @@ export const operaciones = sqliteTable(
   ],
 );
 
-/** Fotos y firma de una operación; el fichero vive en documentos de la app. */
-export const archivos = sqliteTable('archivos', {
-  idOperacion: text('id_operacion')
-    .primaryKey()
-    .references(() => operaciones.idOperacion, {onDelete: 'cascade'}),
-  ruta: text('ruta').notNull(),
-  tipo: text('tipo').$type<'F' | 'I'>().notNull(),
-  bytes: integer('bytes').notNull(),
-});
+/**
+ * Fotos y firma de una operación (la entrega), que viajan en la misma
+ * petición. El fichero vive en documentos de la app.
+ */
+export const archivos = sqliteTable(
+  'archivos',
+  {
+    ruta: text('ruta').primaryKey(),
+    idOperacion: text('id_operacion')
+      .notNull()
+      .references(() => operaciones.idOperacion, {onDelete: 'cascade'}),
+    tipo: text('tipo').$type<'F' | 'I'>().notNull(),
+    bytes: integer('bytes').notNull(),
+  },
+  t => [index('archivos_operacion').on(t.idOperacion)],
+);
 
 export const esquema = {despachos, guias, operaciones, archivos};
 export type Esquema = typeof esquema;

@@ -13,7 +13,6 @@ import {encolar} from '@/core/sync';
 import {claveDespacho, claveGuia} from '../domain/claves';
 import {fechaLocalIso} from '../domain/formato';
 import {
-  cuerpoArchivo,
   cuerpoEntrega,
   cuerpoNovedad,
   cuerpoTerminar,
@@ -21,6 +20,7 @@ import {
   puedeReportarNovedad,
   evidenciaFaltante,
   puedeTerminar,
+  VERSION_CUERPO_ENTREGA,
   type ConfiguracionEntrega,
   type DatosEntrega,
   type TipoArchivo,
@@ -79,9 +79,8 @@ type Gestion = {
 export type Evidencia = {tipo: TipoArchivo; ruta: string; bytes: number};
 
 /**
- * Cada foto y la firma son su propia operación, que depende de la entrega y
- * tiene su propia clave: si una falla, las demás y la entrega siguen
- * (docs/offline.md §8).
+ * La entrega y sus fotos y firma son una sola operación: viajan juntas en
+ * `POST /tte/guia/entrega` (docs/offline.md §8).
  */
 export const registrarEntrega = async (
   tx: Consulta,
@@ -113,32 +112,16 @@ export const registrarEntrega = async (
       tipo: 'entrega',
       claveEntidad: claveGuia(tenantDespachoId, codigoGuia),
       tenantDespachoId,
-      cuerpo: cuerpoEntrega(
-        {codigoGuia, codigoDespacho: despacho.codigoDespacho},
-        datos,
-        fechaLocalIso(ahora),
-        ubicacion,
-      ),
+      cuerpo: cuerpoEntrega(codigoGuia, datos, fechaLocalIso(ahora), ubicacion),
+      versionCuerpo: VERSION_CUERPO_ENTREGA,
     },
     ahora,
   );
 
-  for (const [indice, evidencia] of evidencias.entries()) {
-    const idArchivo = await encolar(
-      tx,
-      {
-        usuarioId,
-        tipo: evidencia.tipo,
-        claveEntidad: `archivo:${idEntrega}:${indice}`,
-        tenantDespachoId,
-        dependeDe: idEntrega,
-        cuerpo: cuerpoArchivo(codigoGuia, evidencia.tipo),
-      },
-      ahora,
-    );
+  for (const evidencia of evidencias) {
     await tx.insert(archivos).values({
-      idOperacion: idArchivo,
       ruta: evidencia.ruta,
+      idOperacion: idEntrega,
       tipo: evidencia.tipo === 'firma' ? 'F' : 'I',
       bytes: evidencia.bytes,
     });

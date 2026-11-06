@@ -5,9 +5,7 @@ Todos siguen las convenciones de Fluor: rutas `/<módulo>/<recurso>/<acción>`, 
 listas `{total, page, size, items}`, errores `{success:false, error:{code,message,...}, request_id}`.
 
 - **Auth**: `Authorization: Bearer <jwt>` y `X-Tenant-ID: <id>` en todo, salvo login y `/mas/user-tenant/lista`.
-- **Idempotencia**: toda escritura que la app encola offline lleva `id_operacion` (UUID v4 generado en el dispositivo).
-  Si Fluor ya procesó ese `id_operacion`, responde **200 con el mismo cuerpo de la primera vez**, sin duplicar efectos.
-  Se guarda por empresa (`tte_operacion_movil`: `id_operacion` único, `usuario`, `tipo`, `fecha`, `respuesta`).
+- **Reenvíos**: la app reenvía una operación cuando se pierde la respuesta. Fluor decidió no usar `id_operacion` (6 nov 2026): cada endpoint debe responder un `409` reconocible cuando la acción ya estaba aplicada (la entrega usa `error.entrega = true`), para que la app lo dé por recibido.
 - **Fechas**: ISO 8601 sin zona, hora de Colombia. La app envía la hora del dispositivo en `fecha_*` porque la operación pudo ocurrir sin red.
 - **Usuario**: el que se guarda en `usuario`/`usuario_entrega` es el del JWT, nunca uno enviado por la app.
 
@@ -58,54 +56,17 @@ Entregar, novedad y terminar ya funcionan en la app: se guardan en el teléfono 
 
 Lo que se encole con los tipos de novedad provisionales Fluor lo rechazaría (404). Antes de activar el envío de novedades hay que tener el catálogo real; las de prueba se descartan desde *Envíos*.
 
-### 4. `POST /tte/guia/entregar`
+### 4 y 5. Entrega con fotos y firma: **hecho en Fluor** como `POST /tte/guia/entrega` (`b88a416`…`d517c77`)
 
-Reemplaza `api/despacho/guia/entrega`. **Los archivos van aparte** (endpoint 5): primero se confirma la entrega, luego se suben firma y fotos.
+Una sola petición `multipart/form-data`: `datos` (JSON), `imagenes` (0 a 4) y `firma` (PNG). Reemplaza lo que aquí se pedía como `/tte/guia/entregar` + `/doc/fichero/cargar`. El contrato que usa la app está en `docs/offline.md` §12.1.
 
-```json
-// request
-{
-  "id_operacion": "0f8a2c3e-7d1b-4f6a-9b52-1c3d4e5f6a7b",
-  "codigo_guia_pk": 777001,
-  "codigo_despacho_fk": 9001,
-  "recibe": "María Pérez",
-  "codigo_identificacion_fk": "CC",
-  "numero_identificacion": "43123456",
-  "parentesco": "TITULAR",
-  "celular": "3001234567",
-  "fecha_entrega": "2026-10-27T10:42:10",
-  "latitud": 6.2442,
-  "longitud": -75.5812
-}
-```
+Decidido por backend (6 nov 2026), y ya aplicado en la app:
 
-```json
-// 200
-{
-  "codigo_guia_pk": 777001,
-  "estado_entregado": true,
-  "fecha_entrega": "2026-10-27T10:42:10",
-  "usuario_entrega": "43987654",
-  "despacho": {"cantidad": 40, "cantidad_entregada": 13, "estado_entregado": false}
-}
-```
+- Sin `id_operacion` ni `Idempotency-Key`. Si la guía ya estaba entregada responde `409` con `error.entrega = true`; la app lo toma como recibida (reenvío propio o entrega de otra persona, no se distingue).
+- Sin códigos de error propios.
+- Si un archivo falla después de guardar la entrega, responde `200` con `ficheros_con_error > 0`; lo resuelve backend.
 
-- Marca `estado_entregado`, `fecha_entrega`, `usuario_entrega` y `estado_firma` (si luego llega la firma); crea `tte_seguimiento` tipo `ENTREGADO` con `latitud`/`longitud`.
-- Incrementa `tte_despacho.cantidad_entregada`; si llega a `cantidad`, `tte_despacho.estado_entregado = true`.
-- `latitud`, `longitud` opcionales. `parentesco` es uno de los 33 valores del catálogo de la app (`TITULAR`, `PORTERIA`, ...).
-- 409 `CONFLICT` "La guía ya fue entregada" si ya estaba entregada **por otra operación**. Con el mismo `id_operacion` es idempotente (200).
-- 409 si `estado_novedad = true` y `configuracion_entrega.entrega_con_novedad = false`.
-- 403 si la guía no pertenece a un despacho del conductor.
-
-### 5. `POST /doc/fichero/cargar/{codigo_modelo}/{codigo}` con tipo
-
-Ya existe. Se pide un cambio mínimo: aceptar el campo de formulario `tipo`.
-
-- `multipart/form-data`: `archivo` (jpg/png) y `tipo` = `F` (firma), `I` (imagen) o `G` (genérico, valor por defecto actual).
-- `codigo_modelo = TteGuia`, `codigo = codigo_guia_pk`. La app envía la firma una vez y hasta 4 imágenes, cada una como petición independiente con `id_operacion` en el header `Idempotency-Key`.
-- Con `tipo = F` debe poner `tte_guia.estado_firma = true`.
-- Respuesta sin cambios: `201 {"codigo_fichero_pk": 123}`. Idempotente por `Idempotency-Key`.
-- Límite actual de 10 MB está bien: la app comprime a máx. 1.280 px.
+**Falta (bloqueante)**: hoy usa `get_tenant_db` (`X-Tenant-ID` + `user_tenant`) y el conductor, que no es usuario de la empresa, recibe `403`. Debe validar el acceso por la asignación (`mas_tenant_despacho`), como `GET /tte/movil/despacho/{id}/guias`, y que la guía sea de ese despacho.
 
 ### 6. `POST /tte/novedad/nuevo`
 

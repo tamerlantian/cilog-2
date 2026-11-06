@@ -264,7 +264,7 @@ export const leerDespacho = async (db: Consulta, tenantDespachoId: number) => {
   return despacho ?? null;
 };
 
-/** Las fotos y la firma cuelgan de la entrega: también cuentan para la guía. */
+/** Estado de envío de la guía según sus operaciones sin confirmar. */
 const columnasGuia = {
   ...getTableColumns(guias),
   envio: sql<EnvioGuia>`(
@@ -273,13 +273,7 @@ const columnasGuia = {
       WHEN count(*) > 0 THEN 'porEnviar'
     END
     FROM ${operaciones}
-    WHERE (
-      ${operaciones.claveEntidad} = ${claveGuiaSql}
-      OR ${operaciones.dependeDe} IN (
-        SELECT gestion.id_operacion FROM ${operaciones} AS gestion
-        WHERE gestion.clave_entidad = ${claveGuiaSql}
-      )
-    )
+    WHERE ${operaciones.claveEntidad} = ${claveGuiaSql}
       AND ${inArray(operaciones.estado, SIN_CONFIRMAR)})`,
 };
 

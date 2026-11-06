@@ -1,6 +1,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import {AppState} from 'react-native';
 
+import {borrarEvidencia} from '@/core/archivos';
 import {escribir} from '@/core/db';
 import {useSesion} from '@/core/sesion';
 
@@ -57,10 +58,14 @@ export const iniciarSincronizacion = async (
   const actual = motor;
   const dejarMotor = actual.suscribir(avisarOyentes);
 
-  await escribir(async tx => {
+  const conSesion = usuarioActual();
+  const purgadas = await escribir(async tx => {
     await recuperarInterrumpidas(tx);
-    await purgarConfirmadas(tx, Date.now() - RETENCION_MS);
+    // Con la sesión abierta, nada del usuario debe seguir pausado.
+    if (conSesion !== null) await reanudarUsuario(tx, conSesion);
+    return purgarConfirmadas(tx, Date.now() - RETENCION_MS);
   });
+  await Promise.all(purgadas.map(borrarEvidencia));
 
   let conectado: boolean | null = null;
   const dejarRed = NetInfo.addEventListener(({isConnected}) => {

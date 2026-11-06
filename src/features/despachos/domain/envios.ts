@@ -18,8 +18,6 @@ export const PRESENTACION_ENVIO: Record<
 const NOMBRE_TIPO: Record<string, string> = {
   entrega: 'Entrega',
   novedad: 'Novedad',
-  foto: 'Foto',
-  firma: 'Firma',
   terminar: 'Terminar despacho',
 };
 

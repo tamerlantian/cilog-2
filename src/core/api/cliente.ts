@@ -61,8 +61,10 @@ const pedirRenovacion = async (): Promise<string | null> => {
       {headers: {'X-Request-ID': generarIdPeticion()}},
     );
     const nuevo = esquemaRenovacion.parse(data).access_token;
-    await sesion?.alRenovarToken(nuevo);
+    // Antes de guardarlo: la sesión cambia el token en memoria enseguida, y un
+    // 401 que llegue mientras se escribe en el llavero debe reconocerlo.
     renovacionReciente = {anterior, nuevo};
+    await sesion?.alRenovarToken(nuevo);
     return nuevo;
   } catch (error) {
     const {estado} = traducirError(error);
@@ -87,9 +89,14 @@ cliente.interceptors.request.use(config => {
     config.headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // Fluor no lee la empresa del JWT: se envía en cada petición.
+  // Fluor no lee la empresa del JWT: se envía en cada petición. Una petición
+  // de otra empresa (p. ej. la entrega de un despacho) trae la suya.
   const tenantId = sesion?.obtenerTenantId();
-  if (tenantId !== null && tenantId !== undefined) {
+  if (
+    tenantId !== null &&
+    tenantId !== undefined &&
+    !config.headers.has('X-Tenant-ID')
+  ) {
     config.headers.set('X-Tenant-ID', String(tenantId));
   }
   return config;
