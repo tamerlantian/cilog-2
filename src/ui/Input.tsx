@@ -21,6 +21,8 @@ type Props = TextInputProps & {
   ayuda?: string;
   /** Texto largo (descripción): varias líneas y campo más alto. */
   multilinea?: boolean;
+  /** Fuente monoespaciada para códigos (número de despacho, token). */
+  mono?: boolean;
   ref?: Ref<ComponentRef<typeof TextInput>>;
 };
 
@@ -29,6 +31,7 @@ export function Input({
   error,
   ayuda,
   multilinea = false,
+  mono = false,
   secureTextEntry,
   onFocus,
   onBlur,
@@ -40,7 +43,7 @@ export function Input({
   const [oculto, setOculto] = useState(true);
   const esClave = Boolean(secureTextEntry);
   const conError = Boolean(error);
-  styles.useVariants({enfocado, conError, multilinea});
+  styles.useVariants({enfocado, conError, multilinea, mono});
 
   return (
     <View style={styles.contenedor}>
@@ -137,6 +140,10 @@ const styles = StyleSheet.create(tema => ({
     fontFamily: tema.tipografia.familia.regular,
     fontSize: tema.tipografia.tamano.campo,
     variants: {
+      mono: {
+        true: {fontFamily: tema.tipografia.familia.mono},
+        false: {},
+      },
       multilinea: {
         true: {minHeight: 120, paddingTop: tema.espaciado.md},
         false: {},

@@ -14,11 +14,14 @@ const entero = (mensaje: string) =>
 export const esquemaFormularioVincular = z.object({
   operador: entero('Ingresa el operador'),
   despacho: entero('Ingresa el número del despacho'),
+  // Como la app anterior: letras y números, en mayúsculas (Fluor compara exacto).
   token: z
     .string()
     .trim()
     .min(1, 'Ingresa el token')
-    .max(20, 'El token tiene máximo 20 caracteres'),
+    .max(20, 'El token tiene máximo 20 caracteres')
+    .regex(/^[a-zA-Z0-9]+$/, 'Solo letras y números')
+    .transform(token => token.toUpperCase()),
 });
 
 export type FormularioVincular = z.input<typeof esquemaFormularioVincular>;

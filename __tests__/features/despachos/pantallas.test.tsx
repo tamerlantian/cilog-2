@@ -622,8 +622,12 @@ describe('pantallas de despachos', () => {
 
     const llenar = async () => {
       await fireEvent.changeText(screen.getByLabelText('Operador'), '7');
-      await fireEvent.changeText(screen.getByLabelText('Despacho'), '910');
-      await fireEvent.changeText(screen.getByLabelText('Token'), 'A1B2');
+      await fireEvent.changeText(
+        screen.getByLabelText('Número de despacho'),
+        '910',
+      );
+      // En minúsculas: se envía en mayúsculas, como en la app anterior.
+      await fireEvent.changeText(screen.getByLabelText('Token'), 'a1b2');
       await fireEvent.press(screen.getByRole('button', {name: 'Vincular'}));
     };
 

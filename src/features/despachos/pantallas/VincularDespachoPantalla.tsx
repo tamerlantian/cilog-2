@@ -56,82 +56,99 @@ export function VincularDespachoPantalla() {
       desplazable
       pie={<Boton cargando={isPending} titulo="Vincular" onPress={enviar} />}>
       <Encabezado alVolver={() => navegacion.goBack()} />
-      <View style={styles.textos}>
-        <Texto negrita variante="titulo">
-          Vincular despacho
-        </Texto>
-        <Texto tono="secundario">
-          Escribe los datos que te dio la empresa. Necesitas señal solo para
-          este paso.
-        </Texto>
-      </View>
+      <View style={styles.cuerpo}>
+        <View style={styles.textos}>
+          <Texto style={styles.titulo} variante="titulo">
+            Vincular despacho
+          </Texto>
+          <Texto tono="secundario">
+            Escribe los datos del manifiesto que te dio el despachador.
+            Necesitas señal solo para este paso.
+          </Texto>
+        </View>
 
-      <Controller
-        control={control}
-        name="operador"
-        render={({field, fieldState}) => (
-          <Input
-            ayuda="El código de la empresa de transporte"
-            error={fieldState.error?.message}
-            etiqueta="Operador"
-            keyboardType="number-pad"
-            returnKeyType="next"
-            value={field.value}
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
-            onSubmitEditing={() => despachoRef.current?.focus()}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="despacho"
-        render={({field, fieldState}) => (
-          <Input
-            ref={despachoRef}
-            error={fieldState.error?.message}
-            etiqueta="Despacho"
-            keyboardType="number-pad"
-            returnKeyType="next"
-            value={field.value}
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
-            onSubmitEditing={() => tokenRef.current?.focus()}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="token"
-        render={({field, fieldState}) => (
-          <Input
-            ref={tokenRef}
-            autoCapitalize="none"
-            autoCorrect={false}
-            error={fieldState.error?.message}
-            etiqueta="Token"
-            maxLength={20}
-            returnKeyType="done"
-            value={field.value}
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
-            onSubmitEditing={enviar}
-          />
-        )}
-      />
-
-      {error ? (
-        <Aviso
-          icono={CircleAlert}
-          mensaje={mensajeVincular(error)}
-          titulo="No se pudo vincular"
-          tono="peligro"
+        <View style={styles.fila}>
+          <View style={styles.operador}>
+            <Controller
+              control={control}
+              name="operador"
+              render={({field, fieldState}) => (
+                <Input
+                  error={fieldState.error?.message}
+                  etiqueta="Operador"
+                  keyboardType="number-pad"
+                  mono
+                  returnKeyType="next"
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChangeText={field.onChange}
+                  onSubmitEditing={() => despachoRef.current?.focus()}
+                />
+              )}
+            />
+          </View>
+          <View style={styles.despacho}>
+            <Controller
+              control={control}
+              name="despacho"
+              render={({field, fieldState}) => (
+                <Input
+                  ref={despachoRef}
+                  error={fieldState.error?.message}
+                  etiqueta="Número de despacho"
+                  keyboardType="number-pad"
+                  mono
+                  returnKeyType="next"
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChangeText={field.onChange}
+                  onSubmitEditing={() => tokenRef.current?.focus()}
+                />
+              )}
+            />
+          </View>
+        </View>
+        <Controller
+          control={control}
+          name="token"
+          render={({field, fieldState}) => (
+            <Input
+              ref={tokenRef}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              ayuda="Aparece en el manifiesto impreso, junto al número."
+              error={fieldState.error?.message}
+              etiqueta="Token"
+              maxLength={20}
+              mono
+              returnKeyType="done"
+              value={field.value}
+              onBlur={field.onBlur}
+              // Se ve como se envía: en mayúsculas.
+              onChangeText={texto => field.onChange(texto.toUpperCase())}
+              onSubmitEditing={enviar}
+            />
+          )}
         />
-      ) : null}
+
+        {error ? (
+          <Aviso
+            icono={CircleAlert}
+            mensaje={mensajeVincular(error)}
+            titulo="No se pudo vincular"
+            tono="peligro"
+          />
+        ) : null}
+      </View>
     </Pantalla>
   );
 }
 
 const styles = StyleSheet.create(tema => ({
-  textos: {gap: tema.espaciado.sm},
+  cuerpo: {gap: tema.espaciado.lg + 2, paddingHorizontal: tema.espaciado.xs},
+  textos: {gap: tema.espaciado.sm, paddingTop: tema.espaciado.xs},
+  titulo: {fontSize: 26, lineHeight: 32, letterSpacing: -0.6},
+  fila: {flexDirection: 'row', gap: tema.espaciado.md},
+  operador: {flex: 1},
+  despacho: {flex: 1.6},
 }));

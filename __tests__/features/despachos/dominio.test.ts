@@ -1,6 +1,7 @@
 import {enlaceLlamar, enlaceMapa} from '@/features/despachos/domain/contacto';
 import {estadoBarra} from '@/features/despachos/domain/envios';
 import {fechaCorta, numero, pesos} from '@/features/despachos/domain/formato';
+import {esquemaFormularioVincular} from '@/features/despachos/domain/formularios';
 import {aCobrar} from '@/features/despachos/domain/gestion';
 import {
   contarGuias,
@@ -150,5 +151,22 @@ describe('formato', () => {
   it('fecha corta desde el ISO de Fluor, sin correr por zona horaria', () => {
     expect(fechaCorta('2026-10-30T23:30:00')).toBe('30 oct');
     expect(fechaCorta(null)).toBeNull();
+  });
+});
+
+describe('vincular', () => {
+  const vincular = (token: string) =>
+    esquemaFormularioVincular.safeParse({
+      operador: '7',
+      despacho: '910',
+      token,
+    });
+
+  it('manda el token en mayúsculas, como la app anterior', () => {
+    expect(vincular(' a1b2 ').data?.token).toBe('A1B2');
+  });
+
+  it('solo acepta letras y números en el token', () => {
+    expect(vincular('A1-B2').success).toBe(false);
   });
 });
