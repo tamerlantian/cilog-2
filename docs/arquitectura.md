@@ -48,7 +48,34 @@ Además, en todo `src`:
 - Estado: sesión y preferencias en zustand (MMKV); datos del servidor en TanStack Query; formularios en react-hook-form. Tokens en el llavero seguro, no en MMKV.
 - Estilos: solo `StyleSheet` de unistyles con el tema de `ui/tema`. Sin colores literales ni estilos inline (ESLint lo bloquea).
 - Íconos: `lucide-react-native`, pero solo a través de `ui/iconos.ts`, que importa cada ícono por su ruta. Metro no elimina código sin usar y el paquete completo suma ~2 MB al bundle; ESLint bloquea importarlo directo. Se dibujan con `Icono` (color del tema).
-- Tema (`ui/tema/tema.ts`): `exito`, `advertencia` y `peligro` son colores de texto que pasan contraste sobre `fondo`; los `*Suave` son fondos. `marca` es el verde de Cilog en ambos temas. Dirección visual en el mockup https://claude.ai/artifact/DHeeTJvpyQEjdpSax84QgP.
+- Color: ver *Paletas* abajo. Dirección visual en el canvas https://claude.ai/artifact/DHeeTJvpyQEjdpSax84QgP (variante *Ruta*, paleta *Bosque y lima*).
+
+## Paletas
+
+Todos los colores de la app viven en `src/ui/tema/paletas/`, y en ningún otro lado (ESLint bloquea hex fuera de esa carpeta, incluido `tema.ts`).
+
+```
+ui/tema/paletas/
+  tipos.ts         Escena y Paleta: los roles que toda paleta debe llenar (TypeScript avisa si falta uno)
+  bosqueLima.ts    la paleta actual
+  cilogClasica.ts  la anterior (verde azulado y amarillo), lista como alternativa
+  index.ts         registro `paletas` y PALETA_ACTIVA
+ui/tema/tema.ts    arma los temas desde PALETA_ACTIVA; espaciado, radios y tipografía
+```
+
+- Los componentes solo usan roles (`tema.colores.accion`), nunca valores. Cambiar de paleta es cambiar `PALETA_ACTIVA` en `paletas/index.ts`; una paleta nueva es un archivo más con la forma de `Paleta`, registrado en `paletas`.
+- Cada paleta tiene tres escenas: `claro` y `oscuro` (siguen al sistema) y `marca` (superficie de marca: acceso, tarjeta destacada). `<Escena nombre="marca">` de `@/ui` aplica la escena a todo lo que envuelve (`ScopedTheme` de unistyles), así que `Input`, `Boton` o `Texto` no necesitan variantes "sobre marca".
+- Roles principales: `suelo` es el fondo de pantalla y `fondo` el de tarjetas, diálogos y campos elevados; `campo`/`bordeCampo` los campos de texto; `primario` es el color de marca para texto, foco, selección y progreso; `accion`/`sobreAccion` el relleno del botón principal; `acento` es decorativo. `exito`, `advertencia`, `peligro` e `info` son texto sobre `suelo` y sobre su `*Suave`.
+- `__tests__/ui/paletas.test.ts` recorre todas las paletas registradas y exige 4.5:1 en los pares de texto y 3:1 en el borde de los campos. Una paleta que no pasa no entra.
+- `papel` y `tinta` (la firma) son fijos en toda paleta (`FIRMA`).
+- La escena `oscuro` de *Bosque y lima* no está en el canvas: se derivó de la de marca.
+- `ScopedTheme` solo alcanza a los componentes de React Native que procesa el plugin de babel de unistyles. Un fondo puesto en un componente de terceros (p. ej. `SafeAreaView`) no toma la escena: por eso `Pantalla` pinta el fondo en un `View` propio.
+- El fast refresh a veces pierde la escena por zona y la pantalla sale con los colores del tema claro. Para revisar colores hay que reiniciar la app.
+- `Pantalla` elige la barra de estado (clara u oscura) según la luminancia de su fondo, así que funciona con cualquier paleta y en modo oscuro.
+
+## Tipografía
+
+Inter (lectura: 400, 500, 600), Space Grotesk 700 (títulos: variantes `marca`, `display` y `titulo` de `Texto`) y JetBrains Mono 500 (códigos). Los `.ttf` estáticos (OFL, de Google Fonts) están en `src/assets/fonts` y `npx react-native-asset` los copia a `android/` e `ios/`. Android elige la fuente por el nombre del archivo, así que cada peso es una familia (`Inter-SemiBold`); los nombres viven solo en `tema.tipografia.familia`. Agregar o cambiar una fuente exige recompilar la app nativa.
 - Los componentes de `ui/` se construyen cuando una pantalla los necesita, no por adelantado.
 - Evidencias (`core/archivos`): la cámara es la del sistema (`react-native-image-picker`, máx. 1.280 px, calidad 0,7, sin guardar en la galería), así que Android no declara `CAMERA`. La firma se dibuja con `react-native-svg` y se guarda como PNG con `react-native-view-shot`; usa los colores `papel`/`tinta` del tema, iguales en claro y oscuro, porque la imagen va a la empresa. Antes de guardar, los archivos pasan de la caché a `documentos/evidencias` (`@dr.pogodin/react-native-fs`); si la transacción falla, se borran. Se borran también al confirmarse en Fluor o al descartarse.
 - Ubicación (`core/ubicacion`): se pide al abrir el formulario y nunca bloquea; sin GPS la operación sale con `latitud`/`longitud` en null.
@@ -59,10 +86,10 @@ Además, en todo `src`:
 | Pieza | Fase | Estado |
 | --- | --- | --- |
 | Cliente API, errores, paginación, entorno | 0 | Hecho, con pruebas |
-| Tema y primitivas de UI | 0 | Hecho, con pruebas. Rediseño según el mockup: componentes de auth listos (Aviso, Encabezado, IconoDestacado, Avatar, Requisito, Marca, toasts) |
+| Tema y primitivas de UI | 0 | Hecho, con pruebas. Paletas centralizadas (`ui/tema/paletas`, *Bosque y lima* activa), escenas con `Escena` y tipografía nueva (Inter, Space Grotesk, JetBrains Mono) |
 | Navegación por estado de sesión (`app/navegacion`) | 1 | Hecho, con pruebas |
 | Sesión: token en llavero, perfil y empresa en MMKV (`core/sesion`) | 1 | Hecho, con pruebas |
-| Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas. La empresa es opcional (solo ingreso y envíos) |
+| Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas. La empresa es opcional (solo ingreso y envíos). Rediseño *Ruta · Bosque y lima*: todo el acceso va en la escena de marca (`PantallaAcceso`); probado en el emulador |
 | Firebase (push y sesión única), Sentry | 1 | Pendiente |
 | Registro, recuperación de clave y reenvío de verificación | 1 | Hecho, con pruebas. Falta probar contra el Fluor desplegado |
 | SQLite, cola y motor de sincronización (`core/db`, `core/sync`) | 2 | Hecho, con pruebas. Sin enviadores aún: Fluor no publica entregar, novedad ni terminar |

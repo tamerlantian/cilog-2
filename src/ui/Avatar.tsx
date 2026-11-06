@@ -5,7 +5,8 @@ import {Texto} from './Texto';
 
 type Props = {
   nombre: string;
-  tono?: 'primario' | 'advertencia' | 'info' | 'exito';
+  /** `neutro`: solo contorno, para las opciones que no están elegidas. */
+  tono?: 'primario' | 'advertencia' | 'info' | 'exito' | 'neutro';
   tamano?: 'sm' | 'md' | 'lg';
   forma?: 'circulo' | 'cuadro';
 };
@@ -55,6 +56,7 @@ const styles = StyleSheet.create(tema => ({
         advertencia: {backgroundColor: tema.colores.advertenciaSuave},
         info: {backgroundColor: tema.colores.infoSuave},
         exito: {backgroundColor: tema.colores.exitoSuave},
+        neutro: {borderWidth: 1, borderColor: tema.colores.borde},
       },
     },
   },
@@ -70,6 +72,7 @@ const styles = StyleSheet.create(tema => ({
         advertencia: {color: tema.colores.advertencia},
         info: {color: tema.colores.info},
         exito: {color: tema.colores.exito},
+        neutro: {color: tema.colores.texto},
       },
     },
   },

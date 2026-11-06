@@ -2,12 +2,24 @@
   "migIndex": 1,
   "data": [
     {
-      "path": "src/assets/fonts/Rubik-Bold.ttf",
-      "sha1": "78595733a1f7714af2ef51689670e3aa61daf0f9"
+      "path": "src/assets/fonts/Inter-Medium.ttf",
+      "sha1": "78f01e4f13a7da5c283f4d0b5d36dc489eb5ab73"
     },
     {
-      "path": "src/assets/fonts/Rubik-Regular.ttf",
-      "sha1": "617d6a6120d1e584a9212598421d039cb9b2e7c9"
+      "path": "src/assets/fonts/Inter-Regular.ttf",
+      "sha1": "78eae8a823f461192b4df2d67d7eaa818cf09b5a"
+    },
+    {
+      "path": "src/assets/fonts/Inter-SemiBold.ttf",
+      "sha1": "1048573ec372a0c4a60bd3d5b3ab3b82bc3973da"
+    },
+    {
+      "path": "src/assets/fonts/JetBrainsMono-Medium.ttf",
+      "sha1": "98005b11a0b104dcbf45da841c64cc6da2e34092"
+    },
+    {
+      "path": "src/assets/fonts/SpaceGrotesk-Bold.ttf",
+      "sha1": "a9c030e3ebcd8ce7284f8382da8590609f1803c4"
     }
   ]
 }

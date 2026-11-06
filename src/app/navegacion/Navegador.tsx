@@ -50,7 +50,7 @@ export function Navegador() {
       dark: rt.themeName === 'dark',
       colors: {
         primary: theme.colores.primario,
-        background: theme.colores.fondo,
+        background: theme.colores.suelo,
         card: theme.colores.fondo,
         text: theme.colores.texto,
         border: theme.colores.borde,

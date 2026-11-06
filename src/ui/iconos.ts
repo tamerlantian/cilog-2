@@ -3,6 +3,7 @@
  * sin usar, y `lucide-react-native` completo trae ~1.600 íconos (+2 MB al bundle).
  * Para usar uno nuevo, agrégalo aquí (nombres en https://lucide.dev/icons).
  */
+export {default as ArrowRight} from 'lucide-react-native/icons/arrow-right';
 export {default as Building} from 'lucide-react-native/icons/building';
 export {default as Camera} from 'lucide-react-native/icons/camera';
 export {default as Check} from 'lucide-react-native/icons/check';

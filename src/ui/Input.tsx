@@ -102,6 +102,7 @@ const styles = StyleSheet.create(tema => ({
   contenedor: {gap: tema.espaciado.xs + 2},
   etiqueta: {
     color: tema.colores.textoSecundario,
+    fontFamily: tema.tipografia.familia.media,
     variants: {
       enfocado: {true: {color: tema.colores.primario}, false: {}},
       conError: {true: {color: tema.colores.peligro}, false: {}},
@@ -115,8 +116,8 @@ const styles = StyleSheet.create(tema => ({
     borderRadius: tema.radio.md,
     paddingLeft: tema.espaciado.md + 2,
     paddingRight: tema.espaciado.xs,
-    backgroundColor: tema.colores.fondo,
-    borderColor: tema.colores.borde,
+    backgroundColor: tema.colores.campo,
+    borderColor: tema.colores.bordeCampo,
     variants: {
       enfocado: {
         true: {borderColor: tema.colores.primario, borderWidth: 2},
@@ -134,7 +135,7 @@ const styles = StyleSheet.create(tema => ({
     paddingRight: tema.espaciado.sm,
     color: tema.colores.texto,
     fontFamily: tema.tipografia.familia.regular,
-    fontSize: tema.tipografia.tamano.cuerpo,
+    fontSize: tema.tipografia.tamano.campo,
     variants: {
       multilinea: {
         true: {minHeight: 120, paddingTop: tema.espaciado.md},

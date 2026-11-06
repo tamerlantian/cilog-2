@@ -1,9 +1,10 @@
 import {StyleSheet} from 'react-native-unistyles';
 
-import {temaClaro, temaOscuro} from './tema';
+import {temaClaro, temaMarca, temaOscuro} from './tema';
 
-// Con adaptiveThemes, unistyles exige exactamente los nombres 'light' y 'dark'.
-const temas = {light: temaClaro, dark: temaOscuro};
+// Con adaptiveThemes, unistyles exige los nombres 'light' y 'dark'.
+// `marca` no sigue al sistema: se aplica por zonas con <Escena nombre="marca">.
+const temas = {light: temaClaro, dark: temaOscuro, marca: temaMarca};
 
 type TemasApp = typeof temas;
 

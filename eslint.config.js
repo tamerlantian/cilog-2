@@ -116,7 +116,8 @@ module.exports = [
     ),
   })),
   {
-    files: ['src/ui/tema/**/*.ts'],
+    // Los colores viven solo en las paletas: cambiar de paleta es cambiar un archivo.
+    files: ['src/ui/tema/paletas/**/*.ts'],
     rules: {
       'react-native/no-color-literals': 'off',
       'no-restricted-syntax': 'off',

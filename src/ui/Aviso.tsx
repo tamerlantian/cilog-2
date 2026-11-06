@@ -19,6 +19,7 @@ type Props = {
 /**
  * Aviso dentro de la pantalla, junto a lo que lo causó. Para problemas que el
  * usuario debe resolver aquí; los avisos pasajeros van en un toast.
+ * El tono lo dan el ícono y el borde; el texto queda en los colores de lectura.
  */
 export function Aviso({tono, icono, titulo, mensaje, children}: Props) {
   styles.useVariants({tono});
@@ -28,16 +29,12 @@ export function Aviso({tono, icono, titulo, mensaje, children}: Props) {
       accessibilityRole={urgente ? 'alert' : 'summary'}
       style={styles.contenedor}>
       <View style={styles.fila}>
-        <View style={styles.circulo}>
-          <Icono color={tono} icono={icono} tamano={20} />
+        <View style={styles.icono}>
+          <Icono color={tono} icono={icono} tamano={22} />
         </View>
         <View style={styles.textos}>
-          {titulo ? (
-            <Texto negrita tono={tono}>
-              {titulo}
-            </Texto>
-          ) : null}
-          <Texto variante="etiqueta">{mensaje}</Texto>
+          {titulo ? <Texto negrita>{titulo}</Texto> : null}
+          <Texto tono="secundario">{mensaje}</Texto>
         </View>
       </View>
       {children}
@@ -47,7 +44,7 @@ export function Aviso({tono, icono, titulo, mensaje, children}: Props) {
 
 const styles = StyleSheet.create(tema => ({
   contenedor: {
-    borderRadius: tema.radio.lg,
+    borderRadius: tema.radio.lg - 2,
     borderWidth: 1,
     padding: tema.espaciado.lg,
     gap: tema.espaciado.md,
@@ -73,13 +70,6 @@ const styles = StyleSheet.create(tema => ({
     },
   },
   fila: {flexDirection: 'row', gap: tema.espaciado.md},
-  circulo: {
-    width: 40,
-    height: 40,
-    borderRadius: tema.radio.pill,
-    backgroundColor: tema.colores.fondo,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textos: {flex: 1, gap: 2, justifyContent: 'center'},
+  icono: {paddingTop: 1},
+  textos: {flex: 1, gap: tema.espaciado.xs},
 }));

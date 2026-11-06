@@ -9,16 +9,18 @@
 /* Begin PBXBuildFile section */
 		0C80B921A6F3F58F76C31292 /* libPods-plutonio.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-plutonio.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		2BE806CDFAD74FB4B95BDB8A /* Rubik-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B1D16A41AE16414E86AF248B /* Rubik-Regular.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		761780EF2CA45674006654EF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EE2CA45674006654EF /* SceneDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		95EA7608EE724178BF9A8750 /* Rubik-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0912671AFF1D4472BE994987 /* Rubik-Bold.ttf */; };
 		D90F4C0C60851F95D52A1017 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		5496EC35DE354CBDAF54C173 /* Inter-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 048703B2C5454571A8623A6F /* Inter-Medium.ttf */; };
+		3480A06C6F7C431F825C4ADA /* Inter-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D49AF44B14DA4A9B86C8FEAF /* Inter-Regular.ttf */; };
+		CBB8728F04744E2795971E20 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F490E46E6E55406F810E5952 /* SpaceGrotesk-Bold.ttf */; };
+		412F608980214A828F066770 /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2E6D6126B9C4D36811BB793 /* JetBrainsMono-Medium.ttf */; };
+		FFB0FC21EE7F4C38BC155CE6 /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 58A43558854C465090E3EB32 /* Inter-SemiBold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0912671AFF1D4472BE994987 /* Rubik-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Rubik-Bold.ttf"; path = "../src/assets/fonts/Rubik-Bold.ttf"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* plutonio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = plutonio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = plutonio/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = plutonio/Info.plist; sourceTree = "<group>"; };
@@ -29,8 +31,12 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = plutonio/AppDelegate.swift; sourceTree = "<group>"; };
 		761780EE2CA45674006654EF /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = plutonio/SceneDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = plutonio/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		B1D16A41AE16414E86AF248B /* Rubik-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Rubik-Regular.ttf"; path = "../src/assets/fonts/Rubik-Regular.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		048703B2C5454571A8623A6F /* Inter-Medium.ttf */ = {isa = PBXFileReference; name = "Inter-Medium.ttf"; path = "../src/assets/fonts/Inter-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		D49AF44B14DA4A9B86C8FEAF /* Inter-Regular.ttf */ = {isa = PBXFileReference; name = "Inter-Regular.ttf"; path = "../src/assets/fonts/Inter-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		F490E46E6E55406F810E5952 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; name = "SpaceGrotesk-Bold.ttf"; path = "../src/assets/fonts/SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		F2E6D6126B9C4D36811BB793 /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; name = "JetBrainsMono-Medium.ttf"; path = "../src/assets/fonts/JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		58A43558854C465090E3EB32 /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; name = "Inter-SemiBold.ttf"; path = "../src/assets/fonts/Inter-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,8 +76,11 @@
 		6A76F296656147678AE24D7F /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				0912671AFF1D4472BE994987 /* Rubik-Bold.ttf */,
-				B1D16A41AE16414E86AF248B /* Rubik-Regular.ttf */,
+				048703B2C5454571A8623A6F /* Inter-Medium.ttf */,
+				D49AF44B14DA4A9B86C8FEAF /* Inter-Regular.ttf */,
+				F490E46E6E55406F810E5952 /* SpaceGrotesk-Bold.ttf */,
+				F2E6D6126B9C4D36811BB793 /* JetBrainsMono-Medium.ttf */,
+				58A43558854C465090E3EB32 /* Inter-SemiBold.ttf */,
 			);
 			name = Resources;
 			path = "";
@@ -178,9 +187,12 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
-				95EA7608EE724178BF9A8750 /* Rubik-Bold.ttf in Resources */,
-				2BE806CDFAD74FB4B95BDB8A /* Rubik-Regular.ttf in Resources */,
 				D90F4C0C60851F95D52A1017 /* PrivacyInfo.xcprivacy in Resources */,
+				5496EC35DE354CBDAF54C173 /* Inter-Medium.ttf in Resources */,
+				3480A06C6F7C431F825C4ADA /* Inter-Regular.ttf in Resources */,
+				CBB8728F04744E2795971E20 /* SpaceGrotesk-Bold.ttf in Resources */,
+				412F608980214A828F066770 /* JetBrainsMono-Medium.ttf in Resources */,
+				FFB0FC21EE7F4C38BC155CE6 /* Inter-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,3 +1,6 @@
+// El mock de unistyles dibuja ScopedTheme como null; aquí debe mostrar su contenido.
+require('react-native-unistyles').ScopedTheme = ({children}) => children;
+
 jest.mock('react-native-config', () => ({
   __esModule: true,
   default: {API_URL: 'https://api.prueba.test', ENTORNO: 'dev'},

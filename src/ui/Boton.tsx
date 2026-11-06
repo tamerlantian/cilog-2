@@ -20,11 +20,13 @@ type Props = Omit<PressableProps, 'children' | 'style'> & {
   /** `compacto` (44) para acciones secundarias dentro de tarjetas o filas. */
   tamano?: 'normal' | 'compacto';
   icono?: TipoIcono;
+  /** `fin` para acciones que avanzan (flecha a la derecha del texto). */
+  posicionIcono?: 'inicio' | 'fin';
   cargando?: boolean;
 };
 
 const COLOR_CONTENIDO: Record<Tipo, ColorTema> = {
-  primario: 'sobrePrimario',
+  primario: 'sobreAccion',
   advertencia: 'sobrePrimario',
   advertenciaSuave: 'advertencia',
   peligro: 'sobrePrimario',
@@ -37,6 +39,7 @@ export function Boton({
   tipo = 'primario',
   tamano = 'normal',
   icono,
+  posicionIcono = 'inicio',
   cargando = false,
   disabled,
   onPress,
@@ -48,6 +51,15 @@ export function Boton({
   styles.useVariants({tipo, tamano, inactivo: inactivo && relleno});
   const colorContenido: ColorTema =
     inactivo && relleno ? 'sobreDeshabilitado' : COLOR_CONTENIDO[tipo];
+
+  const iconoBoton = icono ? (
+    <Icono
+      color={colorContenido}
+      grosor={2.4}
+      icono={icono}
+      tamano={tamano === 'compacto' ? 18 : 20}
+    />
+  ) : null;
 
   return (
     <Pressable
@@ -65,17 +77,11 @@ export function Boton({
         <ActivityIndicator color={theme.colores[colorContenido]} />
       ) : (
         <>
-          {icono ? (
-            <Icono
-              color={colorContenido}
-              grosor={2.4}
-              icono={icono}
-              tamano={tamano === 'compacto' ? 18 : 20}
-            />
-          ) : null}
-          <Texto negrita style={styles.texto}>
+          {posicionIcono === 'inicio' ? iconoBoton : null}
+          <Texto media={!relleno} negrita={relleno} style={styles.texto}>
             {titulo}
           </Texto>
+          {posicionIcono === 'fin' ? iconoBoton : null}
         </>
       )}
     </Pressable>
@@ -95,8 +101,8 @@ const styles = StyleSheet.create(tema => ({
     variants: {
       tipo: {
         primario: {
-          backgroundColor: tema.colores.primario,
-          borderColor: tema.colores.primario,
+          backgroundColor: tema.colores.accion,
+          borderColor: tema.colores.accion,
         },
         secundario: {
           backgroundColor: 'transparent',
@@ -134,7 +140,7 @@ const styles = StyleSheet.create(tema => ({
   texto: {
     variants: {
       tipo: {
-        primario: {color: tema.colores.sobrePrimario},
+        primario: {color: tema.colores.sobreAccion},
         secundario: {color: tema.colores.primario},
         advertencia: {color: tema.colores.sobrePrimario},
         advertenciaSuave: {color: tema.colores.advertencia},

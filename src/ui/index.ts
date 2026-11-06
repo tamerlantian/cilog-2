@@ -6,6 +6,7 @@ export {Buscador} from './Buscador';
 export {Cargando} from './Cargando';
 export {Dialogo} from './Dialogo';
 export {Encabezado} from './Encabezado';
+export {Escena} from './Escena';
 export {EstadoVacio} from './EstadoVacio';
 export {Icono, type TipoIcono} from './Icono';
 export {IconoDestacado} from './IconoDestacado';

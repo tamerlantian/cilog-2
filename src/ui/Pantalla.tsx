@@ -2,12 +2,15 @@ import type {ReactNode} from 'react';
 import {
   KeyboardAvoidingView,
   ScrollView,
+  StatusBar,
   type StyleProp,
   View,
   type ViewStyle,
 } from 'react-native';
 import {type Edge, SafeAreaView} from 'react-native-safe-area-context';
-import {StyleSheet} from 'react-native-unistyles';
+import {StyleSheet, useUnistyles} from 'react-native-unistyles';
+
+import {esFondoOscuro} from './tema/color';
 
 type Props = {
   children: ReactNode;
@@ -15,8 +18,8 @@ type Props = {
   desplazable?: boolean;
   /** Bordes con safe area. Con edge-to-edge activo hay que respetarlos siempre. */
   bordes?: readonly Edge[];
-  /** `marca` para pantallas con encabezado de color (login). */
-  fondo?: 'fondo' | 'superficie' | 'marca';
+  /** `suelo` (por defecto) es el fondo de pantalla. Para la superficie de marca, envolver en `Escena`. */
+  fondo?: 'suelo' | 'fondo' | 'superficie';
   /** Acciones fijas abajo (botón principal). Suben con el teclado y no se desplazan. */
   pie?: ReactNode;
   estiloContenido?: StyleProp<ViewStyle>;
@@ -29,26 +32,36 @@ export function Pantalla({
   children,
   desplazable = false,
   bordes = TODOS_LOS_BORDES,
-  fondo = 'fondo',
+  fondo = 'suelo',
   pie,
   estiloContenido,
 }: Props) {
   styles.useVariants({fondo});
+  const {theme} = useUnistyles();
+  // Edge-to-edge: la barra de estado va sobre el fondo de la pantalla.
+  const barra = esFondoOscuro(theme.colores[fondo])
+    ? 'light-content'
+    : 'dark-content';
   return (
-    <SafeAreaView edges={bordes} style={styles.raiz}>
-      <KeyboardAvoidingView behavior="padding" style={styles.flex}>
-        {desplazable ? (
-          <ScrollView
-            contentContainerStyle={[styles.contenido, estiloContenido]}
-            keyboardShouldPersistTaps="handled">
-            {children}
-          </ScrollView>
-        ) : (
-          <View style={[styles.flex, estiloContenido]}>{children}</View>
-        )}
-        {pie ? <View style={styles.pie}>{pie}</View> : null}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    // El fondo va en un View de React Native: unistyles no aplica la escena
+    // (`ScopedTheme`) a componentes de terceros como SafeAreaView.
+    <View style={styles.raiz}>
+      <StatusBar barStyle={barra} />
+      <SafeAreaView edges={bordes} style={styles.flex}>
+        <KeyboardAvoidingView behavior="padding" style={styles.flex}>
+          {desplazable ? (
+            <ScrollView
+              contentContainerStyle={[styles.contenido, estiloContenido]}
+              keyboardShouldPersistTaps="handled">
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={[styles.flex, estiloContenido]}>{children}</View>
+          )}
+          {pie ? <View style={styles.pie}>{pie}</View> : null}
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -57,9 +70,9 @@ const styles = StyleSheet.create(tema => ({
     flex: 1,
     variants: {
       fondo: {
+        suelo: {backgroundColor: tema.colores.suelo},
         fondo: {backgroundColor: tema.colores.fondo},
         superficie: {backgroundColor: tema.colores.superficie},
-        marca: {backgroundColor: tema.colores.marca},
       },
     },
   },
