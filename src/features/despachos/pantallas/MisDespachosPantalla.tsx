@@ -16,7 +16,7 @@ import {
   Truck,
 } from '@/ui';
 
-import {BarraEnvios} from '../components/BarraEnvios';
+import {ChipEnvios} from '../components/ChipEnvios';
 import {EtiquetaSeccion} from '../components/EtiquetaSeccion';
 import {
   DespachoDestacado,
@@ -90,9 +90,12 @@ export function MisDespachosPantalla() {
         )
       }>
       <View style={styles.encabezado}>
-        <Texto accessibilityRole="header" variante="display">
-          Mis despachos
-        </Texto>
+        <View style={styles.titulo}>
+          <Texto accessibilityRole="header" variante="display">
+            Mis despachos
+          </Texto>
+          <ChipEnvios />
+        </View>
         {actualizar.error ? (
           <Aviso
             icono={CloudOff}
@@ -102,7 +105,6 @@ export function MisDespachosPantalla() {
           />
         ) : null}
       </View>
-      <BarraEnvios />
       <SectionList
         contentContainerStyle={styles.lista}
         keyExtractor={despacho => String(despacho.tenantDespachoId)}
@@ -156,6 +158,12 @@ const styles = StyleSheet.create(tema => ({
     paddingHorizontal: tema.espaciado.lg + 4,
     paddingTop: tema.espaciado.xl,
     paddingBottom: tema.espaciado.xs,
+  },
+  titulo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tema.espaciado.sm,
   },
   lista: {
     flexGrow: 1,

@@ -57,7 +57,7 @@ export function Encabezado({
       ) : null}
       <View style={styles.textos}>
         {subtitulo ? (
-          <Texto tono="secundario" variante="pie">
+          <Texto numberOfLines={1} tono="secundario" variante="pie">
             {subtitulo}
           </Texto>
         ) : null}

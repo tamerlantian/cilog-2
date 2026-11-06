@@ -20,7 +20,7 @@ import {
   Texto,
 } from '@/ui';
 
-import {BarraEnvios} from '../components/BarraEnvios';
+import {ChipEnvios} from '../components/ChipEnvios';
 import {EstadoGuia} from '../components/EstadoGuia';
 import {destinatario} from '../components/FilaGuia';
 import {enlaceLlamar, enlaceMapa} from '../domain/contacto';
@@ -150,8 +150,11 @@ export function GuiaPantalla({navigation, route}: Props) {
 
   return (
     <Pantalla desplazable pie={acciones}>
-      <Encabezado alVolver={volver} titulo={`Guía ${guia.codigoGuia}`} />
-      <BarraEnvios sangria={false} />
+      <Encabezado
+        accion={<ChipEnvios />}
+        alVolver={volver}
+        titulo={`Guía ${guia.codigoGuia}`}
+      />
       <EstadoGuia guia={guia} />
 
       <Tarjeta style={styles.tarjeta}>

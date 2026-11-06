@@ -31,7 +31,7 @@ import {
 } from '@/ui';
 
 import {BarraAvance, Leyenda} from '../components/BarraAvance';
-import {BarraEnvios} from '../components/BarraEnvios';
+import {ChipEnvios} from '../components/ChipEnvios';
 import {FilaGuia} from '../components/FilaGuia';
 import {SiguienteGuia} from '../components/SiguienteGuia';
 import {
@@ -298,17 +298,19 @@ export function DespachoPantalla({navigation, route}: Props) {
     <Pantalla>
       <Encabezado
         accion={
-          <BotonIcono
-            etiqueta="Actualizar guías"
-            icono={RefreshCw}
-            onPress={actualizar}
-          />
+          <>
+            <ChipEnvios />
+            <BotonIcono
+              etiqueta="Actualizar guías"
+              icono={RefreshCw}
+              onPress={actualizar}
+            />
+          </>
         }
         alVolver={volver}
         subtitulo={nombreEmpresa(despacho)}
         titulo={`Despacho ${codigoDespacho(despacho)}`}
       />
-      <BarraEnvios />
       {sinDescargar ? (
         <EstadoVacio
           accion={{titulo: 'Descargar guías', alPresionar: actualizar}}

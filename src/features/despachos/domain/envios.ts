@@ -39,7 +39,7 @@ export type EstadoBarra =
   | {tipo: 'pausada'; total: number}
   | {tipo: 'porEnviar'; total: number; sinConexion: boolean};
 
-/** Qué dice la barra de envíos. Lo que pide acción del conductor va primero. */
+/** Qué dice el chip de envíos (`ChipEnvios`). Lo que pide acción del conductor va primero. */
 export const estadoBarra = (
   resumen: ResumenEnvios,
   sinConexion: boolean,
