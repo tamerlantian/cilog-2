@@ -1,16 +1,16 @@
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
+import {versionApp} from '@/core/config';
 import {useSesion} from '@/core/sesion';
 import {
   Avatar,
   BORDES_PESTANA,
-  Boton,
-  Building,
   Encabezado,
+  Escena,
+  Icono,
   LogOut,
+  Marca,
   Pantalla,
   Tarjeta,
   Texto,
@@ -18,57 +18,65 @@ import {
 
 import {useCerrarSesion} from '../hooks/useCerrarSesion';
 
-/** La app registra `Empresa` en su navegador; las features no importan sus rutas. */
-type Rutas = {Empresa: undefined};
-
-/** Usuario, empresa para ingreso y envíos, y cerrar sesión. */
+/** Quién tiene la sesión, cerrarla y la versión instalada. */
 export function CuentaPantalla() {
-  const navegacion = useNavigation<NativeStackNavigationProp<Rutas>>();
   const usuario = useSesion(s => s.usuario);
-  const empresa = useSesion(s => s.empresa);
-  const tieneVariasEmpresas = useSesion(s => s.tieneVariasEmpresas);
   const {cerrar} = useCerrarSesion();
   const correo = usuario?.email ?? '';
+  const identificacion = usuario?.numero_identificacion;
 
   return (
-    <Pantalla
-      bordes={BORDES_PESTANA}
-      desplazable
-      pie={
-        <Boton
-          icono={LogOut}
-          tipo="texto"
-          titulo="Cerrar sesión"
-          onPress={cerrar}
-        />
-      }>
+    <Pantalla bordes={BORDES_PESTANA} desplazable>
       <Encabezado grande sangria={false} titulo="Mi cuenta" />
-      <View style={styles.usuario}>
-        <Avatar forma="circulo" nombre={correo} />
-        <Texto negrita>{correo}</Texto>
-      </View>
-      <Tarjeta>
-        <Texto tono="secundario" variante="etiqueta">
-          Empresa para ingreso y envíos
-        </Texto>
-        <Texto negrita>{empresa?.tenant_nombre ?? 'Sin elegir'}</Texto>
-        <Texto tono="secundario" variante="etiqueta">
-          Tus despachos no dependen de ella.
-        </Texto>
-        {!empresa || tieneVariasEmpresas ? (
-          <Boton
-            icono={Building}
-            tamano="compacto"
-            tipo="secundario"
-            titulo={empresa ? 'Cambiar de empresa' : 'Elegir empresa'}
-            onPress={() => navegacion.navigate('Empresa')}
-          />
-        ) : null}
+      <Escena nombre="marca">
+        <View style={styles.perfil}>
+          <Avatar forma="circulo" nombre={correo} tamano="lg" />
+          <View style={styles.datos}>
+            <Texto negrita variante="subtitulo">
+              {correo}
+            </Texto>
+            {identificacion ? (
+              <Texto mono tono="secundario" variante="etiqueta">
+                ID {identificacion}
+              </Texto>
+            ) : null}
+          </View>
+        </View>
+      </Escena>
+      <Tarjeta alPresionar={cerrar} etiqueta="Cerrar sesión">
+        <View style={styles.fila}>
+          <Icono color="peligro" icono={LogOut} />
+          <Texto media tono="peligro">
+            Cerrar sesión
+          </Texto>
+        </View>
       </Tarjeta>
+      <View style={styles.acerca}>
+        <Marca ancho={72} />
+        <Texto numerico tono="secundario" variante="etiqueta">
+          Versión {versionApp()}
+        </Texto>
+      </View>
     </Pantalla>
   );
 }
 
 const styles = StyleSheet.create(tema => ({
-  usuario: {flexDirection: 'row', alignItems: 'center', gap: tema.espaciado.md},
+  perfil: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tema.espaciado.lg,
+    padding: tema.espaciado.lg,
+    borderRadius: tema.radio.lg + 2,
+    backgroundColor: tema.colores.suelo,
+  },
+  datos: {flex: 1, gap: tema.espaciado.xs},
+  fila: {flexDirection: 'row', alignItems: 'center', gap: tema.espaciado.md},
+  // Al fondo de la pantalla, como un pie.
+  acerca: {
+    marginTop: 'auto',
+    alignItems: 'center',
+    gap: tema.espaciado.sm,
+    paddingVertical: tema.espaciado.lg,
+  },
 }));

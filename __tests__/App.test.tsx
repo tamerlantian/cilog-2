@@ -14,7 +14,7 @@ import * as api from '@/features/auth/api/auth';
 import * as apiDespachos from '@/features/despachos/api/despachos';
 import {useSesion} from '@/core/sesion';
 
-import {crearJwt, empresaPrueba, usuarioPrueba} from './helpers';
+import {crearJwt, usuarioPrueba} from './helpers';
 
 jest.mock('@/features/auth/api/auth');
 jest.mock('@/features/despachos/api/despachos');
@@ -32,7 +32,7 @@ const esperarConsultas = () =>
 
 const abrirCuenta = async () => {
   await fireEvent.press(await screen.findByLabelText('Cuenta'));
-  await screen.findByText('Empresa para ingreso y envíos');
+  await screen.findByText('Mi cuenta');
   await esperarConsultas();
 };
 
@@ -69,6 +69,7 @@ describe('App', () => {
     expect(
       await screen.findByText('Tus entregas del día, en orden.'),
     ).toBeTruthy();
+    expect(screen.getByText('Versión 2.0.0 (57)')).toBeTruthy();
   });
 
   it('valida el formulario antes de llamar a la API', async () => {
@@ -99,66 +100,20 @@ describe('App', () => {
     );
   });
 
-  it('con una sola empresa la elige sola y vuelve al inicio', async () => {
+  it('Mi cuenta muestra la versión y no ofrece elegir empresa', async () => {
     apiSimulada.iniciarSesionApi.mockResolvedValue({
       access_token: crearJwt(600),
       user: usuarioPrueba,
     });
-    apiSimulada.listarEmpresasApi.mockResolvedValue([
-      empresaPrueba(7, 'Transportes Sur'),
-    ]);
 
     await render(<App />);
     await screen.findByLabelText('Correo');
     await llenarLogin();
     await abrirCuenta();
-    await fireEvent.press(
-      await screen.findByRole('button', {name: 'Elegir empresa'}),
-    );
 
-    expect(await screen.findByText('Transportes Sur')).toBeTruthy();
-    await esperarConsultas();
-    expect(useSesion.getState().empresa?.tenant_id).toBe(7);
-    // Con una sola empresa no hay a cuál cambiar.
-    expect(
-      screen.queryByRole('button', {name: 'Cambiar de empresa'}),
-    ).toBeNull();
-  });
-
-  it('con varias empresas deja elegir una y cambiarla', async () => {
-    apiSimulada.iniciarSesionApi.mockResolvedValue({
-      access_token: crearJwt(600),
-      user: usuarioPrueba,
-    });
-    apiSimulada.listarEmpresasApi.mockResolvedValue([
-      empresaPrueba(7, 'Transportes Sur'),
-      empresaPrueba(8, 'Logística Norte'),
-    ]);
-
-    await render(<App />);
-    await screen.findByLabelText('Correo');
-    await llenarLogin();
-    await abrirCuenta();
-    await fireEvent.press(
-      await screen.findByRole('button', {name: 'Elegir empresa'}),
-    );
-
-    expect(
-      await screen.findByText('¿Con qué empresa trabajas hoy?'),
-    ).toBeTruthy();
-    await fireEvent.press(screen.getByText('Logística Norte'));
-
-    expect(await screen.findByText('Logística Norte')).toBeTruthy();
-    // Elegir empresa limpia la caché: Mi cuenta vuelve a leer la cola.
-    await esperarConsultas();
-    expect(useSesion.getState().empresa?.tenant_id).toBe(8);
-
-    await fireEvent.press(
-      screen.getByRole('button', {name: 'Cambiar de empresa'}),
-    );
-    expect(
-      await screen.findByText('¿Con qué empresa trabajas hoy?'),
-    ).toBeTruthy();
+    expect(screen.queryByText(/empresa/i)).toBeNull();
+    expect(screen.getByText('Versión 2.0.0 (57)')).toBeTruthy();
+    expect(screen.getByRole('button', {name: 'Cerrar sesión'})).toBeTruthy();
   });
 
   it('muestra el error del servidor si las credenciales son inválidas', async () => {

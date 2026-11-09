@@ -4,6 +4,7 @@ import {Controller, useForm} from 'react-hook-form';
 import {type TextInput, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
+import {versionApp} from '@/core/config';
 import {useSesion} from '@/core/sesion';
 import {
   ArrowRight,
@@ -144,6 +145,10 @@ export function LoginPantalla() {
             onPress={() => navigation.navigate('Registro')}
           />
         </View>
+
+        <Texto centrado numerico tono="secundario" variante="pie">
+          Versión {versionApp()}
+        </Texto>
       </View>
     </PantallaAcceso>
   );
