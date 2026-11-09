@@ -1,18 +1,32 @@
-import {Texto} from './Texto';
+import {Circle, Path, Svg} from 'react-native-svg';
+import {useUnistyles} from 'react-native-unistyles';
 
-type Props = {tamano?: 'grande' | 'compacto'};
+const VISTA = {x: 4.6, y: 4.04, ancho: 213.2, alto: 100.56};
+
+/** Letras de "cılog" trazadas de Space Grotesk Bold (assets/marca/logo.svg). */
+const LETRAS =
+  'M30.30 86L30.30 86Q23.10 86 17.25 83Q11.40 80 8 74.30Q4.60 68.60 4.60 60.50L4.60 60.50L4.60 59.10Q4.60 51.00 8 45.30Q11.40 39.60 17.25 36.60Q23.10 33.60 30.30 33.60L30.30 33.60Q37.40 33.60 42.50 36.10Q47.60 38.60 50.75 42.95Q53.90 47.30 54.90 52.80L54.90 52.80L42.70 55.40Q42.30 52.40 40.90 50.00Q39.50 47.60 36.95 46.20Q34.40 44.80 30.60 44.80L30.60 44.80Q26.80 44.80 23.75 46.45Q20.70 48.10 18.95 51.35Q17.20 54.60 17.20 59.30L17.20 59.30L17.20 60.30Q17.20 65 18.95 68.25Q20.70 71.50 23.75 73.15Q26.80 74.80 30.60 74.80L30.60 74.80Q36.30 74.80 39.25 71.85Q42.20 68.90 43 64.10L43 64.10L55.20 67Q53.90 72.30 50.75 76.65Q47.60 81 42.50 83.50Q37.40 86 30.30 86ZM75.20 84.60L62.60 84.60L62.60 35.00L75.20 35.00L75.20 84.60ZM98.80 84.60L86.20 84.60L86.20 14.60L98.80 14.60L98.80 84.60ZM133.40 86L133.40 86Q126.00 86 120.10 83Q114.20 80 110.80 74.30Q107.40 68.60 107.40 60.60L107.40 60.60L107.40 59.00Q107.40 51.00 110.80 45.30Q114.20 39.60 120.10 36.60Q126.00 33.60 133.40 33.60L133.40 33.60Q140.80 33.60 146.70 36.60Q152.60 39.60 156 45.30Q159.40 51.00 159.40 59.00L159.40 59.00L159.40 60.60Q159.40 68.60 156 74.30Q152.60 80 146.70 83Q140.80 86 133.40 86ZM133.40 74.80L133.40 74.80Q139.20 74.80 143 71.05Q146.80 67.30 146.80 60.30L146.80 60.30L146.80 59.30Q146.80 52.30 143.05 48.55Q139.30 44.80 133.40 44.80L133.40 44.80Q127.60 44.80 123.80 48.55Q120.00 52.30 120.00 59.30L120.00 59.30L120.00 60.30Q120.00 67.30 123.80 71.05Q127.60 74.80 133.40 74.80ZM165.60 60.00L165.60 60.00L165.60 58.40Q165.60 50.60 168.70 45.05Q171.80 39.50 176.95 36.55Q182.10 33.60 188.20 33.60L188.20 33.60Q195 33.60 198.50 36.00Q202 38.40 203.60 41.00L203.60 41.00L205.40 41.00L205.40 35.00L217.80 35.00L217.80 93.40Q217.80 98.50 214.80 101.55Q211.80 104.60 206.80 104.60L206.80 104.60L173.60 104.60L173.60 93.60L202.40 93.60Q205.20 93.60 205.20 90.60L205.20 90.60L205.20 77.70L203.40 77.70Q202.40 79.30 200.60 80.95Q198.80 82.60 195.80 83.70Q192.80 84.80 188.20 84.80L188.20 84.80Q182.10 84.80 176.95 81.85Q171.80 78.90 168.70 73.35Q165.60 67.80 165.60 60.00ZM191.80 73.80L191.80 73.80Q197.60 73.80 201.50 70.10Q205.40 66.40 205.40 59.70L205.40 59.70L205.40 58.70Q205.40 51.90 201.55 48.25Q197.70 44.60 191.80 44.60L191.80 44.60Q186 44.60 182.10 48.25Q178.20 51.90 178.20 58.70L178.20 58.70L178.20 59.70Q178.20 66.40 182.10 70.10Q186 73.80 191.80 73.80Z';
+
+const PUNTO = {cx: 70.28, cy: 12.5, r: 8.46};
+
+type Props = {ancho?: number};
 
 /**
- * Nombre de Cilog en la fuente de títulos. Toma el color de texto de la escena,
- * así que se usa dentro de `<Escena nombre="marca">`. Provisional hasta tener el logo real.
+ * Logo de Cilog: el punto de la i es el punto de entrega. Toma los colores de
+ * la escena, así que se usa dentro de `<Escena nombre="marca">`.
  */
-export function Marca({tamano = 'grande'}: Props) {
+export function Marca({ancho = 112}: Props) {
+  const {theme} = useUnistyles();
   return (
-    <Texto
+    <Svg
       accessibilityLabel="Cilog"
-      accessibilityRole="header"
-      variante={tamano === 'grande' ? 'marca' : 'display'}>
-      Cilog
-    </Texto>
+      accessibilityRole="image"
+      accessible
+      height={(ancho * VISTA.alto) / VISTA.ancho}
+      viewBox={`${VISTA.x} ${VISTA.y} ${VISTA.ancho} ${VISTA.alto}`}
+      width={ancho}>
+      <Path d={LETRAS} fill={theme.colores.texto} />
+      <Circle {...PUNTO} fill={theme.colores.acento} />
+    </Svg>
   );
 }

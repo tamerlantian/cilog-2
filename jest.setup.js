@@ -40,6 +40,11 @@ jest.mock('react-native-keychain', () => {
   };
 });
 
+jest.mock('react-native-bootsplash', () => ({
+  __esModule: true,
+  default: {hide: jest.fn().mockResolvedValue(undefined)},
+}));
+
 // La cámara es nativa: en Jest es una vista a la que se le disparan lecturas.
 jest.mock('react-native-camera-kit', () => {
   const {createElement} = require('react');

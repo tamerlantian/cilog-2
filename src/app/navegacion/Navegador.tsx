@@ -5,6 +5,7 @@ import {
 } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useEffect, useMemo} from 'react';
+import BootSplash from 'react-native-bootsplash';
 import {useUnistyles} from 'react-native-unistyles';
 
 import {useSesion} from '@/core/sesion';
@@ -23,7 +24,7 @@ import {
   NovedadPantalla,
   VincularDespachoPantalla,
 } from '@/features/despachos';
-import {Cargando, CloudOff, EstadoVacio, Pantalla} from '@/ui';
+import {CloudOff, EstadoVacio, Pantalla, PantallaCarga} from '@/ui';
 
 import {useDatosLocales} from '../providers/useDatosLocales';
 
@@ -41,6 +42,11 @@ export function Navegador() {
   useEffect(() => {
     restaurar();
   }, [restaurar]);
+
+  // Debajo ya está PantallaCarga, con el logo en el mismo lugar.
+  useEffect(() => {
+    BootSplash.hide({fade: true});
+  }, []);
 
   const temaNavegacion = useMemo<Theme>(
     () => ({
@@ -73,11 +79,7 @@ export function Navegador() {
   }
 
   if (estado === 'iniciando' || datos.estado === 'abriendo') {
-    return (
-      <Pantalla>
-        <Cargando />
-      </Pantalla>
-    );
+    return <PantallaCarga />;
   }
 
   return (

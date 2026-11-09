@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Símbolo "ci" de assets/marca/simbolo.svg (48×48) centrado en el lienzo de 108 dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.0833"
+        android:scaleY="1.0833"
+        android:translateX="28"
+        android:translateY="28">
+        <path
+            android:pathData="M23,17.5 A8.5,8.5 0 1,0 23,32.5"
+            android:strokeWidth="5.2"
+            android:strokeColor="#F3F6F2"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#F3F6F2"
+            android:pathData="M31,21 A2.6,2.6 0 0,1 33.6,23.6 L33.6,33.9 A2.6,2.6 0 0,1 28.4,33.9 L28.4,23.6 A2.6,2.6 0 0,1 31,21 Z" />
+        <path
+            android:fillColor="#A8E05F"
+            android:pathData="M31,9.9 A3.6,3.6 0 1,1 31,17.1 A3.6,3.6 0 1,1 31,9.9 Z" />
+    </group>
+</vector>
