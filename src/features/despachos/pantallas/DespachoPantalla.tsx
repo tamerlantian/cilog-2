@@ -33,6 +33,7 @@ import {
 import {BarraAvance, Leyenda} from '../components/BarraAvance';
 import {ChipEnvios} from '../components/ChipEnvios';
 import {FilaGuia} from '../components/FilaGuia';
+import {LectorCodigo} from '../components/LectorCodigo';
 import {SiguienteGuia} from '../components/SiguienteGuia';
 import {
   codigoDespacho,
@@ -48,6 +49,8 @@ import {
 import {
   contarGuias,
   filtrarGuias,
+  guiaConCodigo,
+  limpiarCodigoLeido,
   resumenGuias,
   type FiltroGuias,
 } from '../domain/guias';
@@ -60,6 +63,7 @@ import {
   useConfiguracionEntrega,
   useTerminarDespacho,
 } from '../hooks/useGestion';
+import {useLectorGuia} from '../hooks/useLectorGuia';
 import type {RutasDespachos} from '../rutas';
 
 type Props = NativeStackScreenProps<RutasDespachos, 'Despacho'>;
@@ -73,6 +77,7 @@ export function DespachoPantalla({navigation, route}: Props) {
   const desvincular = useDesvincularDespacho(tenantDespachoId);
   const terminar = useTerminarDespacho(tenantDespachoId);
   const configuracion = useConfiguracionEntrega();
+  const lector = useLectorGuia();
   const [filtro, setFiltro] = useState<FiltroGuias>('pendientes');
   const [busqueda, setBusqueda] = useState('');
   const [confirmandoTerminar, setConfirmandoTerminar] = useState(false);
@@ -171,6 +176,24 @@ export function DespachoPantalla({navigation, route}: Props) {
   const irAGuia = (codigoGuia: number) =>
     navigation.navigate('Guia', {tenantDespachoId, codigoGuia});
 
+  // Sin coincidencia exacta queda como búsqueda; en "Todas", para que una guía
+  // ya gestionada no parezca inexistente.
+  const alLeerCodigo = (crudo: string) => {
+    lector.cerrar();
+    const codigo = limpiarCodigoLeido(crudo);
+    if (!codigo) {
+      mostrarError('Ese código no es de una guía.');
+      return;
+    }
+    const guia = guiaConCodigo(guias, codigo);
+    if (guia) {
+      irAGuia(guia.codigoGuia);
+      return;
+    }
+    setBusqueda(codigo);
+    setFiltro('todas');
+  };
+
   const cabecera = (
     <View style={styles.cabecera}>
       {terminado ? (
@@ -212,6 +235,7 @@ export function DespachoPantalla({navigation, route}: Props) {
       ) : null}
       <Buscador
         alCambiar={setBusqueda}
+        alEscanear={lector.abrir}
         etiqueta="Guía, documento o destinatario"
         valor={busqueda}
       />
@@ -296,6 +320,9 @@ export function DespachoPantalla({navigation, route}: Props) {
 
   return (
     <Pantalla>
+      {lector.abierto ? (
+        <LectorCodigo alCerrar={lector.cerrar} alLeer={alLeerCodigo} />
+      ) : null}
       <Encabezado
         accion={
           <>

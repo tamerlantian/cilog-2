@@ -40,7 +40,7 @@ Fluor los resolvió con otro diseño: el repartidor no se asocia a un conductor,
 
 Pendiente o por confirmar:
 
-- **Formato del QR**: la app anterior (`cilog`, `DespachoLectorQr.tsx`) lee un JSON `{"operador", "codigoDespacho", "token"}`, valida que el token sea alfanumérico y lo manda en mayúsculas. Falta confirmar que la web siga imprimiendo ese formato y que `operador` sea el `tenant_id` de Fluor. Mientras tanto la app vincula con ingreso manual (token en mayúsculas, como la anterior); el escáner necesita una librería de cámara.
+- **Formato del QR**: la app anterior (`cilog`, `DespachoLectorQr.tsx`) lee un JSON `{"operador", "codigoDespacho", "token"}`, valida que el token sea alfanumérico y lo manda en mayúsculas. Falta confirmar que la web siga imprimiendo ese formato y que `operador` sea el `tenant_id` de Fluor. Mientras tanto la app vincula con ingreso manual (token en mayúsculas, como la anterior); el lector de códigos ya existe en Despacho (`react-native-camera-kit`), falta conectarlo aquí.
 - `/lista` devuelve solo la asignación. Para pintar la lista sin descargar cada despacho convendría agregar `numero`, `fecha_salida`, `cantidad` y `cantidad_entregada` (no bloquea: la app las calcula de las guías descargadas).
 - El paquete no trae `novedad_tipos` ni `configuracion_entrega`: siguen haciendo falta los endpoints 7 y 9.
 - Las rutas de escritura que faltan (6 y 8) deberían validar acceso como la entrega (por asignación), porque el repartidor no tiene `user_tenant`.

@@ -1,7 +1,7 @@
 import {Pressable, TextInput, View} from 'react-native';
 import {StyleSheet, useUnistyles} from 'react-native-unistyles';
 
-import {Search, X} from './iconos';
+import {ScanLine, Search, X} from './iconos';
 import {Icono} from './Icono';
 
 type Props = {
@@ -9,10 +9,12 @@ type Props = {
   alCambiar: (texto: string) => void;
   /** Lo que lee el lector de pantalla y se ve mientras está vacío. */
   etiqueta: string;
+  /** Muestra el botón de escanear mientras el campo está vacío. */
+  alEscanear?: () => void;
 };
 
 /** Campo de búsqueda compacto, sin etiqueta visible. */
-export function Buscador({valor, alCambiar, etiqueta}: Props) {
+export function Buscador({valor, alCambiar, etiqueta, alEscanear}: Props) {
   const {theme} = useUnistyles();
   return (
     <View style={styles.campo}>
@@ -35,6 +37,14 @@ export function Buscador({valor, alCambiar, etiqueta}: Props) {
           hitSlop={8}
           onPress={() => alCambiar('')}>
           <Icono color="textoSecundario" icono={X} tamano={18} />
+        </Pressable>
+      ) : alEscanear ? (
+        <Pressable
+          accessibilityLabel="Escanear código"
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={alEscanear}>
+          <Icono color="primario" icono={ScanLine} tamano={24} />
         </Pressable>
       ) : null}
     </View>

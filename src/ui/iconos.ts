@@ -29,6 +29,7 @@ export {default as Phone} from 'lucide-react-native/icons/phone';
 export {default as Plus} from 'lucide-react-native/icons/plus';
 export {default as RefreshCw} from 'lucide-react-native/icons/refresh-cw';
 export {default as RotateCcw} from 'lucide-react-native/icons/rotate-ccw';
+export {default as ScanLine} from 'lucide-react-native/icons/scan-line';
 export {default as Search} from 'lucide-react-native/icons/search';
 export {default as Send} from 'lucide-react-native/icons/send';
 export {default as Trash} from 'lucide-react-native/icons/trash';

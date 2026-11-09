@@ -6,6 +6,8 @@ import {aCobrar} from '@/features/despachos/domain/gestion';
 import {
   contarGuias,
   filtrarGuias,
+  guiaConCodigo,
+  limpiarCodigoLeido,
   resumenGuias,
   siguientePendiente,
   situacionGuia,
@@ -43,6 +45,26 @@ describe('guías', () => {
     );
     expect(filtrarGuias(lista, 'todas', 'fac-99')).toHaveLength(1);
     expect(filtrarGuias(lista, 'todas', ' cra 45 ')).toHaveLength(1);
+  });
+
+  it('limpia el código leído y descarta lo que no es de una guía', () => {
+    expect(limpiarCodigoLeido(' 777001\n')).toBe('777001');
+    expect(limpiarCodigoLeido('"FAC-99"')).toBe('FAC-99');
+    expect(limpiarCodigoLeido('{"operador":"a","token":"b"}')).toBeNull();
+    expect(limpiarCodigoLeido('')).toBeNull();
+  });
+
+  it('solo reconoce una guía con coincidencia exacta', () => {
+    const lista = [
+      guia(777001, {documentoCliente: 'FAC-99'}),
+      guia(5, {documentoCliente: 'REPETIDO'}),
+      guia(6, {documentoCliente: 'repetido'}),
+    ];
+    expect(guiaConCodigo(lista, '777001')?.codigoGuia).toBe(777001);
+    expect(guiaConCodigo(lista, '0000777001')?.codigoGuia).toBe(777001);
+    expect(guiaConCodigo(lista, 'fac-99')?.codigoGuia).toBe(777001);
+    expect(guiaConCodigo(lista, '7770')).toBeUndefined();
+    expect(guiaConCodigo(lista, 'repetido')).toBeUndefined();
   });
 
   it('cuenta pendientes y gestionadas', () => {

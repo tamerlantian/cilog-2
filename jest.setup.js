@@ -40,6 +40,16 @@ jest.mock('react-native-keychain', () => {
   };
 });
 
+// La cámara es nativa: en Jest es una vista a la que se le disparan lecturas.
+jest.mock('react-native-camera-kit', () => {
+  const {createElement} = require('react');
+  const {View} = require('react-native');
+  return {
+    CameraType: {Back: 'back'},
+    Camera: props => createElement(View, {...props, testID: 'camara'}),
+  };
+});
+
 // El toast real deja temporizadores vivos; en pruebas solo importa qué se muestra.
 jest.mock('react-native-toast-message', () => {
   const Toast = () => null;
@@ -117,7 +127,9 @@ jest.mock('react-native-image-picker', () => {
   return {
     launchCamera: jest.fn(async () => {
       n += 1;
-      return {assets: [{uri: `file:///cache/foto-${n}.jpg`, fileSize: 200_000}]};
+      return {
+        assets: [{uri: `file:///cache/foto-${n}.jpg`, fileSize: 200_000}],
+      };
     }),
   };
 });

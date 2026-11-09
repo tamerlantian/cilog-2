@@ -5,7 +5,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import {eq} from 'drizzle-orm';
-import {Alert} from 'react-native';
+import {Alert, PermissionsAndroid, Platform} from 'react-native';
 import * as fs from '@dr.pogodin/react-native-fs';
 import {getFSInfo} from '@dr.pogodin/react-native-fs';
 import {launchCamera} from 'react-native-image-picker';
@@ -247,6 +247,73 @@ describe('pantallas de despachos', () => {
     ).toBeTruthy();
     expect(screen.getByRole('button', {name: 'Entregar'})).toBeTruthy();
     expect(screen.getByRole('button', {name: 'Novedad'})).toBeTruthy();
+  });
+
+  describe('lector de códigos', () => {
+    const escanear = async (codigo: string) => {
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Escanear código'}),
+      );
+      await fireEvent(await screen.findByTestId('camara'), 'readCode', {
+        nativeEvent: {codeStringValue: codigo},
+      });
+    };
+
+    it('abre directo la guía que coincide exacto, aunque ya esté gestionada', async () => {
+      await abrirDespacho();
+
+      await escanear('1');
+
+      expect(await screen.findByText('Guía 1')).toBeTruthy();
+      expect(screen.queryByTestId('camara')).toBeNull();
+    });
+
+    it('sin coincidencia exacta lo deja como búsqueda en Todas', async () => {
+      await abrirDespacho();
+
+      await escanear('FAC');
+
+      expect(
+        screen.getByLabelText('Guía, documento o destinatario').props.value,
+      ).toBe('FAC');
+      expect(nombresVisibles()).toHaveLength(3);
+      expect(screen.queryByTestId('camara')).toBeNull();
+    });
+
+    it('un código que no es de guía avisa y no toca la lista', async () => {
+      await abrirDespacho();
+
+      await escanear('{"operador":"a"}');
+
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({text1: 'Ese código no es de una guía.'}),
+      );
+      expect(nombresVisibles()).toEqual(['María Peña', 'Destinatario 3']);
+    });
+
+    it('sin permiso de cámara no abre el lector', async () => {
+      await abrirDespacho();
+      const sistema = Platform.OS;
+      Platform.OS = 'android';
+      const pedir = jest
+        .spyOn(PermissionsAndroid, 'request')
+        .mockResolvedValue(PermissionsAndroid.RESULTS.DENIED);
+
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Escanear código'}),
+      );
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text1: 'Sin permiso de cámara no se pueden leer códigos.',
+          }),
+        ),
+      );
+      expect(screen.queryByTestId('camara')).toBeNull();
+      pedir.mockRestore();
+      Platform.OS = sistema;
+    });
   });
 
   describe('gestión sin señal', () => {

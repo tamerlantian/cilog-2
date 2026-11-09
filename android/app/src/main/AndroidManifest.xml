@@ -13,7 +13,10 @@
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         tools:node="remove" />
-    <!-- La cámara es la del sistema (intent de image-picker): no se declara CAMERA. -->
+    <!-- Para leer códigos de guía. Las fotos de evidencia usan la cámara del sistema (image-picker). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- No todos los teléfonos la tienen, y sin ella la app sigue sirviendo (búsqueda manual). -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
       android:name=".MainApplication"
