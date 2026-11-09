@@ -90,7 +90,8 @@ cliente.interceptors.request.use(config => {
   }
 
   // Fluor no lee la empresa del JWT: se envía en cada petición. Una petición
-  // de otra empresa (p. ej. la entrega de un despacho) trae la suya.
+  // de otra empresa trae la suya. Las de /tte/movil no la usan: van por
+  // X-Tenant-Despacho-ID.
   const tenantId = sesion?.obtenerTenantId();
   if (
     tenantId !== null &&

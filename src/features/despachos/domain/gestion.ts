@@ -198,11 +198,11 @@ export type DatosEntrega = {
   celular?: string;
 };
 
-/** Formato del cuerpo de la entrega: 2 = `POST /tte/guia/entrega`. */
+/** Formato del cuerpo de la entrega: 2 = multipart de `POST /tte/movil/guia/entrega`. */
 export const VERSION_CUERPO_ENTREGA = 2;
 
 /**
- * Campo `datos` de `POST /tte/guia/entrega` (docs/offline.md §12.1). Se guarda
+ * Campo `datos` de `POST /tte/movil/guia/entrega` (docs/offline.md §12.1). Se guarda
  * ya listo para Fluor; las fotos y la firma van aparte, como archivos.
  */
 export const cuerpoEntrega = (

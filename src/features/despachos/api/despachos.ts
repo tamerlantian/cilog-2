@@ -91,10 +91,15 @@ export const desvincularDespachoApi = async (tenantDespachoId: number) => {
   await cliente.delete(`/mas/tenant-despacho/eliminar/${tenantDespachoId}`);
 };
 
+/** Fluor saca de la asignación el acceso del repartidor y la empresa. */
+export const encabezadoDespacho = (tenantDespachoId: number) => ({
+  'X-Tenant-Despacho-ID': String(tenantDespachoId),
+});
+
 /** Todas las guías del despacho, para trabajar sin señal. */
 export const descargarGuiasApi = async (tenantDespachoId: number) => {
-  const {data} = await cliente.get(
-    `/tte/movil/despacho/${tenantDespachoId}/guias`,
-  );
+  const {data} = await cliente.get('/tte/movil/guias', {
+    headers: encabezadoDespacho(tenantDespachoId),
+  });
   return esquemaDespachoGuias.parse(data);
 };

@@ -62,7 +62,7 @@ flowchart LR
 - **Pantallas**: no saben si hay red. Solo leen el estado local.
 - **Hooks**: hacen la escritura local en una transacción y avisan al motor.
 - **Motor** (`core/sync`): único lugar que envía escrituras a Fluor. Una sola ejecución a la vez.
-- **Descarga** (`GET /tte/movil/despacho/{id}/guias`): la hace el hook al vincular o al deslizar para refrescar, y fusiona con lo local (§5).
+- **Descarga** (`GET /tte/movil/guias` con `X-Tenant-Despacho-ID`): la hace el hook al vincular o al deslizar para refrescar, y fusiona con lo local (§5).
 
 ## 4. Modelo de datos local
 
@@ -197,7 +197,7 @@ sequenceDiagram
     P-->>C: "Entregada · por enviar"
     H->>M: despertar()
     alt hay señal
-        M->>F: POST /tte/guia/entrega (datos + imagenes + firma)
+        M->>F: POST /tte/movil/guia/entrega (datos + imagenes + firma)
         F-->>M: 200
         M->>DB: entrega = confirmada, borra los ficheros locales
         M-->>P: "Enviada"
@@ -289,11 +289,11 @@ sequenceDiagram
     participant F as Fluor
     participant BD as Base de la empresa
 
-    M->>F: POST /tte/guia/entrega
+    M->>F: POST /tte/movil/guia/entrega
     F->>BD: guarda la entrega, las fotos y la firma
     F--xM: (la respuesta se pierde en el túnel)
     Note over M: timeout → pendiente
-    M->>F: POST /tte/guia/entrega de nuevo
+    M->>F: POST /tte/movil/guia/entrega de nuevo
     F->>BD: ¿la guía ya está entregada? sí
     F-->>M: 409 con entrega true
     Note over M: confirmada, sin duplicado
@@ -348,7 +348,7 @@ flowchart TD
 
 ## 12. Lo que esto exige a Fluor
 
-### 12.1 Entrega: `POST /tte/guia/entrega`
+### 12.1 Entrega: `POST /tte/movil/guia/entrega`
 
 `multipart/form-data` con `datos` (JSON), `imagenes` (0 a 4) y `firma` (opcional). Respuesta `200`: `{codigo_guia_pk, estado_entregado, fecha_entrega, estado_digitalizado, estado_firma, ficheros_con_error}`.
 
@@ -360,15 +360,15 @@ flowchart TD
 | `latitud`, `longitud` | De la ubicación al confirmar; `null` sin GPS |
 | `usuario`, `usuario_nombre`, `usuario_correo` | No se mandan: Fluor toma el usuario del token |
 
-Va con `X-Tenant-ID` = la empresa **del despacho** (no la empresa activa de la sesión) y un timeout de 60 s, porque pesa alrededor de 1 MB. Se implementa en `features/despachos/api/entrega.ts` y `features/despachos/sync/enviadores.ts`.
+Va con `X-Tenant-Despacho-ID` = el id de la asignación (`mas_tenant_despacho`), que Fluor valida contra el usuario del token, y un timeout de 60 s, porque pesa alrededor de 1 MB. Se implementa en `features/despachos/api/entrega.ts` y `features/despachos/sync/enviadores.ts`.
 
 | Respuesta | Qué hace la app |
 | --- | --- |
 | `200`, `ficheros_con_error = 0` | `confirmada`; borra los ficheros locales |
 | `200`, `ficheros_con_error > 0` | `confirmada`; reporta y conserva los ficheros 7 días |
 | `409` con `entrega: true` | `confirmada` (reintento propio u otra persona; no se distingue) |
-| `409` sin `entrega` ("no está despachada") | `rechazada` |
-| `404` "Guía no encontrada" | `rechazada` |
+| `409` sin `entrega` ("no está despachada", "El despacho está cerrado") | `rechazada` |
+| `404` "Guía no encontrada" o "Despacho no encontrado" (asignación liberada) | `rechazada` |
 
 ### 12.2 Decidido por backend (6 nov 2026)
 
@@ -378,11 +378,11 @@ Va con `X-Tenant-ID` = la empresa **del despacho** (no la empresa activa de la s
 
 ### 12.3 Pendiente en Fluor
 
-1. **Acceso por asignación** (bloqueante): `/tte/guia/entrega` usa `get_tenant_db` (`X-Tenant-ID` + `user_tenant`) y el conductor, que no es usuario de la empresa, recibe `403`. Debe validarse como `GET /tte/movil/despacho/{id}/guias`, y que la guía pertenezca a ese despacho.
+1. **Acceso por asignación**: resuelto en `9ea5e66` con `POST /tte/movil/guia/entrega` y `X-Tenant-Despacho-ID`; valida también que la guía sea de ese despacho.
 2. Endpoints de novedad, tipos de novedad, configuración de entrega y terminar despacho (`contratos-fluor.md`). Se espera el mismo patrón: un `409` reconocible cuando la acción ya estaba aplicada.
-3. **Aceptar operaciones tardías**: una entrega con `fecha_entrega` de ayer, o que llega después de que el despacho se terminó desde la web, no debe rechazarse por eso.
+3. **Aceptar operaciones tardías** (por decidir): una entrega con `fecha_entrega` de ayer, o que llega después de que el despacho se terminó desde la web, no debería rechazarse por eso. Hoy `/tte/movil/guia/entrega` responde `409 "El despacho está cerrado"` antes de revisar si la guía ya estaba entregada, así que también rechaza el reenvío de una entrega que sí se guardó (sin `entrega: true`).
 4. **`Retry-After` en los `429`.**
-5. Que la descarga de guías (`/tte/movil/despacho/{id}/guias`) siga incluyendo las ya entregadas o con novedad, para que la fusión (§5) sepa qué confirmó el servidor (ya lo hace).
+5. Que la descarga de guías (`/tte/movil/guias`) siga incluyendo las ya entregadas o con novedad, para que la fusión (§5) sepa qué confirmó el servidor (ya lo hace).
 
 ## 13. Lo que ve el conductor
 

@@ -1,9 +1,7 @@
 import {ErrorApi, traducirError} from '@/core/api';
-import {leer} from '@/core/db';
 import type {Enviador} from '@/core/sync';
 
 import {entregarGuiaApi} from '../api/entrega';
-import {leerDespacho} from '../db/repositorio';
 
 /**
  * Fluor no recibe `id_operacion`: si la guía ya estaba entregada responde 409
@@ -23,20 +21,16 @@ export const enviarEntrega: Enviador = async ({
   cuerpo,
   archivos,
 }) => {
-  const despacho =
-    tenantDespachoId === null
-      ? null
-      : await leer(db => leerDespacho(db, tenantDespachoId));
-  if (!despacho) {
+  if (tenantDespachoId === null) {
     throw new ErrorApi({
       codigo: 'NO_ENCONTRADO',
-      mensaje: 'El despacho de esta entrega ya no está en el teléfono.',
+      mensaje: 'Esta entrega no tiene un despacho asociado.',
     });
   }
 
   try {
     const respuesta = await entregarGuiaApi({
-      tenantId: despacho.tenantId,
+      tenantDespachoId,
       datos: cuerpo,
       archivos,
     });

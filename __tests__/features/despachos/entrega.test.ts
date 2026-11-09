@@ -1,25 +1,9 @@
 import {ErrorApi} from '@/core/api';
 import {cliente} from '@/core/api/cliente';
-import {escribir} from '@/core/db';
-import type {DespachoGuias} from '@/features/despachos/api/despachos';
-import {fusionarGuias} from '@/features/despachos/db/repositorio';
 import {enviarEntrega} from '@/features/despachos/sync/enviadores';
-
-import {abrirBaseMemoria} from '../../baseMemoria';
 
 const DESPACHO = 10;
 const DATOS = {guia: 1, fecha_entrega: '2026-11-06T10:42:13', recibe: 'Ana'};
-
-const descarga: DespachoGuias = {
-  tenant_despacho_id: DESPACHO,
-  tenant_id: 7,
-  tenant_nombre: 'Transportes Sur',
-  codigo_despacho: 910,
-  numero: null,
-  fecha_salida: null,
-  total: 0,
-  guias: [],
-};
 
 /** FormData de React Native: guarda lo que se agrega para revisarlo. */
 class FormularioFalso {
@@ -57,13 +41,11 @@ describe('enviar una entrega a Fluor', () => {
   afterAll(() => {
     global.FormData = formDataOriginal;
   });
-  beforeEach(async () => {
+  beforeEach(() => {
     post.mockReset();
-    await abrirBaseMemoria();
-    await escribir(tx => fusionarGuias(tx, 1, descarga));
   });
 
-  it('manda datos, fotos y firma juntos, con la empresa del despacho', async () => {
+  it('manda datos, fotos y firma juntos, con la asignación del despacho', async () => {
     post.mockResolvedValue({
       data: {codigo_guia_pk: 1, estado_entregado: true, ficheros_con_error: 0},
     });
@@ -78,7 +60,7 @@ describe('enviar una entrega a Fluor', () => {
 
     expect(resultado).toEqual({conservarArchivos: false});
     const [url, formulario, config] = post.mock.calls[0]!;
-    expect(url).toBe('/tte/guia/entrega');
+    expect(url).toBe('/tte/movil/guia/entrega');
     expect((formulario as FormularioFalso).partes).toEqual([
       ['datos', JSON.stringify(DATOS)],
       [
@@ -106,7 +88,10 @@ describe('enviar una entrega a Fluor', () => {
         },
       ],
     ]);
-    expect(config?.headers).toMatchObject({'X-Tenant-ID': '7'});
+    expect(config?.headers).toMatchObject({
+      'X-Tenant-Despacho-ID': String(DESPACHO),
+    });
+    expect(config?.headers).not.toHaveProperty('X-Tenant-ID');
   });
 
   it('si Fluor no guardó algún archivo, pide conservarlos', async () => {
@@ -135,6 +120,13 @@ describe('enviar una entrega a Fluor', () => {
       estado: 409,
       message: 'La guía ya fue entregada anteriormente',
     });
+  });
+
+  it('una operación sin despacho no llega a Fluor', async () => {
+    await expect(
+      enviarEntrega({...operacion(), tenantDespachoId: null}),
+    ).rejects.toMatchObject({codigo: 'NO_ENCONTRADO'});
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('sin acceso a la empresa (403) el error llega tal cual', async () => {

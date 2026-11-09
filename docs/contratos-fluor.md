@@ -4,7 +4,7 @@ Qué se le pide al backend. La app no puede reemplazar a la actual hasta que exi
 Todos siguen las convenciones de Fluor: rutas `/<módulo>/<recurso>/<acción>`, campos en `snake_case`, estados como `estado_*` booleanos,
 listas `{total, page, size, items}`, errores `{success:false, error:{code,message,...}, request_id}`.
 
-- **Auth**: `Authorization: Bearer <jwt>` y `X-Tenant-ID: <id>` en todo, salvo login y `/mas/user-tenant/lista`.
+- **Auth**: `Authorization: Bearer <jwt>` y `X-Tenant-ID: <id>` en todo, salvo login, `/mas/user-tenant/lista` y `/tte/movil/*`, que van con `X-Tenant-Despacho-ID: <id de la asignación>`.
 - **Reenvíos**: la app reenvía una operación cuando se pierde la respuesta. Fluor decidió no usar `id_operacion` (6 nov 2026): cada endpoint debe responder un `409` reconocible cuando la acción ya estaba aplicada (la entrega usa `error.entrega = true`), para que la app lo dé por recibido.
 - **Fechas**: ISO 8601 sin zona, hora de Colombia. La app envía la hora del dispositivo en `fecha_*` porque la operación pudo ocurrir sin red.
 - **Usuario**: el que se guarda en `usuario`/`usuario_entrega` es el del JWT, nunca uno enviado por la app.
@@ -36,15 +36,15 @@ Fluor los resolvió con otro diseño: el repartidor no se asocia a un conductor,
 | `POST /mas/tenant-despacho/cargar` `{tenant_id, codigo_despacho, token_despacho}` | Vincular. 404 igual para empresa, despacho o token inválidos (o despacho cerrado/entregado); 409 si es de otro repartidor. 5/min. |
 | `GET /mas/tenant-despacho/lista` (paginado) | Mis despachos: `{id, fecha, tenant_id, tenant_nombre, codigo_despacho}`. |
 | `DELETE /mas/tenant-despacho/eliminar/{id}` | Desvincular (también lo puede hacer el control de la empresa). |
-| `GET /tte/movil/despacho/{id}/guias` | Todas las guías del despacho para trabajar sin señal, con `estado_entregado`, `estado_novedad`, recaudo, orden de ruta y coordenadas. |
+| `GET /tte/movil/guias` + `X-Tenant-Despacho-ID` | Todas las guías del despacho para trabajar sin señal, con `estado_entregado`, `estado_novedad`, recaudo, orden de ruta y coordenadas. |
 
 Pendiente o por confirmar:
 
 - **Formato del QR**: la app anterior (`cilog`, `DespachoLectorQr.tsx`) lee un JSON `{"operador", "codigoDespacho", "token"}`, valida que el token sea alfanumérico y lo manda en mayúsculas. Falta confirmar que la web siga imprimiendo ese formato y que `operador` sea el `tenant_id` de Fluor. Mientras tanto la app vincula con ingreso manual (token en mayúsculas, como la anterior); el escáner necesita una librería de cámara.
 - `/lista` devuelve solo la asignación. Para pintar la lista sin descargar cada despacho convendría agregar `numero`, `fecha_salida`, `cantidad` y `cantidad_entregada` (no bloquea: la app las calcula de las guías descargadas).
 - El paquete no trae `novedad_tipos` ni `configuracion_entrega`: siguen haciendo falta los endpoints 7 y 9.
-- Las rutas nuevas de escritura (4, 5, 6, 8) deberían validar acceso igual que `/tte/movil/despacho/{id}/...` (por asignación), porque el repartidor no tiene `user_tenant`.
-  Propuesta: colgarlas de la misma ruta, p. ej. `POST /tte/movil/despacho/{tenant_despacho_id}/guia/{codigo_guia}/entregar`. La app guarda `tenant_despacho_id` en cada operación de la cola, así que puede armar esa URL sin `X-Tenant-ID`.
+- Las rutas de escritura que faltan (6 y 8) deberían validar acceso como la entrega (por asignación), porque el repartidor no tiene `user_tenant`.
+  Propuesta: colgarlas de `/tte/movil/` con `X-Tenant-Despacho-ID`, p. ej. `POST /tte/movil/guia/novedad`. La app guarda `tenant_despacho_id` en cada operación de la cola.
 
 ### Lo que la app ya guarda mientras tanto (paso 3a)
 
@@ -60,7 +60,7 @@ Entregar, novedad y terminar ya funcionan en la app: se guardan en el teléfono 
 
 Lo que se encole con los tipos de novedad provisionales Fluor lo rechazaría (404). Antes de activar el envío de novedades hay que tener el catálogo real; las de prueba se descartan desde *Envíos*.
 
-### 4 y 5. Entrega con fotos y firma: **hecho en Fluor** como `POST /tte/guia/entrega` (`b88a416`…`d517c77`)
+### 4 y 5. Entrega con fotos y firma: **hecho en Fluor** como `POST /tte/movil/guia/entrega` (`b88a416`…`9ea5e66`)
 
 Una sola petición `multipart/form-data`: `datos` (JSON), `imagenes` (0 a 4) y `firma` (PNG). Reemplaza lo que aquí se pedía como `/tte/guia/entregar` + `/doc/fichero/cargar`. El contrato que usa la app está en `docs/offline.md` §12.1.
 
@@ -70,7 +70,9 @@ Decidido por backend (6 nov 2026), y ya aplicado en la app:
 - Sin códigos de error propios.
 - Si un archivo falla después de guardar la entrega, responde `200` con `ficheros_con_error > 0`; lo resuelve backend.
 
-**Falta (bloqueante)**: hoy usa `get_tenant_db` (`X-Tenant-ID` + `user_tenant`) y el conductor, que no es usuario de la empresa, recibe `403`. Debe validar el acceso por la asignación (`mas_tenant_despacho`), como `GET /tte/movil/despacho/{id}/guias`, y que la guía sea de ese despacho.
+Valida el acceso por la asignación (`X-Tenant-Despacho-ID`) y que la guía sea de ese despacho.
+
+**Por decidir**: responde `409 "El despacho está cerrado"` antes de revisar si la guía ya estaba entregada (`docs/offline.md` §12.3).
 
 ### 6. `POST /tte/novedad/nuevo`
 
@@ -198,7 +200,7 @@ Mejoras opcionales que se pueden pedir: rotar el refresh token en cada renovaci�
 ## Opcional: mejoras que reducen peticiones
 
 - `POST /tte/guia/entregar` en lote: `{"entregas": [ ... ]}` con respuesta por elemento `{id_operacion, ok, error?}`. Si no existe, la app envía una por una.
-- Soporte de `ETag`/`If-None-Match` en `GET /tte/movil/despacho/{id}/guias` para no re-descargar un despacho sin cambios.
+- Soporte de `ETag`/`If-None-Match` en `GET /tte/movil/guias` para no re-descargar un despacho sin cambios.
 
 ## Qué no se pide (descartado en esta versión)
 

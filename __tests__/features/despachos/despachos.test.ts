@@ -321,8 +321,7 @@ describe('casos de uso de despachos', () => {
   it('vincular guarda el despacho y baja sus guías', async () => {
     post.mockResolvedValue({data: asignacion()});
     responderGet({
-      [`/tte/movil/despacho/${DESPACHO}/guias`]: () =>
-        descarga([guiaFluor(1), guiaFluor(2)]),
+      '/tte/movil/guias': () => descarga([guiaFluor(1), guiaFluor(2)]),
     });
 
     await vincularDespacho(USUARIO, {
@@ -335,6 +334,9 @@ describe('casos de uso de despachos', () => {
       tenant_id: 7,
       codigo_despacho: 910,
       token_despacho: 'A1B2',
+    });
+    expect(get).toHaveBeenCalledWith('/tte/movil/guias', {
+      headers: {'X-Tenant-Despacho-ID': String(DESPACHO)},
     });
     const [despacho] = await leer(db => leerDespachos(db, USUARIO));
     expect(despacho).toMatchObject({tenantDespachoId: DESPACHO, totalGuias: 2});
@@ -364,7 +366,7 @@ describe('casos de uso de despachos', () => {
         size: 100,
         items: [asignacion()],
       }),
-      [`/tte/movil/despacho/${DESPACHO}/guias`]: () => descarga([guiaFluor(1)]),
+      '/tte/movil/guias': () => descarga([guiaFluor(1)]),
     });
 
     await actualizarDespachos(USUARIO);

@@ -80,7 +80,7 @@ export type Evidencia = {tipo: TipoArchivo; ruta: string; bytes: number};
 
 /**
  * La entrega y sus fotos y firma son una sola operación: viajan juntas en
- * `POST /tte/guia/entrega` (docs/offline.md §8).
+ * `POST /tte/movil/guia/entrega` (docs/offline.md §8).
  */
 export const registrarEntrega = async (
   tx: Consulta,

@@ -4,6 +4,8 @@ import {cliente} from '@/core/api';
 import {uriEvidencia} from '@/core/archivos';
 import type {ArchivoOperacion} from '@/core/sync';
 
+import {encabezadoDespacho} from './despachos';
+
 const esquemaEntrega = z.object({
   codigo_guia_pk: z.number(),
   estado_entregado: z.boolean(),
@@ -25,16 +27,16 @@ const comoArchivo = ({ruta, tipo}: ArchivoOperacion, indice: number) =>
       };
 
 /**
- * `POST /tte/guia/entrega`: la entrega, las fotos y la firma en una sola
- * petición multipart (docs/offline.md §12.1). La guía es de la empresa del
- * despacho, que no siempre es la empresa activa de la sesión.
+ * `POST /tte/movil/guia/entrega`: la entrega, las fotos y la firma en una sola
+ * petición multipart (docs/offline.md §12.1). Fluor valida el acceso por la
+ * asignación del despacho, no por la empresa activa de la sesión.
  */
 export const entregarGuiaApi = async ({
-  tenantId,
+  tenantDespachoId,
   datos,
   archivos,
 }: {
-  tenantId: number;
+  tenantDespachoId: number;
   datos: unknown;
   archivos: readonly ArchivoOperacion[];
 }) => {
@@ -48,10 +50,10 @@ export const entregarGuiaApi = async ({
   const firma = archivos.find(a => a.tipo === 'F');
   if (firma) formulario.append('firma', comoArchivo(firma, 0) as never);
 
-  const {data} = await cliente.post('/tte/guia/entrega', formulario, {
+  const {data} = await cliente.post('/tte/movil/guia/entrega', formulario, {
     headers: {
       'Content-Type': 'multipart/form-data',
-      'X-Tenant-ID': String(tenantId),
+      ...encabezadoDespacho(tenantDespachoId),
     },
     timeout: TIEMPO_ENTREGA_MS,
   });
