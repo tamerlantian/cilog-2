@@ -3,10 +3,12 @@ import {eq} from 'drizzle-orm';
 
 import {
   archivos,
+  borrarDatosDeUsuario,
   crearBase,
   despachos,
   escribir,
   establecerBase,
+  guias,
   leer,
   migrar,
   operaciones,
@@ -67,6 +69,62 @@ describe('base local', () => {
     );
     expect(filas).toHaveLength(1);
     expect(await leer(db => db.select().from(despachos))).toHaveLength(1);
+  });
+});
+
+describe('borrar los datos de un usuario', () => {
+  beforeEach(abrirBaseMemoria);
+
+  const operacion = (idOperacion: string, usuarioId: number) => ({
+    idOperacion,
+    usuarioId,
+    tipo: 'entrega',
+    claveEntidad: `guia:${idOperacion}`,
+    cuerpo: '{}',
+    estado: 'pendiente' as const,
+    proximoIntento: 0,
+    creadaEn: 0,
+  });
+
+  it('borra sus despachos, guías, cola y archivos, y deja los de otros', async () => {
+    await escribir(async tx => {
+      await tx
+        .insert(despachos)
+        .values([despacho(1), {...despacho(2), usuarioId: 2}]);
+      await tx.insert(guias).values({
+        tenantDespachoId: 1,
+        codigoGuia: 10,
+        codigoDespachoDetalle: 100,
+        unidades: 1,
+        pesoReal: 1,
+        vrRecaudo: 0,
+        vrCobroEntrega: 0,
+        requiereCita: false,
+        estadoEntregado: false,
+        estadoNovedad: false,
+      });
+      await tx
+        .insert(operaciones)
+        .values([operacion('a', 1), operacion('b', 2)]);
+      await tx.insert(archivos).values([
+        {ruta: '/e/a.jpg', idOperacion: 'a', tipo: 'I', bytes: 1},
+        {ruta: '/e/b.jpg', idOperacion: 'b', tipo: 'I', bytes: 1},
+      ]);
+    });
+
+    const rutas = await escribir(tx => borrarDatosDeUsuario(tx, 1));
+
+    expect(rutas).toEqual(['/e/a.jpg']);
+    expect(
+      (await leer(db => db.select().from(despachos))).map(d => d.usuarioId),
+    ).toEqual([2]);
+    expect(await leer(db => db.select().from(guias))).toEqual([]);
+    expect(
+      (await leer(db => db.select().from(operaciones))).map(o => o.idOperacion),
+    ).toEqual(['b']);
+    expect(
+      (await leer(db => db.select().from(archivos))).map(a => a.ruta),
+    ).toEqual(['/e/b.jpg']);
   });
 });
 

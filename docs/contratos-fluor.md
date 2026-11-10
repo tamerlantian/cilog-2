@@ -123,6 +123,18 @@ Query `aplica_movil` (bool, por defecto `true`). Sin paginación (catálogo para
 
 - 409 `CONFLICT` "Quedan guías sin gestionar" si hay guías sin entregar y sin novedad. Se pide la regla exacta al negocio: hoy la app permite terminar cuando la lista de pendientes queda vacía.
 
+### 8b. `DELETE /auth/seguridad/usuario/{id}`: eliminar cuenta (requisito de Google Play)
+
+La app ya lo llama desde *Mi cuenta* (`features/cuenta/api/cuenta.ts`). Lo que espera:
+
+- Solo el dueño: `{id}` debe ser el `sub` del JWT; otro id → 403 o 404, nunca borrar a otro usuario.
+- `200`/`204` sin cuerpo útil. La app después cierra la sesión y borra del teléfono los despachos, la cola y las evidencias de ese usuario.
+- Que el token quede inválido (login y refresh fallan después).
+- Qué pasa con sus asignaciones (`mas_tenant_despacho`) y con las entregas ya registradas lo decide backend. Las entregas son de la empresa y no deberían borrarse.
+- Google exige además un enlace web para pedir la eliminación sin tener la app instalada; va en la ficha de Play.
+
+La app no deja eliminar la cuenta con envíos sin confirmar, para no perder entregas.
+
 ---
 
 ## Prioridad 2: recogidas, ingreso, posición y sesión

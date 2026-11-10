@@ -9,6 +9,7 @@ export {
   type Consulta,
   type EjecutorSql,
 } from './base';
+export {borrarDatosDeUsuario} from './limpieza';
 export {
   archivos,
   despachos,

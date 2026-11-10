@@ -12,13 +12,18 @@ import {clienteConsultas} from '@/core/api/clienteConsultas';
 import {ErrorApi} from '@/core/api/errores';
 import * as api from '@/features/auth/api/auth';
 import * as apiDespachos from '@/features/despachos/api/despachos';
+import * as apiCuentaReal from '@/features/cuenta/api/cuenta';
+import {despachos, escribir, leer} from '@/core/db';
 import {useSesion} from '@/core/sesion';
+import {encolar} from '@/core/sync';
 
 import {crearJwt, usuarioPrueba} from './helpers';
 
 jest.mock('@/features/auth/api/auth');
 jest.mock('@/features/despachos/api/despachos');
+jest.mock('@/features/cuenta/api/cuenta');
 const apiSimulada = jest.mocked(api);
+const apiCuenta = jest.mocked(apiCuentaReal);
 // Mis despachos pide la lista al entrar; aquí el usuario aún no tiene despachos.
 jest.mocked(apiDespachos).listarAsignacionesApi.mockResolvedValue([]);
 
@@ -153,5 +158,103 @@ describe('App', () => {
     expect(
       await screen.findByText('Tus entregas del día, en orden.'),
     ).toBeTruthy();
+  });
+
+  describe('eliminar cuenta', () => {
+    /** La app abre una base nueva al montar: lo local se guarda antes de abrir Cuenta. */
+    const entrarACuenta = async (preparar?: () => Promise<unknown>) => {
+      apiSimulada.iniciarSesionApi.mockResolvedValue({
+        access_token: crearJwt(600),
+        user: usuarioPrueba,
+      });
+      await render(<App />);
+      await screen.findByLabelText('Correo');
+      await llenarLogin();
+      await screen.findByText('Aún no tienes despachos');
+      await esperarConsultas();
+      await preparar?.();
+      await abrirCuenta();
+    };
+
+    /** La tarjeta abre la confirmación; el botón del diálogo es el último. */
+    const confirmar = async () => {
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Eliminar cuenta'}),
+      );
+      await screen.findByText('¿Eliminar tu cuenta?');
+      const botones = screen.getAllByRole('button', {name: 'Eliminar cuenta'});
+      return botones[botones.length - 1]!;
+    };
+
+    beforeEach(() => {
+      apiCuenta.eliminarCuentaApi.mockReset();
+      jest.mocked(Toast.show).mockClear();
+    });
+
+    it('la elimina en Fluor, borra sus datos del teléfono y vuelve al login', async () => {
+      apiCuenta.eliminarCuentaApi.mockResolvedValue(undefined);
+      await entrarACuenta(() =>
+        escribir(tx =>
+          tx.insert(despachos).values({
+            tenantDespachoId: 5,
+            usuarioId: usuarioPrueba.id,
+            tenantId: 7,
+            codigoDespacho: 905,
+            asignadoEn: '2026-11-10T07:00:00',
+          }),
+        ),
+      );
+
+      await fireEvent.press(await confirmar());
+
+      expect(
+        await screen.findByText('Tus entregas del día, en orden.'),
+      ).toBeTruthy();
+      expect(apiCuenta.eliminarCuentaApi).toHaveBeenCalledWith(
+        usuarioPrueba.id,
+      );
+      expect(await leer(db => db.select().from(despachos))).toEqual([]);
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({text1: 'Tu cuenta fue eliminada.'}),
+      );
+    });
+
+    it('si Fluor falla, muestra el error y no borra nada', async () => {
+      apiCuenta.eliminarCuentaApi.mockRejectedValue(
+        new ErrorApi({codigo: 'SIN_CONEXION', mensaje: 'Sin conexión'}),
+      );
+      await entrarACuenta();
+
+      await fireEvent.press(await confirmar());
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: 'Sin conexión. Revisa tu internet e inténtalo de nuevo.',
+          }),
+        ),
+      );
+      expect(useSesion.getState().estado).toBe('activa');
+    });
+
+    it('con envíos pendientes no deja eliminarla', async () => {
+      // Novedad no tiene enviador: se queda pendiente sin que el motor la toque.
+      await entrarACuenta(() =>
+        escribir(tx =>
+          encolar(tx, {
+            usuarioId: usuarioPrueba.id,
+            tipo: 'novedad',
+            claveEntidad: 'guia:5:1',
+            cuerpo: {},
+          }),
+        ),
+      );
+
+      const boton = await confirmar();
+
+      expect(screen.getByText('Tienes 1 envío pendiente')).toBeTruthy();
+      expect(boton.props.accessibilityState.disabled).toBe(true);
+    });
   });
 });

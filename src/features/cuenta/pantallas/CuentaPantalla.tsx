@@ -1,11 +1,15 @@
+import {useState} from 'react';
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {versionApp} from '@/core/config';
 import {useSesion} from '@/core/sesion';
 import {
+  Aviso,
   Avatar,
   BORDES_PESTANA,
+  Boton,
+  Dialogo,
   Encabezado,
   Escena,
   Icono,
@@ -14,16 +18,25 @@ import {
   Pantalla,
   Tarjeta,
   Texto,
+  Trash,
+  TriangleAlert,
 } from '@/ui';
 
 import {useCerrarSesion} from '../hooks/useCerrarSesion';
+import {useEliminarCuenta} from '../hooks/useEliminarCuenta';
 
-/** Quién tiene la sesión, cerrarla y la versión instalada. */
+/** Quién tiene la sesión, cerrarla o eliminar la cuenta, y la versión instalada. */
 export function CuentaPantalla() {
   const usuario = useSesion(s => s.usuario);
-  const {cerrar} = useCerrarSesion();
+  const {cerrar, pendientes} = useCerrarSesion();
+  const eliminar = useEliminarCuenta();
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
   const correo = usuario?.email ?? '';
   const identificacion = usuario?.numero_identificacion;
+
+  const cerrarDialogo = () => {
+    if (!eliminar.isPending) setConfirmandoEliminar(false);
+  };
 
   return (
     <Pantalla bordes={BORDES_PESTANA} desplazable>
@@ -51,12 +64,61 @@ export function CuentaPantalla() {
           </Texto>
         </View>
       </Tarjeta>
+      <Tarjeta
+        alPresionar={() => setConfirmandoEliminar(true)}
+        etiqueta="Eliminar cuenta">
+        <View style={styles.fila}>
+          <Icono color="textoSecundario" icono={Trash} />
+          <View style={styles.datos}>
+            <Texto media>Eliminar cuenta</Texto>
+            <Texto tono="secundario" variante="etiqueta">
+              Borra tu cuenta y tus datos personales.
+            </Texto>
+          </View>
+        </View>
+      </Tarjeta>
       <View style={styles.acerca}>
         <Marca ancho={72} />
         <Texto numerico tono="secundario" variante="etiqueta">
           Versión {versionApp()}
         </Texto>
       </View>
+      <Dialogo
+        acciones={
+          <>
+            <Boton
+              cargando={eliminar.isPending}
+              disabled={pendientes > 0}
+              tipo="peligro"
+              titulo="Eliminar cuenta"
+              onPress={() => eliminar.mutate()}
+            />
+            <Boton
+              disabled={eliminar.isPending}
+              tipo="texto"
+              titulo="Cancelar"
+              onPress={cerrarDialogo}
+            />
+          </>
+        }
+        alCerrar={cerrarDialogo}
+        icono={Trash}
+        mensaje="Se borran tu cuenta y tus datos personales, y se cierra la sesión en este teléfono. No se puede deshacer."
+        titulo="¿Eliminar tu cuenta?"
+        visible={confirmandoEliminar}>
+        {pendientes > 0 ? (
+          <Aviso
+            icono={TriangleAlert}
+            mensaje="Envíalos o descártalos en Envíos antes de eliminar la cuenta; si no, esas entregas se perderían."
+            titulo={
+              pendientes === 1
+                ? 'Tienes 1 envío pendiente'
+                : `Tienes ${pendientes} envíos pendientes`
+            }
+            tono="advertencia"
+          />
+        ) : null}
+      </Dialogo>
     </Pantalla>
   );
 }
