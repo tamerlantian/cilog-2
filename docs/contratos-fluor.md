@@ -58,6 +58,8 @@ Entregar, novedad y terminar ya funcionan en la app: se guardan en el teléfono 
 | Ubicación | Se envían `latitud`/`longitud` en entrega y novedad cuando el GPS responde; si no, van en null. | — |
 | Fotos y firma | Cada archivo es una operación (`foto` o `firma`) que depende de la entrega, con cuerpo `{codigo_modelo: "TteGuia", codigo, tipo: "I"/"F"}`; el archivo está en la tabla `archivos`. Se subirán con §5 y `Idempotency-Key` = `id_operacion`. | §5 |
 
+**Novedad está oculta en la app** (`funciones.novedades = false` en `domain/gestion.ts`) porque su endpoint no entra en la primera versión. Se enciende con esa línea cuando Fluor tenga §6 y §7.
+
 Lo que se encole con los tipos de novedad provisionales Fluor lo rechazaría (404). Antes de activar el envío de novedades hay que tener el catálogo real; las de prueba se descartan desde *Envíos*.
 
 ### 4 y 5. Entrega con fotos y firma: **hecho en Fluor** como `POST /tte/movil/guia/entrega` (`b88a416`…`9ea5e66`)

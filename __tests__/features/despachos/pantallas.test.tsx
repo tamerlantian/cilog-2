@@ -22,6 +22,7 @@ import * as api from '@/features/despachos/api/despachos';
 import type {GuiaFluor} from '@/features/despachos/api/despachos';
 import * as apiEntrega from '@/features/despachos/api/entrega';
 import {claveGuia} from '@/features/despachos/domain/claves';
+import {funciones} from '@/features/despachos/domain/gestion';
 
 import {crearJwt, firmar, usuarioPrueba} from '../../helpers';
 
@@ -174,6 +175,7 @@ describe('pantallas de despachos', () => {
     useSesion.setState({estado: 'iniciando', avisoSesion: null});
   });
   afterEach(async () => {
+    funciones.novedades = false;
     // Lo que invalidaron las mutaciones termina antes de desmontar.
     await waitFor(() =>
       expect(
@@ -246,7 +248,8 @@ describe('pantallas de despachos', () => {
       screen.getByRole('button', {name: 'Llamar a María Peña'}),
     ).toBeTruthy();
     expect(screen.getByRole('button', {name: 'Entregar'})).toBeTruthy();
-    expect(screen.getByRole('button', {name: 'Novedad'})).toBeTruthy();
+    // Novedad está apagada hasta que Fluor tenga su endpoint.
+    expect(screen.queryByRole('button', {name: 'Novedad'})).toBeNull();
   });
 
   describe('lector de códigos', () => {
@@ -505,6 +508,7 @@ describe('pantallas de despachos', () => {
     });
 
     it('la novedad pide el tipo y deja la guía con novedad', async () => {
+      funciones.novedades = true;
       await abrirGuia('Guía 3, Destinatario 3');
       await fireEvent.press(screen.getByRole('button', {name: 'Novedad'}));
 

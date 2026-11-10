@@ -134,6 +134,13 @@ export const puedeEntregar = (
   return permitido;
 };
 
+/**
+ * Funciones que dependen de endpoints que Fluor aún no tiene. Mientras estén
+ * apagadas, la pantalla no ofrece la acción (docs/contratos-fluor.md §6).
+ * Es un objeto para que las pruebas puedan encenderlas.
+ */
+export const funciones = {novedades: false};
+
 export const puedeReportarNovedad = (
   despacho: DespachoGestion,
   guia: GuiaGestion,

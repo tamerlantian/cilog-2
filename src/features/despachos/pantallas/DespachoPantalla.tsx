@@ -42,6 +42,7 @@ import {
 } from '../components/TarjetaDespacho';
 import {plural} from '../domain/envios';
 import {
+  funciones,
   puedeEntregar,
   puedeReportarNovedad,
   puedeTerminar,
@@ -268,6 +269,7 @@ export function DespachoPantalla({navigation, route}: Props) {
               : undefined
           }
           alReportarNovedad={
+            funciones.novedades &&
             puedeReportarNovedad(despacho, siguiente).permitido
               ? () =>
                   navigation.navigate('Novedad', {
