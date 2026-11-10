@@ -1,4 +1,4 @@
-package com.plutonio
+package com.semantica.cilog2
 
 import android.os.Bundle
 import com.facebook.react.ReactActivity

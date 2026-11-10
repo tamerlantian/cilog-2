@@ -1,7 +1,7 @@
 import * as Keychain from 'react-native-keychain';
 import {z} from 'zod';
 
-const SERVICIO = 'com.plutonio.sesion';
+const SERVICIO = 'com.semantica.cilog2.sesion';
 const USUARIO = 'token';
 
 const esquemaCredenciales = z.object({

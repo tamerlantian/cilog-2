@@ -1,9 +1,9 @@
 # Plutonio
 
-App de logística para conductores y mensajeros (`com.plutonio`, nombre visible **Cilog**): despachos, entregas con firma y foto, novedades, recogidas y monitoreo, con modo offline.
+App de logística para conductores y mensajeros (`com.semantica.cilog2`, nombre visible **Cilog**): despachos, entregas con firma y foto, novedades, recogidas y monitoreo, con modo offline.
 React Native 0.88 (Nueva Arquitectura, bare) y TypeScript estricto. Backend: Fluor (FastAPI).
 
-Reemplaza a la app anterior en la misma ficha de Google Play. Ver [docs/release-play.md](docs/release-play.md).
+Se publica como app nueva en Google Play (ficha **Cilog2**) y convive con la Cilog anterior hasta que todos migren. Ver [docs/release-play.md](docs/release-play.md).
 
 ## Empezar
 

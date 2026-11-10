@@ -1,6 +1,6 @@
 # Prueba de humo: la app arranca y muestra la pantalla base.
 # Ejecutar con un dispositivo/emulador conectado: maestro test .maestro
-appId: com.plutonio
+appId: com.semantica.cilog2
 ---
 - launchApp
 - assertVisible: 'Plutonio'

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-App React Native 0.88 bare (`com.plutonio`, visible "Cilog"), TypeScript estricto, Nueva Arquitectura. Es la reescritura de la app anterior; reemplaza a la publicada en Google Play sin cambiar de ficha. Backend: Fluor (FastAPI, multi-tenant). El código y la UI van en español (dominio) con lo técnico en inglés (`useQuery`, `Screen`).
+App React Native 0.88 bare (`com.semantica.cilog2`, visible "Cilog"), TypeScript estricto, Nueva Arquitectura. Es la reescritura de la app anterior y se publica como ficha nueva en Google Play ("Cilog2"); la anterior (`com.plutonio`) se retira cuando todos migren. Backend: Fluor (FastAPI, multi-tenant). El código y la UI van en español (dominio) con lo técnico en inglés (`useQuery`, `Screen`).
 
 ## Comandos
 
@@ -12,7 +12,7 @@ npm run build:aab   # AAB de release con .env.prod
 
 ## Reglas que no se negocian
 
-- No cambiar `applicationId` (`com.plutonio`) ni la clave de firma. `versionCode` siempre mayor que el publicado en Play (parte en 57). Ver `docs/release-play.md`.
+- No cambiar `applicationId` (`com.semantica.cilog2`) una vez publicado, ni la clave de subida. `versionCode` siempre mayor que el último subido a Play. No tocar la app anterior (`com.plutonio`). Ver `docs/release-play.md`.
 - Secretos fuera del repo: `.env*`, `google-services.json` y las `MYAPP_UPLOAD_*` de `~/.gradle/gradle.properties`. Nunca agregarlos a `android/gradle.properties`.
 - Capas: `ui` no importa `core`/`features`; `core` no importa `features`/`app`; `features` no importan `app` ni otras features. Módulos de `core` y `ui` se importan por su `index.ts` (`@/core/api`), y los relativos no suben más de un nivel. ESLint lo hace cumplir. Detalle en `docs/arquitectura.md`.
 - Las pantallas no llaman a axios ni SQLite; usan hooks de su feature. Toda escritura offline pasa por la cola de operaciones pendientes con `id_operacion` UUID.

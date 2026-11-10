@@ -413,7 +413,7 @@ Después, si hace falta: Android WorkManager (tarea periódica con condición "h
 | App cerrada a mitad de envío | Dejar una operación en `enviando`, reiniciar el motor, verificar que vuelve a `pendiente`. |
 | Túnel real | Modo avión en el emulador mientras se entrega; quitarlo y ver que se envía. |
 | Señal débil | Android Emulator → *Cellular* → *Network type* EDGE / *Signal* Poor. |
-| Reinicio | Entregar sin señal, forzar cierre (`adb shell am force-stop com.plutonio`), abrir y verificar la cola. |
+| Reinicio | Entregar sin señal, forzar cierre (`adb shell am force-stop com.semantica.cilog2`), abrir y verificar la cola. |
 | Sesión vencida | Borrar el access token y dejar un refresh inválido; verificar `pausada` y que la cola sobrevive al login. |
 
 ## 17. Decisiones abiertas

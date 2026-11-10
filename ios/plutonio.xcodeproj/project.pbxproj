@@ -314,7 +314,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.plutonio;
+				PRODUCT_BUNDLE_IDENTIFIER = com.semantica.cilog2;
 				PRODUCT_NAME = plutonio;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -343,7 +343,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.plutonio;
+				PRODUCT_BUNDLE_IDENTIFIER = com.semantica.cilog2;
 				PRODUCT_NAME = plutonio;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
