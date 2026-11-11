@@ -6,7 +6,7 @@ La app se publica como **app nueva** en Play, con el título **Cilog2**. No reem
 | --- | --- | --- |
 | `applicationId` | `com.semantica.cilog2`. **Permanente** desde la primera subida a Play | `android/app/build.gradle` (y `PRODUCT_BUNDLE_IDENTIFIER` en iOS) |
 | Clave de subida (upload key) | La de `MYAPP_UPLOAD_*`; Play App Signing guarda la clave de la app | `~/.gradle/gradle.properties` (fuera del repo) |
-| `versionCode` | Mayor que el último subido a **esta** ficha. Parte en 57 | `android/app/build.gradle` |
+| `versionCode` | Mayor que el último subido a **esta** ficha. Parte en 1 (`versionName` 1.0.0) | `android/app/build.gradle` |
 | Nombre en el teléfono | "Cilog" (`app_name`); el título de la ficha es "Cilog2" | `android/app/src/main/res/values/strings.xml` |
 
 Además, `targetSdk` 36 y las librerías nativas alineadas a 16 KB son requisitos vigentes de Play (ya vienen resueltos en React Native 0.88).

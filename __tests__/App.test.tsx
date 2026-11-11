@@ -74,7 +74,7 @@ describe('App', () => {
     expect(
       await screen.findByText('Tus entregas del día, en orden.'),
     ).toBeTruthy();
-    expect(screen.getByText('Versión 2.0.0 (57)')).toBeTruthy();
+    expect(screen.getByText('Versión 1.0.0 (1)')).toBeTruthy();
   });
 
   it('valida el formulario antes de llamar a la API', async () => {
@@ -117,7 +117,7 @@ describe('App', () => {
     await abrirCuenta();
 
     expect(screen.queryByText(/empresa/i)).toBeNull();
-    expect(screen.getByText('Versión 2.0.0 (57)')).toBeTruthy();
+    expect(screen.getByText('Versión 1.0.0 (1)')).toBeTruthy();
     expect(screen.getByRole('button', {name: 'Cerrar sesión'})).toBeTruthy();
   });
 

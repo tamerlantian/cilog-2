@@ -41,8 +41,8 @@ jest.mock('react-native-keychain', () => {
 });
 
 jest.mock('react-native-device-info', () => ({
-  getVersion: () => '2.0.0',
-  getBuildNumber: () => '57',
+  getVersion: () => '1.0.0',
+  getBuildNumber: () => '1',
 }));
 
 jest.mock('react-native-bootsplash', () => ({
