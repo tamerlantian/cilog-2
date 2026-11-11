@@ -177,13 +177,22 @@ describe('App', () => {
     };
 
     /** La tarjeta abre la confirmación; el botón del diálogo es el último. */
-    const confirmar = async () => {
+    const abrirConfirmacion = async () => {
       await fireEvent.press(
         screen.getByRole('button', {name: 'Eliminar cuenta'}),
       );
       await screen.findByText('¿Eliminar tu cuenta?');
       const botones = screen.getAllByRole('button', {name: 'Eliminar cuenta'});
       return botones[botones.length - 1]!;
+    };
+
+    const confirmarConClave = async (clave = 'mi-clave-1') => {
+      const boton = await abrirConfirmacion();
+      await fireEvent.changeText(
+        screen.getByLabelText('Escribe tu clave para confirmar'),
+        clave,
+      );
+      await fireEvent.press(boton);
     };
 
     beforeEach(() => {
@@ -205,14 +214,12 @@ describe('App', () => {
         ),
       );
 
-      await fireEvent.press(await confirmar());
+      await confirmarConClave();
 
       expect(
         await screen.findByText('Tus entregas del día, en orden.'),
       ).toBeTruthy();
-      expect(apiCuenta.eliminarCuentaApi).toHaveBeenCalledWith(
-        usuarioPrueba.id,
-      );
+      expect(apiCuenta.eliminarCuentaApi).toHaveBeenCalledWith('mi-clave-1');
       expect(await leer(db => db.select().from(despachos))).toEqual([]);
       expect(Toast.show).toHaveBeenCalledWith(
         expect.objectContaining({text1: 'Tu cuenta fue eliminada.'}),
@@ -225,7 +232,7 @@ describe('App', () => {
       );
       await entrarACuenta();
 
-      await fireEvent.press(await confirmar());
+      await confirmarConClave();
 
       await waitFor(() =>
         expect(Toast.show).toHaveBeenCalledWith(
@@ -236,6 +243,56 @@ describe('App', () => {
         ),
       );
       expect(useSesion.getState().estado).toBe('activa');
+    });
+
+    it('sin clave no se puede confirmar', async () => {
+      await entrarACuenta();
+
+      const boton = await abrirConfirmacion();
+
+      expect(boton.props.accessibilityState.disabled).toBe(true);
+    });
+
+    it('con la clave incorrecta lo dice en el campo y no cierra la sesión', async () => {
+      apiCuenta.eliminarCuentaApi.mockRejectedValue(
+        new ErrorApi({
+          codigo: 'NO_AUTENTICADO',
+          mensaje: 'Clave incorrecta',
+          estado: 401,
+        }),
+      );
+      await entrarACuenta();
+
+      await confirmarConClave('otra');
+
+      expect(await screen.findByText('Clave incorrecta')).toBeTruthy();
+      expect(Toast.show).not.toHaveBeenCalled();
+      expect(useSesion.getState().estado).toBe('activa');
+    });
+
+    it('si es el único control de una empresa, muestra cuáles', async () => {
+      apiCuenta.eliminarCuentaApi.mockRejectedValue(
+        new ErrorApi({
+          codigo: 'CONFLICTO',
+          mensaje:
+            'Eres el único control de estas empresas; asigna otro control antes de eliminar tu cuenta',
+          estado: 409,
+          extras: {empresas: ['Transportes Sur']},
+        }),
+      );
+      await entrarACuenta();
+
+      await confirmarConClave();
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1:
+              'Eres el único control de estas empresas; asigna otro control antes de eliminar tu cuenta: Transportes Sur.',
+          }),
+        ),
+      );
     });
 
     it('con envíos pendientes no deja eliminarla', async () => {
@@ -251,7 +308,7 @@ describe('App', () => {
         ),
       );
 
-      const boton = await confirmar();
+      const boton = await abrirConfirmacion();
 
       expect(screen.getByText('Tienes 1 envío pendiente')).toBeTruthy();
       expect(boton.props.accessibilityState.disabled).toBe(true);

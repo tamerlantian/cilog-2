@@ -13,6 +13,7 @@ import {
   Encabezado,
   Escena,
   Icono,
+  Input,
   LogOut,
   Marca,
   Pantalla,
@@ -23,7 +24,7 @@ import {
 } from '@/ui';
 
 import {useCerrarSesion} from '../hooks/useCerrarSesion';
-import {useEliminarCuenta} from '../hooks/useEliminarCuenta';
+import {esClaveIncorrecta, useEliminarCuenta} from '../hooks/useEliminarCuenta';
 
 /** Quién tiene la sesión, cerrarla o eliminar la cuenta, y la versión instalada. */
 export function CuentaPantalla() {
@@ -31,12 +32,22 @@ export function CuentaPantalla() {
   const {cerrar, pendientes} = useCerrarSesion();
   const eliminar = useEliminarCuenta();
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [clave, setClave] = useState('');
   const correo = usuario?.email ?? '';
   const identificacion = usuario?.numero_identificacion;
 
+  const abrirDialogo = () => {
+    setClave('');
+    eliminar.reset();
+    setConfirmandoEliminar(true);
+  };
   const cerrarDialogo = () => {
     if (!eliminar.isPending) setConfirmandoEliminar(false);
   };
+  const confirmarEliminar = () => {
+    if (clave.length > 0) eliminar.mutate(clave);
+  };
+  const conPendientes = pendientes > 0;
 
   return (
     <Pantalla bordes={BORDES_PESTANA} desplazable>
@@ -64,9 +75,7 @@ export function CuentaPantalla() {
           </Texto>
         </View>
       </Tarjeta>
-      <Tarjeta
-        alPresionar={() => setConfirmandoEliminar(true)}
-        etiqueta="Eliminar cuenta">
+      <Tarjeta alPresionar={abrirDialogo} etiqueta="Eliminar cuenta">
         <View style={styles.fila}>
           <Icono color="textoSecundario" icono={Trash} />
           <View style={styles.datos}>
@@ -88,10 +97,10 @@ export function CuentaPantalla() {
           <>
             <Boton
               cargando={eliminar.isPending}
-              disabled={pendientes > 0}
+              disabled={conPendientes || clave.length === 0}
               tipo="peligro"
               titulo="Eliminar cuenta"
-              onPress={() => eliminar.mutate()}
+              onPress={confirmarEliminar}
             />
             <Boton
               disabled={eliminar.isPending}
@@ -106,7 +115,7 @@ export function CuentaPantalla() {
         mensaje="Se borran tu cuenta y tus datos personales, y se cierra la sesión en este teléfono. No se puede deshacer."
         titulo="¿Eliminar tu cuenta?"
         visible={confirmandoEliminar}>
-        {pendientes > 0 ? (
+        {conPendientes ? (
           <Aviso
             icono={TriangleAlert}
             mensaje="Envíalos o descártalos en Envíos antes de eliminar la cuenta; si no, esas entregas se perderían."
@@ -117,7 +126,26 @@ export function CuentaPantalla() {
             }
             tono="advertencia"
           />
-        ) : null}
+        ) : (
+          <Input
+            autoCapitalize="none"
+            autoComplete="current-password"
+            editable={!eliminar.isPending}
+            error={
+              esClaveIncorrecta(eliminar.error) ? 'Clave incorrecta' : undefined
+            }
+            etiqueta="Escribe tu clave para confirmar"
+            returnKeyType="done"
+            secureTextEntry
+            textContentType="password"
+            value={clave}
+            onChangeText={texto => {
+              setClave(texto);
+              if (eliminar.isError) eliminar.reset();
+            }}
+            onSubmitEditing={confirmarEliminar}
+          />
+        )}
       </Dialogo>
     </Pantalla>
   );

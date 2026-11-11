@@ -123,14 +123,14 @@ Query `aplica_movil` (bool, por defecto `true`). Sin paginación (catálogo para
 
 - 409 `CONFLICT` "Quedan guías sin gestionar" si hay guías sin entregar y sin novedad. Se pide la regla exacta al negocio: hoy la app permite terminar cuando la lista de pendientes queda vacía.
 
-### 8b. `DELETE /auth/seguridad/usuario/{id}`: eliminar cuenta (requisito de Google Play)
+### 8b. Eliminar cuenta: **hecho en Fluor** como `DELETE /auth/user/eliminar` (`692a929`)
 
-La app ya lo llama desde *Mi cuenta* (`features/cuenta/api/cuenta.ts`). Lo que espera:
+Requisito de Google Play. La app lo llama desde *Mi cuenta* (`features/cuenta/api/cuenta.ts`).
 
-- Solo el dueño: `{id}` debe ser el `sub` del JWT; otro id → 403 o 404, nunca borrar a otro usuario.
-- `200`/`204` sin cuerpo útil. La app después cierra la sesión y borra del teléfono los despachos, la cola y las evidencias de ese usuario.
-- Que el token quede inválido (login y refresh fallan después).
-- Qué pasa con sus asignaciones (`mas_tenant_despacho`) y con las entregas ya registradas lo decide backend. Las entregas son de la empresa y no deberían borrarse.
+- Cuerpo `{"clave": "..."}`; borra al usuario del token (no lleva id en la ruta). 3 por minuto.
+- `401 "Clave incorrecta"`: la app lo muestra en el campo. La petición va con `sinRenovar`, porque ese 401 no es de sesión y no debe renovar el token ni cerrarla.
+- `409` si es el único control activo de alguna empresa, con `error.empresas` (nombres); la app los muestra en el mensaje.
+- `200` `{"detail": "Cuenta eliminada correctamente"}`: lo de master se borra en cascada (asignaciones de despacho, empresas, API keys). La app luego borra del teléfono despachos, cola y evidencias del usuario y cierra la sesión.
 - Google exige además un enlace web para pedir la eliminación sin tener la app instalada; va en la ficha de Play.
 
 La app no deja eliminar la cuenta con envíos sin confirmar, para no perder entregas.

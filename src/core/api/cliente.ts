@@ -20,6 +20,16 @@ export type ProveedorSesion = {
   alSesionInvalida: () => void;
 };
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /**
+     * El 401 de esta petición es del negocio (p. ej. "Clave incorrecta" al
+     * eliminar la cuenta), no de la sesión: no renueva el token ni la cierra.
+     */
+    sinRenovar?: boolean;
+  }
+}
+
 let sesion: ProveedorSesion | null = null;
 
 export const configurarSesionApi = (proveedor: ProveedorSesion | null) => {
@@ -112,7 +122,12 @@ cliente.interceptors.response.use(
       : undefined;
     const autorizacion = config?.headers?.Authorization;
     // Sin token (login) o ya reintentada: el 401 llega tal cual.
-    if (errorApi.estado !== 401 || !config || !autorizacion) {
+    if (
+      errorApi.estado !== 401 ||
+      !config ||
+      !autorizacion ||
+      config.sinRenovar
+    ) {
       return Promise.reject(errorApi);
     }
 

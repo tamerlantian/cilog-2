@@ -171,6 +171,19 @@ describe('cliente API', () => {
     expect(sesion.alSesionInvalida).not.toHaveBeenCalled();
   });
 
+  it('un 401 de una petición sinRenovar no renueva ni cierra la sesión', async () => {
+    const sesion = crearSesion({obtenerTokenRenovacion: () => 'refresh-1'});
+    const renovacion = renovacionResponde(200, {access_token: 'jwt-nuevo'});
+    const {adaptador, autorizaciones} = adaptadorSecuencia(401);
+
+    await expect(
+      cliente.delete('/x', {adapter: adaptador, sinRenovar: true}),
+    ).rejects.toMatchObject({estado: 401});
+    expect(autorizaciones).toEqual(['Bearer jwt-123']);
+    expect(renovacion).not.toHaveBeenCalled();
+    expect(sesion.alSesionInvalida).not.toHaveBeenCalled();
+  });
+
   describe('renovación del token', () => {
     it('ante un 401 renueva el token y reintenta la petición', async () => {
       const sesion = crearSesion({obtenerTokenRenovacion: () => 'refresh-1'});
