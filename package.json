@@ -5,6 +5,7 @@
   "scripts": {
     "start": "react-native start",
     "android": "react-native run-android",
+    "android:prod": "ENVFILE=.env.prod react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
