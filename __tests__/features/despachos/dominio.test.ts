@@ -16,6 +16,10 @@ import {
   situacionGuia,
   type DatosGuia,
 } from '@/features/despachos/domain/guias';
+import {
+  debeDetenerse,
+  puedeRastrearse,
+} from '@/features/despachos/domain/rastreo';
 
 const guia = (codigo: number, cambios: Partial<DatosGuia> = {}): DatosGuia => ({
   codigoGuia: codigo,
@@ -223,5 +227,30 @@ describe('vincular', () => {
     expect(
       leerQrDespacho('{"operador":-1,"codigoDespacho":1,"token":"A"}'),
     ).toBeNull();
+  });
+});
+
+describe('rastreo de ubicación', () => {
+  const despacho = (
+    tenantDespachoId: number,
+    cambios: {terminadoEn?: number | null; liberado?: boolean} = {},
+  ) => ({tenantDespachoId, terminadoEn: null, liberado: false, ...cambios});
+
+  it('solo se rastrea un despacho en curso', () => {
+    expect(puedeRastrearse(despacho(1))).toBe(true);
+    expect(puedeRastrearse(despacho(1, {terminadoEn: 1}))).toBe(false);
+    expect(puedeRastrearse(despacho(1, {liberado: true}))).toBe(false);
+  });
+
+  it('se detiene si su despacho se terminó, se liberó o ya no está', () => {
+    expect(debeDetenerse(1, [despacho(1), despacho(2)])).toBe(false);
+    expect(debeDetenerse(1, [despacho(1, {terminadoEn: 1})])).toBe(true);
+    expect(debeDetenerse(1, [despacho(1, {liberado: true})])).toBe(true);
+    // Desvinculado: ya no está, aunque haya otro en curso.
+    expect(debeDetenerse(1, [despacho(2)])).toBe(true);
+  });
+
+  it('sin rastreo activo no hay nada que detener', () => {
+    expect(debeDetenerse(null, [])).toBe(false);
   });
 });

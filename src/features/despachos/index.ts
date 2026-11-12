@@ -6,4 +6,5 @@ export {MisDespachosPantalla} from './pantallas/MisDespachosPantalla';
 export {NovedadPantalla} from './pantallas/NovedadPantalla';
 export {VincularDespachoPantalla} from './pantallas/VincularDespachoPantalla';
 export type {RutasDespachos, RutasPestanas} from './rutas';
+export {useVigilarRastreo} from './hooks/useRastreo';
 export {enviadoresDespachos} from './sync/enviadores';

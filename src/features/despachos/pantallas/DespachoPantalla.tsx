@@ -69,6 +69,7 @@ import {
   useTerminarDespacho,
 } from '../hooks/useGestion';
 import {useLectorGuia} from '../hooks/useLectorGuia';
+import {useRastrearDespacho} from '../hooks/useRastreo';
 import {useSeleccion} from '../hooks/useSeleccion';
 import type {GuiaLocal} from '../db/repositorio';
 import type {RutasDespachos} from '../rutas';
@@ -90,6 +91,7 @@ export function DespachoPantalla({navigation, route}: Props) {
   const [confirmandoTerminar, setConfirmandoTerminar] = useState(false);
   const seleccion = useSeleccion();
   const salirSeleccion = seleccion.salir;
+  useRastrearDespacho(despacho);
 
   // Al volver de una entrega, la lista muestra lo que falta.
   const {verPendientes} = route.params;

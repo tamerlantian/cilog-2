@@ -29,6 +29,14 @@ type OyenteRechazo = (asignacion: number) => void;
 /** La asignación sobrevive a cerrar la app: `ready()` la necesita al volver. */
 const CLAVE_ASIGNACION = 'rastreo.asignacion';
 
+/**
+ * Asignaciones que Fluor rechazó (404/409). No se vuelven a rastrear aunque el
+ * despacho siga en el teléfono: si no, cada vez que el conductor lo abre
+ * arrancaría y Fluor lo volvería a rechazar.
+ */
+const CLAVE_RECHAZADAS = 'rastreo.rechazadas';
+const MAX_RECHAZADAS = 20;
+
 const esquemaRenovacion = z.object({access_token: z.string()});
 
 const oyentesRechazo = new Set<OyenteRechazo>();
@@ -39,6 +47,28 @@ export const asignacionRastreada = (): number | null => {
   const asignacion = Number(texto);
   return texto && Number.isSafeInteger(asignacion) ? asignacion : null;
 };
+
+const leerRechazadas = (): number[] => {
+  try {
+    const lista: unknown = JSON.parse(
+      almacen.getString(CLAVE_RECHAZADAS) ?? '[]',
+    );
+    return Array.isArray(lista) ? lista.filter(Number.isSafeInteger) : [];
+  } catch {
+    return [];
+  }
+};
+
+const rechazar = (asignacion: number) => {
+  const lista = [...leerRechazadas().filter(a => a !== asignacion), asignacion];
+  almacen.set(CLAVE_RECHAZADAS, JSON.stringify(lista.slice(-MAX_RECHAZADAS)));
+};
+
+export const fueRechazada = (asignacion: number) =>
+  leerRechazadas().includes(asignacion);
+
+/** Al cerrar sesión: el próximo usuario empieza sin rechazos. */
+export const olvidarRechazadas = () => almacen.remove(CLAVE_RECHAZADAS);
 
 const guardarAsignacion = (asignacion: number | null) => {
   if (asignacion === null) almacen.remove(CLAVE_ASIGNACION);
@@ -80,6 +110,7 @@ const alResponderFluor = async ({success, status}: HttpEvent) => {
   if (success) return;
   if (status === 404 || status === 409) {
     const asignacion = asignacionRastreada();
+    if (asignacion !== null) rechazar(asignacion);
     await detenerRastreo({enviarPendientes: false});
     if (asignacion !== null)
       oyentesRechazo.forEach(oyente => oyente(asignacion));
@@ -146,9 +177,11 @@ const esperarPreparado = () => {
 /**
  * Empieza a reportar la ubicación a la asignación, o cambia de asignación si
  * ya rastreaba otra. Debe llamarse con la app abierta (foreground service).
+ * Devuelve false si Fluor ya había rechazado esa asignación.
  */
 export const iniciarRastreo = async (asignacion: number) => {
   await esperarPreparado();
+  if (fueRechazada(asignacion)) return false;
   const actual = asignacionRastreada();
   if (actual !== null && actual !== asignacion) {
     // Los puntos del despacho anterior no deben salir con el encabezado nuevo.
@@ -159,6 +192,7 @@ export const iniciarRastreo = async (asignacion: number) => {
   await BackgroundGeolocation.setConfig({http: configuracionHttp(asignacion)});
   const {enabled} = await BackgroundGeolocation.getState();
   if (!enabled) await BackgroundGeolocation.start();
+  return true;
 };
 
 /** El token cambió en la app (login o renovación): el plugin usa el nuevo. */

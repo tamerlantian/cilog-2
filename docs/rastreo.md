@@ -65,11 +65,20 @@ plugin la valida. Fluor ya acepta el refresh del plugin (abajo).
 
 ### Sprint 2: integración con despachos y sesión
 
-- `domain/rastreo.ts`: función pura que elige la asignación a rastrear.
-- Hook que inicia, cambia o detiene el rastreo según los despachos.
-- Cerrar sesión, cambiar de usuario o eliminar la cuenta: detener y borrar los
-  puntos pendientes.
-- 409/404 del plugin: actualizar el estado del despacho en la app.
+**Estado (12 nov 2026)**: hecho, con pruebas. Falta probarlo en un teléfono
+con un despacho real (permiso nativo, notificación y puntos en Fluor).
+
+- **Arranque**: al abrir un despacho en curso (`useRastrearDespacho` en
+  `DespachoPantalla`). Si se rastreaba otro, cambia a este.
+- **Parada**: `useVigilarRastreo` (montado en `Pestanas`, vive con la sesión)
+  lo detiene cuando su despacho se termina, se desvincula o la empresa lo
+  libera. No salta solo a otro despacho: el siguiente arranca al abrirlo.
+- **Rechazo de Fluor (404/409)**: aviso al conductor y se actualizan los
+  despachos. La asignación queda en `rastreo.rechazadas` (MMKV) para no volver
+  a arrancar cada vez que se abre; se olvida al cerrar sesión.
+- **Cerrar sesión o eliminar la cuenta** (que cierra la sesión): lo resuelve
+  `conectarSesionConRastreo` desde el Sprint 1.
+- Regla en `domain/rastreo.ts` (`puedeRastrearse`, `debeDetenerse`).
 
 ### Sprint 3: experiencia del conductor
 

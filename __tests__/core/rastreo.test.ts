@@ -149,6 +149,24 @@ describe('rastreo de ubicación', () => {
     },
   );
 
+  it('una asignación rechazada no vuelve a arrancar hasta cerrar sesión', async () => {
+    const rastreo = cargarRastreo();
+    await rastreo.prepararRastreo(proveedor());
+    await rastreo.iniciarRastreo(10);
+    plugin.__oyentes.http({success: false, status: 409, responseText: ''});
+    await esperar();
+    plugin.start.mockClear();
+
+    await expect(rastreo.iniciarRastreo(10)).resolves.toBe(false);
+    expect(plugin.start).not.toHaveBeenCalled();
+    expect(rastreo.fueRechazada(10)).toBe(true);
+    // Otra asignación sí arranca.
+    await expect(rastreo.iniciarRastreo(20)).resolves.toBe(true);
+
+    rastreo.olvidarRechazadas();
+    expect(rastreo.fueRechazada(10)).toBe(false);
+  });
+
   it('un 422 descarta el lote pero sigue rastreando', async () => {
     const rastreo = cargarRastreo();
     await rastreo.prepararRastreo(proveedor());

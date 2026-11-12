@@ -6,6 +6,7 @@ import {
   EnviosPantalla,
   MisDespachosPantalla,
   type RutasPestanas,
+  useVigilarRastreo,
 } from '@/features/despachos';
 import {Icono, RefreshCw, Truck, type TipoIcono, UserRound} from '@/ui';
 
@@ -29,6 +30,8 @@ const icono =
  */
 export function Pestanas() {
   const {theme} = useUnistyles();
+  // Las pestañas viven mientras hay sesión: aquí se vigila el rastreo de ubicación.
+  useVigilarRastreo();
   return (
     <Tab.Navigator
       screenOptions={{

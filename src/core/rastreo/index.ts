@@ -4,7 +4,9 @@ export {
   asignacionRastreada,
   detenerRastreo,
   escucharRastreoRechazado,
+  fueRechazada,
   iniciarRastreo,
+  olvidarRechazadas,
   prepararRastreo,
   type ProveedorRastreo,
 } from './rastreo';

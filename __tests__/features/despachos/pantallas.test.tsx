@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -8,6 +9,7 @@ import {eq} from 'drizzle-orm';
 import {Alert, PermissionsAndroid, Platform} from 'react-native';
 import * as fs from '@dr.pogodin/react-native-fs';
 import {getFSInfo} from '@dr.pogodin/react-native-fs';
+import BackgroundGeolocation from 'react-native-background-geolocation';
 import {launchCamera} from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
 
@@ -15,6 +17,7 @@ import {App} from '@/app/App';
 import {clienteConsultas} from '@/core/api/clienteConsultas';
 import {ErrorApi} from '@/core/api';
 import {archivos, escribir, guias, leer, operaciones} from '@/core/db';
+import {asignacionRastreada} from '@/core/rastreo';
 import {useSesion} from '@/core/sesion';
 import {encolar, obtenerMotor} from '@/core/sync';
 import * as apiAuth from '@/features/auth/api/auth';
@@ -143,6 +146,19 @@ const entregarLocal = (codigo: number) =>
     });
   });
 
+/** El plugin de rastreo simulado (jest.setup.js). */
+const rastreo = BackgroundGeolocation as unknown as Record<
+  'setConfig' | 'start' | 'stop',
+  jest.Mock
+> & {__oyentes: {http: (evento: unknown) => void}};
+
+/** Encabezado con el que el plugin envía los puntos ahora. */
+const asignacionDelPlugin = () =>
+  rastreo.setConfig.mock.calls
+    .map(([config]) => config.http?.headers?.['X-Tenant-Despacho-ID'])
+    .filter(Boolean)
+    .at(-1);
+
 /** La cola avisa a las pantallas, como cuando el motor envía algo. */
 const avisarCambio = () => obtenerMotor()?.avisar();
 
@@ -172,6 +188,9 @@ describe('pantallas de despachos', () => {
     enDisco.clear();
     jest.mocked(Toast.show).mockClear();
     await useSesion.getState().cerrarSesion();
+    rastreo.setConfig.mockClear();
+    rastreo.start.mockClear();
+    rastreo.stop.mockClear();
     useSesion.setState({estado: 'iniciando', avisoSesion: null});
   });
   afterEach(async () => {
@@ -744,6 +763,55 @@ describe('pantallas de despachos', () => {
       expect(JSON.parse(operacion!.cuerpo)).toMatchObject({
         codigo_despacho_pk: 910,
       });
+      // Terminado: deja de compartir la ubicación.
+      await waitFor(() => expect(asignacionRastreada()).toBeNull());
+      expect(rastreo.stop).toHaveBeenCalled();
+    });
+  });
+
+  describe('ubicación', () => {
+    it('abrir un despacho en curso empieza a compartir la ubicación con él', async () => {
+      await abrirDespacho();
+
+      await waitFor(() => expect(asignacionDelPlugin()).toBe(String(DESPACHO)));
+      expect(asignacionRastreada()).toBe(DESPACHO);
+      expect(rastreo.start).toHaveBeenCalledTimes(1);
+    });
+
+    it('cerrar sesión deja de compartir la ubicación', async () => {
+      await abrirDespacho();
+      await waitFor(() => expect(asignacionRastreada()).toBe(DESPACHO));
+
+      // Cambia toda la navegación: dentro de act.
+      await act(() => useSesion.getState().cerrarSesion());
+
+      await waitFor(() => expect(asignacionRastreada()).toBeNull());
+      expect(rastreo.stop).toHaveBeenCalled();
+    });
+
+    it('si Fluor rechaza el despacho avisa y no vuelve a rastrearlo al abrirlo', async () => {
+      await abrirDespacho();
+      await waitFor(() => expect(asignacionRastreada()).toBe(DESPACHO));
+
+      rastreo.__oyentes.http({success: false, status: 409, responseText: ''});
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text1:
+              'La empresa cerró o liberó el despacho: dejamos de compartir tu ubicación.',
+          }),
+        ),
+      );
+      expect(asignacionRastreada()).toBeNull();
+
+      // Vuelve a la lista y lo abre otra vez: no arranca de nuevo.
+      rastreo.start.mockClear();
+      await fireEvent.press(screen.getByLabelText('Volver'));
+      await fireEvent.press(await botonDespacho());
+      await screen.findByLabelText('Guía, documento o destinatario');
+      expect(asignacionRastreada()).toBeNull();
+      expect(rastreo.start).not.toHaveBeenCalled();
     });
   });
 
@@ -799,6 +867,9 @@ describe('pantallas de despachos', () => {
 
     expect(await screen.findByText('Aún no tienes despachos')).toBeTruthy();
     expect(apiSimulada.desvincularDespachoApi).toHaveBeenCalledWith(DESPACHO);
+    // Ya no es del conductor: deja de compartir la ubicación.
+    await waitFor(() => expect(asignacionRastreada()).toBeNull());
+    expect(rastreo.stop).toHaveBeenCalled();
   });
 
   it('Envíos muestra la rechazada con su motivo y deja descartarla', async () => {

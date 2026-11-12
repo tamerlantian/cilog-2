@@ -4,6 +4,7 @@ import {clienteConsultas, configurarSesionApi} from '@/core/api';
 import {
   actualizarCredencialesRastreo,
   detenerRastreo,
+  olvidarRechazadas,
   prepararRastreo,
 } from '@/core/rastreo';
 import {
@@ -196,6 +197,7 @@ export const conectarSesionConRastreo = () => {
 
   return useSesion.subscribe((actual, anterior) => {
     if (actual.estado === 'sinSesion' && anterior.estado !== 'sinSesion') {
+      olvidarRechazadas();
       detenerRastreo({enviarPendientes: false}).catch(() => undefined);
       return;
     }
