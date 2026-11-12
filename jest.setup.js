@@ -113,6 +113,9 @@ jest.mock('@dr.pogodin/react-native-fs', () => {
       archivos.set(destino, archivos.get(origen) ?? 200_000);
       archivos.delete(origen);
     }),
+    copyFile: jest.fn(async (origen, destino) => {
+      archivos.set(destino, archivos.get(origen) ?? 0);
+    }),
     stat: jest.fn(async ruta => ({size: archivos.get(ruta) ?? 0})),
     unlink: jest.fn(async ruta => {
       archivos.delete(ruta);

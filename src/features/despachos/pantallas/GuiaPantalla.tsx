@@ -71,6 +71,7 @@ export function GuiaPantalla({navigation, route}: Props) {
   const {data: despacho} = useDespacho(tenantDespachoId);
   const configuracion = useConfiguracionEntrega();
   const volver = () => navigation.goBack();
+  const gestionar = {tenantDespachoId, codigosGuia: [codigoGuia]};
 
   if (isPending) {
     return (
@@ -117,7 +118,7 @@ export function GuiaPantalla({navigation, route}: Props) {
                 icono={TriangleAlert}
                 tipo="neutro"
                 titulo="Novedad"
-                onPress={() => navigation.navigate('Novedad', route.params)}
+                onPress={() => navigation.navigate('Novedad', gestionar)}
               />
             </View>
           ) : null}
@@ -126,7 +127,7 @@ export function GuiaPantalla({navigation, route}: Props) {
               <Boton
                 icono={CircleCheck}
                 titulo="Entregar"
-                onPress={() => navigation.navigate('Entregar', route.params)}
+                onPress={() => navigation.navigate('Entregar', gestionar)}
               />
             </View>
           ) : null}

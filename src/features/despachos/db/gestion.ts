@@ -195,3 +195,66 @@ export const registrarTerminar = async (
     ahora,
   );
 };
+
+/**
+ * Varias guías gestionadas juntas (mismo cliente, misma puerta): una operación
+ * por guía, todas con la misma hora y ubicación y en la misma transacción.
+ * Si una no se puede, no se guarda ninguna. Fluor recibe una petición por
+ * guía, así que el motor, los reintentos y el 409 funcionan igual que con una.
+ */
+const porGuia = async <R>(
+  codigosGuia: readonly number[],
+  registrar: (codigoGuia: number, indice: number) => Promise<R>,
+) => {
+  if (codigosGuia.length === 0) throw rechazar('No hay guías seleccionadas.');
+  if (new Set(codigosGuia).size !== codigosGuia.length) {
+    throw rechazar('Una guía está repetida en la selección.');
+  }
+  const ids: R[] = [];
+  for (const [indice, codigoGuia] of codigosGuia.entries()) {
+    try {
+      ids.push(await registrar(codigoGuia, indice));
+    } catch (error) {
+      if (codigosGuia.length > 1 && error instanceof ErrorApi) {
+        throw rechazar(`Guía ${codigoGuia}: ${error.message}`);
+      }
+      throw error;
+    }
+  }
+  return ids;
+};
+
+type GestionVarias = Omit<Gestion, 'codigoGuia'> & {
+  codigosGuia: readonly number[];
+};
+
+/**
+ * `evidencias[i]` son los archivos de la guía `codigosGuia[i]`: cada entrega
+ * tiene sus propias copias, porque al confirmarse borra las suyas (§8).
+ */
+export const registrarEntregas = (
+  tx: Consulta,
+  {codigosGuia, ahora = Date.now(), ...gestion}: GestionVarias,
+  datos: DatosEntrega,
+  configuracion: ConfiguracionEntrega,
+  evidencias: readonly (readonly Evidencia[])[] = [],
+) =>
+  porGuia(codigosGuia, (codigoGuia, indice) =>
+    registrarEntrega(
+      tx,
+      {...gestion, codigoGuia, ahora},
+      datos,
+      configuracion,
+      evidencias[indice] ?? [],
+    ),
+  );
+
+/** Preparado para la novedad de varias guías; se activa con `funciones.novedades`. */
+export const registrarNovedades = (
+  tx: Consulta,
+  {codigosGuia, ahora = Date.now(), ...gestion}: GestionVarias,
+  datos: {tipo: string; descripcion?: string},
+) =>
+  porGuia(codigosGuia, codigoGuia =>
+    registrarNovedad(tx, {...gestion, codigoGuia, ahora}, datos),
+  );

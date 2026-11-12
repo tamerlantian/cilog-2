@@ -283,6 +283,35 @@ describe('pantallas de despachos', () => {
       expect(screen.queryByTestId('camara')).toBeNull();
     });
 
+    it('en modo selección, escanear suma la guía a la entrega', async () => {
+      await abrirDespacho();
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Seleccionar varias guías'}),
+      );
+      expect(screen.getByText('Selecciona guías')).toBeTruthy();
+
+      await escanear('3');
+      expect(
+        screen.getByRole('checkbox', {name: 'Guía 3, Destinatario 3'}).props
+          .accessibilityState.checked,
+      ).toBe(true);
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({text1: 'Guía 3 agregada'}),
+      );
+
+      await escanear('1');
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({text1: 'La guía ya está entregada.'}),
+      );
+      expect(screen.getByText('1 seleccionada')).toBeTruthy();
+
+      // Cerrar sale del modo sin tocar la lista.
+      await fireEvent.press(screen.getByRole('button', {name: 'Cerrar'}));
+      expect(
+        screen.getByRole('button', {name: 'Guía 3, Destinatario 3'}),
+      ).toBeTruthy();
+    });
+
     it('un código que no es de guía avisa y no toca la lista', async () => {
       await abrirDespacho();
 
@@ -414,6 +443,70 @@ describe('pantallas de despachos', () => {
         recibe_celular: '3001234567',
         recibe_numero_identificacion: '43123456',
       });
+    });
+
+    it('varias guías se entregan juntas: una operación por guía con su copia de la evidencia', async () => {
+      await abrirDespacho();
+      await fireEvent(
+        screen.getByRole('button', {name: 'Guía 2, María Peña'}),
+        'longPress',
+      );
+      expect(screen.getByText('1 seleccionada')).toBeTruthy();
+      await fireEvent.press(
+        screen.getByRole('checkbox', {name: 'Guía 3, Destinatario 3'}),
+      );
+      expect(screen.getByText('2 seleccionadas')).toBeTruthy();
+      expect(
+        screen.getByText('2 guías · 4 und · cobrar $ 18.000'),
+      ).toBeTruthy();
+
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Entregar 2 guías'}),
+      );
+      expect(
+        await screen.findByText('La misma evidencia queda en cada guía'),
+      ).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', {name: 'Tomar foto'}));
+      expect(await screen.findByLabelText('Foto 1')).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', {name: 'Siguiente'}));
+
+      // Destinatarios distintos: sin atajo de titular.
+      await screen.findByLabelText('Nombre de quien recibe');
+      expect(screen.queryByRole('checkbox', {name: /^Recibe /})).toBeNull();
+      await fireEvent.changeText(
+        screen.getByLabelText('Nombre de quien recibe'),
+        'Ana Gómez',
+      );
+      await fireEvent.press(screen.getByRole('button', {name: 'Siguiente'}));
+      expect(
+        await screen.findByText('Cobra $ 18.000 antes de confirmar.'),
+      ).toBeTruthy();
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Confirmar entrega'}),
+      );
+
+      await screen.findByRole('button', {name: '2 por enviar'});
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({text1: '2 entregas guardadas'}),
+      );
+      // Sale del modo selección y no quedan pendientes.
+      expect(screen.getByText('No quedan guías pendientes')).toBeTruthy();
+      expect(screen.queryByText(/seleccionada/)).toBeNull();
+
+      const cola = await operacionesGuardadas();
+      expect(cola.map(o => o.claveEntidad)).toEqual([
+        claveGuia(DESPACHO, 2),
+        claveGuia(DESPACHO, 3),
+      ]);
+      expect(cola.map(o => JSON.parse(o.cuerpo).recibe)).toEqual([
+        'Ana Gómez',
+        'Ana Gómez',
+      ]);
+      const fotos = await leer(db => db.select().from(archivos));
+      expect(fotos.map(a => a.idOperacion)).toEqual(
+        cola.map(o => o.idOperacion),
+      );
+      expect(new Set(fotos.map(a => a.ruta)).size).toBe(2);
     });
 
     it('la entrega lleva fotos, firma y ubicación, y las guarda en documentos', async () => {

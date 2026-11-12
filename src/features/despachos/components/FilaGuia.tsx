@@ -1,7 +1,7 @@
 import {Pressable, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {Insignia, Texto} from '@/ui';
+import {Check, Icono, Insignia, Texto} from '@/ui';
 
 import type {GuiaLocal} from '../db/repositorio';
 import {pesos} from '../domain/formato';
@@ -9,7 +9,19 @@ import {aCobrar} from '../domain/gestion';
 import {situacionGuia} from '../domain/guias';
 import {EstadoGuia} from './EstadoGuia';
 
-type Props = {guia: GuiaLocal; alPresionar: () => void};
+/**
+ * Modo selección de la lista: la parada se vuelve casilla. `disponible` es
+ * false si la guía no se puede gestionar (ya entregada, retirada…).
+ */
+export type SeleccionFila = {marcada: boolean; disponible: boolean};
+
+type Props = {
+  guia: GuiaLocal;
+  alPresionar: () => void;
+  /** Pulsación larga: entra al modo selección. */
+  alMantener?: () => void;
+  seleccion?: SeleccionFila;
+};
 
 export const destinatario = (guia: {nombreDestinatario: string | null}) =>
   guia.nombreDestinatario?.trim() || 'Sin destinatario';
@@ -25,19 +37,40 @@ export const referenciaGuia = (guia: {codigoGuia: number; unidades: number}) =>
   `${guia.codigoGuia} · ${guia.unidades} und`;
 
 /** Parada de la ruta: número de orden en una línea de tiempo y los datos de la guía. */
-export function FilaGuia({guia, alPresionar}: Props) {
+export function FilaGuia({guia, alPresionar, alMantener, seleccion}: Props) {
   const ubicacion = ubicacionGuia(guia);
   const cobro = aCobrar(guia);
   const pendiente = situacionGuia(guia) === 'pendiente';
+  const marcada = seleccion?.marcada ?? false;
   return (
     <Pressable
       accessibilityLabel={`Guía ${guia.codigoGuia}, ${destinatario(guia)}`}
-      accessibilityRole="button"
-      style={({pressed}) => [styles.fila, pressed && styles.presionada]}
+      accessibilityRole={seleccion ? 'checkbox' : 'button'}
+      accessibilityState={
+        seleccion
+          ? {checked: marcada, disabled: !seleccion.disponible}
+          : undefined
+      }
+      delayLongPress={350}
+      style={({pressed}) => [
+        styles.fila,
+        seleccion && !seleccion.disponible && styles.noDisponible,
+        pressed && styles.presionada,
+      ]}
+      onLongPress={alMantener}
       onPress={alPresionar}>
       <View style={styles.ruta}>
-        <View style={styles.parada}>
-          {guia.ordenRuta === null ? (
+        <View
+          style={[
+            styles.parada,
+            seleccion && styles.casilla,
+            marcada && styles.marcada,
+          ]}>
+          {seleccion ? (
+            marcada ? (
+              <Icono color="sobreAccion" grosor={3} icono={Check} tamano={15} />
+            ) : null
+          ) : guia.ordenRuta === null ? (
             <View style={styles.punto} />
           ) : (
             <Texto mono numerico style={styles.numero}>
@@ -88,6 +121,7 @@ export function FilaGuia({guia, alPresionar}: Props) {
 const styles = StyleSheet.create(tema => ({
   fila: {flexDirection: 'row', gap: tema.espaciado.md},
   presionada: {opacity: 0.6},
+  noDisponible: {opacity: 0.45},
   ruta: {width: 26, alignItems: 'center'},
   parada: {
     width: 26,
@@ -99,6 +133,8 @@ const styles = StyleSheet.create(tema => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  casilla: {borderWidth: 2, borderColor: tema.colores.bordeCampo},
+  marcada: {borderWidth: 0, backgroundColor: tema.colores.accion},
   numero: {fontSize: 11, lineHeight: 14},
   punto: {
     width: 6,

@@ -52,6 +52,25 @@ export const PARENTESCOS_FRECUENTES = ['TITULAR', 'PORTERÍA', 'VIGILANTE'];
  */
 export const aCobrar = (guia: {vrCobroEntrega: number}) => guia.vrCobroEntrega;
 
+/** Lo que se cobra al entregar varias guías juntas. */
+export const cobroTotal = (guias: readonly {vrCobroEntrega: number}[]) =>
+  guias.reduce((total, guia) => total + aCobrar(guia), 0);
+
+/**
+ * El destinatario si todas las guías lo comparten (sin distinguir mayúsculas
+ * ni espacios); null si son distintos o falta en alguna. Habilita el atajo
+ * "Recibe <titular>" en una entrega de varias guías.
+ */
+export const destinatarioComun = (
+  guias: readonly {nombreDestinatario: string | null}[],
+) => {
+  const nombres = guias.map(g => g.nombreDestinatario?.trim() ?? '');
+  const [primero] = nombres;
+  if (!primero) return null;
+  const clave = primero.toLocaleLowerCase();
+  return nombres.every(n => n.toLocaleLowerCase() === clave) ? primero : null;
+};
+
 export type TipoNovedad = {codigo: string; nombre: string};
 
 /**
@@ -130,6 +149,26 @@ export const puedeEntregar = (
   if (situacion === 'entregada') return negado('La guía ya está entregada.');
   if (situacion === 'novedad' && !configuracion.entregaConNovedad) {
     return negado('La guía tiene novedad y la empresa no permite entregarla.');
+  }
+  return permitido;
+};
+
+/**
+ * Permiso para gestionar varias guías juntas: todas deben cumplir la regla.
+ * Con más de una, el motivo dice cuál falla.
+ */
+export const permisoTodas = <G extends {codigoGuia: number}>(
+  guias: readonly G[],
+  regla: (guia: G) => Permiso,
+): Permiso => {
+  if (guias.length === 0) return negado('No hay guías seleccionadas.');
+  for (const guia of guias) {
+    const permiso = regla(guia);
+    if (!permiso.permitido) {
+      return guias.length === 1
+        ? permiso
+        : negado(`Guía ${guia.codigoGuia}: ${permiso.motivo}`);
+    }
   }
   return permitido;
 };

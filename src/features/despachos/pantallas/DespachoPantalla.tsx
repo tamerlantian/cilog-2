@@ -17,6 +17,7 @@ import {
   Flag,
   Encabezado,
   EstadoVacio,
+  ListChecks,
   mostrarError,
   mostrarExito,
   mostrarInfo,
@@ -41,8 +42,11 @@ import {
   nombreEmpresa,
 } from '../components/TarjetaDespacho';
 import {plural} from '../domain/envios';
+import {pesos} from '../domain/formato';
 import {
+  cobroTotal,
   funciones,
+  permisoTodas,
   puedeEntregar,
   puedeReportarNovedad,
   puedeTerminar,
@@ -65,6 +69,8 @@ import {
   useTerminarDespacho,
 } from '../hooks/useGestion';
 import {useLectorGuia} from '../hooks/useLectorGuia';
+import {useSeleccion} from '../hooks/useSeleccion';
+import type {GuiaLocal} from '../db/repositorio';
 import type {RutasDespachos} from '../rutas';
 
 type Props = NativeStackScreenProps<RutasDespachos, 'Despacho'>;
@@ -82,6 +88,8 @@ export function DespachoPantalla({navigation, route}: Props) {
   const [filtro, setFiltro] = useState<FiltroGuias>('pendientes');
   const [busqueda, setBusqueda] = useState('');
   const [confirmandoTerminar, setConfirmandoTerminar] = useState(false);
+  const seleccion = useSeleccion();
+  const salirSeleccion = seleccion.salir;
 
   // Al volver de una entrega, la lista muestra lo que falta.
   const {verPendientes} = route.params;
@@ -89,7 +97,8 @@ export function DespachoPantalla({navigation, route}: Props) {
     if (verPendientes === undefined) return;
     setFiltro('pendientes');
     setBusqueda('');
-  }, [verPendientes]);
+    salirSeleccion();
+  }, [verPendientes, salirSeleccion]);
 
   const visibles = useMemo(
     () => filtrarGuias(guias, filtro, busqueda),
@@ -187,6 +196,48 @@ export function DespachoPantalla({navigation, route}: Props) {
   const irAGuia = (codigoGuia: number) =>
     navigation.navigate('Guia', {tenantDespachoId, codigoGuia});
 
+  // Selección: varias guías del mismo cliente se gestionan juntas.
+  const permisoEntregar = (guia: GuiaLocal) =>
+    puedeEntregar(despacho, guia, configuracion);
+  const permisoNovedad = (guia: GuiaLocal) =>
+    funciones.novedades
+      ? puedeReportarNovedad(despacho, guia)
+      : {permitido: false as const, motivo: 'La guía ya está gestionada.'};
+  const disponible = (guia: GuiaLocal) =>
+    permisoEntregar(guia).permitido || permisoNovedad(guia).permitido;
+  const motivoNoDisponible = (guia: GuiaLocal) => {
+    const permiso = permisoEntregar(guia);
+    return permiso.permitido ? '' : permiso.motivo;
+  };
+  const puedeSeleccionar =
+    !terminado && !despacho.liberado && !sinDescargar && cuentas.pendientes > 1;
+  // En el orden de la ruta; las que dejaron de estar disponibles salen solas.
+  const seleccionadas = guias.filter(
+    guia => seleccion.incluye(guia.codigoGuia) && disponible(guia),
+  );
+  const codigosSeleccionados = seleccionadas.map(guia => guia.codigoGuia);
+
+  const alPresionarFila = (guia: GuiaLocal) => {
+    if (!seleccion.activa) {
+      irAGuia(guia.codigoGuia);
+    } else if (disponible(guia)) {
+      seleccion.alternar(guia.codigoGuia);
+    } else {
+      mostrarInfo(motivoNoDisponible(guia));
+    }
+  };
+  const alMantenerFila = (guia: GuiaLocal) => {
+    if (seleccion.activa) {
+      alPresionarFila(guia);
+    } else if (!puedeSeleccionar) {
+      return;
+    } else if (disponible(guia)) {
+      seleccion.entrar(guia.codigoGuia);
+    } else {
+      mostrarInfo(motivoNoDisponible(guia));
+    }
+  };
+
   // Sin coincidencia exacta queda como búsqueda; en "Todas", para que una guía
   // ya gestionada no parezca inexistente.
   const alLeerCodigo = (crudo: string) => {
@@ -197,6 +248,20 @@ export function DespachoPantalla({navigation, route}: Props) {
       return;
     }
     const guia = guiaConCodigo(guias, codigo);
+    if (seleccion.activa) {
+      // Escanear los paquetes en la puerta los va sumando a la entrega.
+      if (!guia) {
+        mostrarError(`La guía ${codigo} no está en este despacho.`);
+      } else if (!disponible(guia)) {
+        mostrarInfo(motivoNoDisponible(guia));
+      } else if (seleccion.incluye(guia.codigoGuia)) {
+        mostrarInfo(`La guía ${guia.codigoGuia} ya está seleccionada.`);
+      } else {
+        seleccion.agregar(guia.codigoGuia);
+        mostrarExito(`Guía ${guia.codigoGuia} agregada`);
+      }
+      return;
+    }
     if (guia) {
       irAGuia(guia.codigoGuia);
       return;
@@ -266,7 +331,7 @@ export function DespachoPantalla({navigation, route}: Props) {
           total={cuentas.todas}
         />
       </View>
-      {siguiente ? (
+      {siguiente && !seleccion.activa ? (
         <SiguienteGuia
           alAbrir={() => irAGuia(siguiente.codigoGuia)}
           alEntregar={
@@ -274,7 +339,7 @@ export function DespachoPantalla({navigation, route}: Props) {
               ? () =>
                   navigation.navigate('Entregar', {
                     tenantDespachoId,
-                    codigoGuia: siguiente.codigoGuia,
+                    codigosGuia: [siguiente.codigoGuia],
                   })
               : undefined
           }
@@ -284,7 +349,7 @@ export function DespachoPantalla({navigation, route}: Props) {
               ? () =>
                   navigation.navigate('Novedad', {
                     tenantDespachoId,
-                    codigoGuia: siguiente.codigoGuia,
+                    codigosGuia: [siguiente.codigoGuia],
                   })
               : undefined
           }
@@ -311,45 +376,117 @@ export function DespachoPantalla({navigation, route}: Props) {
     </View>
   );
 
-  const pie = despacho.liberado ? undefined : (
-    <View style={styles.pieLista}>
-      <Boton
-        disabled={despacho.porEnviar > 0}
-        icono={Unlink}
-        tamano="compacto"
-        tipo="texto"
-        titulo="Desvincular despacho"
-        onPress={confirmarDesvincular}
-      />
-      {despacho.porEnviar > 0 ? (
-        <Texto centrado tono="secundario" variante="etiqueta">
-          Tienes {plural(despacho.porEnviar, 'envío', 'envíos')} sin confirmar.
-          Envíalos antes de desvincularlo.
-        </Texto>
-      ) : null}
-    </View>
-  );
+  const pie =
+    despacho.liberado || seleccion.activa ? undefined : (
+      <View style={styles.pieLista}>
+        <Boton
+          disabled={despacho.porEnviar > 0}
+          icono={Unlink}
+          tamano="compacto"
+          tipo="texto"
+          titulo="Desvincular despacho"
+          onPress={confirmarDesvincular}
+        />
+        {despacho.porEnviar > 0 ? (
+          <Texto centrado tono="secundario" variante="etiqueta">
+            Tienes {plural(despacho.porEnviar, 'envío', 'envíos')} sin
+            confirmar. Envíalos antes de desvincularlo.
+          </Texto>
+        ) : null}
+      </View>
+    );
+
+  const cantidad = seleccionadas.length;
+  const cobro = cobroTotal(seleccionadas);
+  const entregaSeleccion = permisoTodas(seleccionadas, permisoEntregar);
+  const novedadSeleccion = permisoTodas(seleccionadas, permisoNovedad);
+  const barraSeleccion = seleccion.activa ? (
+    <>
+      <Texto centrado tono="secundario" variante="etiqueta">
+        {cantidad === 0
+          ? 'Toca las guías que entregas juntas.'
+          : [
+              plural(cantidad, 'guía', 'guías'),
+              `${seleccionadas.reduce((total, g) => total + g.unidades, 0)} und`,
+              cobro > 0 ? `cobrar ${pesos(cobro)}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+      </Texto>
+      <View style={styles.accionesSeleccion}>
+        {funciones.novedades ? (
+          <View style={styles.novedad}>
+            <Boton
+              disabled={!novedadSeleccion.permitido}
+              icono={TriangleAlert}
+              tipo="neutro"
+              titulo="Novedad"
+              onPress={() =>
+                navigation.navigate('Novedad', {
+                  tenantDespachoId,
+                  codigosGuia: codigosSeleccionados,
+                })
+              }
+            />
+          </View>
+        ) : null}
+        <View style={styles.entregar}>
+          <Boton
+            disabled={!entregaSeleccion.permitido}
+            icono={CircleCheck}
+            titulo={cantidad > 1 ? `Entregar ${cantidad} guías` : 'Entregar'}
+            onPress={() =>
+              navigation.navigate('Entregar', {
+                tenantDespachoId,
+                codigosGuia: codigosSeleccionados,
+              })
+            }
+          />
+        </View>
+      </View>
+    </>
+  ) : undefined;
 
   return (
-    <Pantalla>
+    <Pantalla pie={barraSeleccion}>
       {lector.abierto ? (
         <LectorCodigo alCerrar={lector.cerrar} alLeer={alLeerCodigo} />
       ) : null}
-      <Encabezado
-        accion={
-          <>
-            <ChipEnvios />
-            <BotonIcono
-              etiqueta="Actualizar guías"
-              icono={RefreshCw}
-              onPress={actualizar}
-            />
-          </>
-        }
-        alVolver={volver}
-        subtitulo={nombreEmpresa(despacho)}
-        titulo={`Despacho ${codigoDespacho(despacho)}`}
-      />
+      {seleccion.activa ? (
+        <Encabezado
+          alVolver={seleccion.salir}
+          subtitulo={`Despacho ${codigoDespacho(despacho)}`}
+          tipoVolver="cerrar"
+          titulo={
+            cantidad === 0
+              ? 'Selecciona guías'
+              : plural(cantidad, 'seleccionada', 'seleccionadas')
+          }
+        />
+      ) : (
+        <Encabezado
+          accion={
+            <>
+              <ChipEnvios />
+              {puedeSeleccionar ? (
+                <BotonIcono
+                  etiqueta="Seleccionar varias guías"
+                  icono={ListChecks}
+                  onPress={() => seleccion.entrar()}
+                />
+              ) : null}
+              <BotonIcono
+                etiqueta="Actualizar guías"
+                icono={RefreshCw}
+                onPress={actualizar}
+              />
+            </>
+          }
+          alVolver={volver}
+          subtitulo={nombreEmpresa(despacho)}
+          titulo={`Despacho ${codigoDespacho(despacho)}`}
+        />
+      )}
       {sinDescargar ? (
         <EstadoVacio
           accion={{titulo: 'Descargar guías', alPresionar: actualizar}}
@@ -394,8 +531,17 @@ export function DespachoPantalla({navigation, route}: Props) {
           }
           renderItem={({item}) => (
             <FilaGuia
-              alPresionar={() => irAGuia(item.codigoGuia)}
+              alMantener={() => alMantenerFila(item)}
+              alPresionar={() => alPresionarFila(item)}
               guia={item}
+              seleccion={
+                seleccion.activa
+                  ? {
+                      marcada: seleccion.incluye(item.codigoGuia),
+                      disponible: disponible(item),
+                    }
+                  : undefined
+              }
             />
           )}
         />
@@ -468,6 +614,9 @@ const styles = StyleSheet.create(tema => ({
     gap: tema.espaciado.sm,
   },
   pieLista: {gap: tema.espaciado.xs, paddingTop: tema.espaciado.lg},
+  accionesSeleccion: {flexDirection: 'row', gap: tema.espaciado.sm + 2},
+  novedad: {flex: 1},
+  entregar: {flex: 1.6},
   cifras: {flexDirection: 'row', gap: tema.espaciado.sm},
   cifra: {
     flex: 1,

@@ -29,19 +29,23 @@ import {
 import {destinatario} from '../components/FilaGuia';
 import {PasoFirma} from '../components/PasoFirma';
 import {PasoFotos} from '../components/PasoFotos';
+import {ResumenGuias} from '../components/ResumenGuias';
+import type {GuiaLocal} from '../db/repositorio';
 import {pesos} from '../domain/formato';
 import {
   esquemaFormularioEntrega,
   type FormularioEntrega,
 } from '../domain/formularios';
 import {
-  aCobrar,
+  cobroTotal,
+  destinatarioComun,
   evidenciaFaltante,
   PARENTESCOS,
   PARENTESCOS_FRECUENTES,
+  permisoTodas,
   puedeEntregar,
 } from '../domain/gestion';
-import {useDespacho, useGuia} from '../hooks/useDespachos';
+import {useDespacho, useGuias} from '../hooks/useDespachos';
 import {useUbicacion} from '../hooks/useEvidencias';
 import {useConfiguracionEntrega, useEntregar} from '../hooks/useGestion';
 import type {RutasDespachos} from '../rutas';
@@ -58,16 +62,23 @@ const TITULAR = 'TITULAR';
 /**
  * Entrega en tres pasos (fotos, quién recibe, firma), como en el diseño.
  * Se guarda en el teléfono con o sin señal; la cola la envía (docs/offline.md §6.2).
+ * Con varias guías (paquetes del mismo cliente) se captura una vez y cada guía
+ * queda con su propia entrega, con la misma evidencia.
  */
 export function EntregarPantalla({navigation, route}: Props) {
-  const {tenantDespachoId, codigoGuia} = route.params;
+  const {tenantDespachoId, codigosGuia} = route.params;
+  const varias = codigosGuia.length > 1;
   const identificacionRef = useRef<ComponentRef<typeof TextInput>>(null);
   const celularRef = useRef<ComponentRef<typeof TextInput>>(null);
   const panel = useRef<ControlFirma>(null);
   const {data: despacho} = useDespacho(tenantDespachoId);
-  const {data: guia, isPending} = useGuia(tenantDespachoId, codigoGuia);
+  const {data: todas = [], isPending} = useGuias(tenantDespachoId);
+  const guias = codigosGuia
+    .map(codigo => todas.find(g => g.codigoGuia === codigo))
+    .filter((g): g is GuiaLocal => g !== undefined);
+  const [guia] = guias;
   const configuracion = useConfiguracionEntrega();
-  const entregar = useEntregar(tenantDespachoId, codigoGuia);
+  const entregar = useEntregar(tenantDespachoId, codigosGuia);
   const ubicacion = useUbicacion();
   const [paso, setPaso] = useState(FOTOS);
   const [fotos, setFotos] = useState<string[]>([]);
@@ -135,11 +146,13 @@ export function EntregarPantalla({navigation, route}: Props) {
   }
 
   const permiso =
-    guia && despacho
-      ? puedeEntregar(despacho, guia, configuracion)
+    despacho && guias.length === codigosGuia.length
+      ? permisoTodas(guias, g => puedeEntregar(despacho, g, configuracion))
       : {
           permitido: false as const,
-          motivo: 'La guía ya no está en el teléfono.',
+          motivo: varias
+            ? 'Alguna guía ya no está en el teléfono.'
+            : 'La guía ya no está en el teléfono.',
         };
   if (!guia || !permiso.permitido) {
     return (
@@ -155,8 +168,10 @@ export function EntregarPantalla({navigation, route}: Props) {
     );
   }
 
-  const cobro = aCobrar(guia);
-  const nombre = guia.nombreDestinatario?.trim() ?? '';
+  const cobro = cobroTotal(guias);
+  // Con varias guías, el atajo solo aplica si todas son del mismo destinatario.
+  const nombre = destinatarioComun(guias) ?? '';
+  const codigos = codigosGuia.join(', ');
   const recibeTitular =
     nombre !== '' && recibe === nombre && parentesco === TITULAR;
 
@@ -202,7 +217,11 @@ export function EntregarPantalla({navigation, route}: Props) {
         {datos, fotos, firma: archivo, ubicacion},
         {
           onSuccess: () => {
-            mostrarExito('Entrega guardada');
+            mostrarExito(
+              varias
+                ? `${codigosGuia.length} entregas guardadas`
+                : 'Entrega guardada',
+            );
             navigation.popTo('Despacho', {
               tenantDespachoId,
               verPendientes: Date.now(),
@@ -282,19 +301,24 @@ export function EntregarPantalla({navigation, route}: Props) {
         detalle={
           cobro > 0 ? (
             <>
-              {codigoGuia} ·{' '}
+              {codigos} ·{' '}
               <Texto negrita tono="advertencia" variante="pie">
                 {pesos(cobro)} por cobrar
               </Texto>
             </>
           ) : (
-            String(codigoGuia)
+            codigos
           )
         }
         tipoVolver="cerrar"
-        titulo={`Entregar a ${destinatario(guia)}`}
+        titulo={
+          varias
+            ? `Entregar ${codigosGuia.length} guías`
+            : `Entregar a ${destinatario(guia)}`
+        }
       />
       <Pasos actual={paso} pasos={PASOS} />
+      {varias && paso === FOTOS ? <ResumenGuias guias={guias} /> : null}
 
       <View style={styles.cuerpo}>
         {paso === FOTOS ? (

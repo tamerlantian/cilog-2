@@ -18,6 +18,7 @@ export type RutasDespachos = {
   /** `verPendientes`: al cambiar (p. ej. `Date.now()`), la lista vuelve a pendientes sin búsqueda. */
   Despacho: {tenantDespachoId: number; verPendientes?: number};
   Guia: {tenantDespachoId: number; codigoGuia: number};
-  Entregar: {tenantDespachoId: number; codigoGuia: number};
-  Novedad: {tenantDespachoId: number; codigoGuia: number};
+  /** Una o varias guías del despacho: se entregan juntas con la misma evidencia. */
+  Entregar: {tenantDespachoId: number; codigosGuia: number[]};
+  Novedad: {tenantDespachoId: number; codigosGuia: number[]};
 };

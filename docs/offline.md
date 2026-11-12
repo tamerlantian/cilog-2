@@ -117,7 +117,7 @@ Reglas del modelo:
 
 - **Lo que dijo Fluor y lo que hizo el conductor van en columnas distintas.** `estado_entregado` se sobreescribe al descargar; `gestion_local` no. La pantalla muestra `gestion_local ?? estado del servidor`. Así una descarga nunca borra una entrega que aún no se envió.
 - `usuario_id` en cada operación: el motor solo envía las del usuario con sesión (§9).
-- Las fotos y la firma son **archivos de la operación de entrega**, no operaciones aparte: viajan en la misma petición (§8).
+- Las fotos y la firma son **archivos de la operación de entrega**, no operaciones aparte: viajan en la misma petición (§8). Un archivo pertenece a **una sola** operación (`ruta` es la llave): la entrega de varias guías guarda una copia por guía (§6.5).
 - `depende_de`: "terminar" no sale mientras haya entregas sin confirmar del despacho.
 - Base en modo **WAL** y toda escritura del conductor en **una transacción**: guía + operación + archivos se guardan juntos o no se guarda nada.
 
@@ -261,6 +261,16 @@ flowchart LR
 
 Una operación solo queda en `enviando` si la app murió entre el envío y la respuesta. No se sabe si Fluor la recibió, y no importa: si ya la tenía responde `409` con `entrega: true` y la app la da por confirmada.
 
+### 6.5 Entregar varias guías juntas
+
+Varios paquetes del mismo cliente se entregan de una vez. En la lista del despacho, el conductor entra al modo selección con una pulsación larga en una guía o con el botón *Seleccionar varias guías*, y marca las guías tocándolas o escaneándolas. Captura una sola vez las fotos, quién recibe y la firma.
+
+- **Una operación `entrega` por guía**, todas en **una transacción** (`registrarEntregas`), con la misma `fecha_entrega` y la misma ubicación. Si una guía no se puede entregar, no se guarda ninguna y el motivo dice cuál falla ("Guía 777002: La guía ya está entregada.").
+- **Fluor no cambia**: recibe una petición `POST /tte/movil/guia/entrega` por guía. El motor, los reintentos, el `409` con `entrega: true` y los rechazos funcionan igual que con una guía; si Fluor rechaza una, las demás siguen.
+- **Cada guía con su copia de la evidencia**: las fotos y la firma se mueven una vez a documentos y se copian para las demás guías (`copiarEvidencia`). Así confirmar una entrega borra solo sus archivos y no los de las otras. Costo: N × ~1 MB en disco y en datos.
+- La selección es libre: puede mezclar destinatarios. El atajo "Recibe <titular>" aparece solo si todas las guías tienen el mismo destinatario, y el cobro que se muestra es la suma.
+- **Novedad de varias guías**: queda preparada (`registrarNovedades`, ruta `Novedad` con `codigosGuia`) y se activa con `funciones.novedades` cuando Fluor publique el endpoint.
+
 ## 7. Errores
 
 ### 7.1 Clasificación
@@ -316,6 +326,7 @@ Fluor bloquea la fila de la guía al entregar, así que dos envíos de la misma 
 - Fluor sube los archivos **después** de guardar la entrega. Si uno falla responde `200` con `ficheros_con_error > 0`; la app no puede reenviarlo (reintentar daría `409`). Backend se encarga de ese caso. La app lo reporta a Sentry y conserva los ficheros locales hasta la purga (7 días).
 - Con `ficheros_con_error = 0`, el fichero local se borra cuando la entrega queda `confirmada`.
 - Antes de abrir la cámara se revisa que haya al menos 50 MB libres.
+- En una entrega de varias guías, cada operación lleva su copia de la foto y la firma (§6.5). 5 guías con 4 fotos son unos 5 MB en el teléfono y 5 subidas de ~1 MB.
 
 ## 9. Sesión y cola
 
@@ -388,6 +399,7 @@ Va con `X-Tenant-Despacho-ID` = el id de la asignación (`mas_tenant_despacho`),
 
 - **Barra superior** cuando hay pendientes: "Sin conexión · 3 por enviar" o "Enviando 3…". Desaparece cuando la cola está vacía.
 - **Cada guía** muestra su estado de envío (§6.1), no solo "Entregada".
+- **Modo selección** en la lista del despacho (§6.5): casillas en lugar del número de parada, y una barra abajo con "2 guías · 4 und · cobrar $ 18.000" y el botón *Entregar 2 guías*. Las guías que no se pueden entregar se ven atenuadas y, al tocarlas, dicen por qué. Escanear suma la guía a la selección. *Cerrar* o el botón atrás de Android salen del modo.
 - **Pantalla Envíos** (pestaña *Envíos*, o tocando el chip de envíos del encabezado): lista de la cola con estado, intentos y motivo del error; botones *Enviar ahora*, *Reintentar* y *Descartar* (este último pide confirmación y solo existe para `rechazada` y `conflicto`).
 - **Terminar despacho** y **desvincular** se bloquean mientras haya operaciones sin confirmar del despacho, con el motivo visible.
 - Si una operación lleva más de **24 h** sin confirmarse, aviso destacado: "Tienes entregas sin enviar desde ayer. Busca señal o avisa a la oficina."
@@ -415,6 +427,7 @@ Después, si hace falta: Android WorkManager (tarea periódica con condición "h
 | Señal débil | Android Emulator → *Cellular* → *Network type* EDGE / *Signal* Poor. |
 | Reinicio | Entregar sin señal, forzar cierre (`adb shell am force-stop com.semantica.cilog2`), abrir y verificar la cola. |
 | Sesión vencida | Borrar el access token y dejar un refresh inválido; verificar `pausada` y que la cola sobrevive al login. |
+| Varias guías | Una falla y no se guarda ninguna; confirmar una entrega no borra la copia de la otra. |
 
 ## 17. Decisiones abiertas
 

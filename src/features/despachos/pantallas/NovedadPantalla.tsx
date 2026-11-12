@@ -22,15 +22,17 @@ import {
 } from '@/ui';
 
 import {destinatario} from '../components/FilaGuia';
+import type {GuiaLocal} from '../db/repositorio';
 import {
   esquemaFormularioNovedad,
   type FormularioNovedad,
 } from '../domain/formularios';
 import {
   LARGO_MAXIMO_DESCRIPCION,
+  permisoTodas,
   puedeReportarNovedad,
 } from '../domain/gestion';
-import {useDespacho, useGuia} from '../hooks/useDespachos';
+import {useDespacho, useGuias} from '../hooks/useDespachos';
 import {useUbicacion} from '../hooks/useEvidencias';
 import {
   useConfiguracionEntrega,
@@ -42,12 +44,17 @@ import type {RutasDespachos} from '../rutas';
 type Props = NativeStackScreenProps<RutasDespachos, 'Novedad'>;
 
 export function NovedadPantalla({navigation, route}: Props) {
-  const {tenantDespachoId, codigoGuia} = route.params;
+  const {tenantDespachoId, codigosGuia} = route.params;
   const {data: despacho} = useDespacho(tenantDespachoId);
-  const {data: guia, isPending} = useGuia(tenantDespachoId, codigoGuia);
+  const {data: todas = [], isPending} = useGuias(tenantDespachoId);
+  const guias = codigosGuia
+    .map(codigo => todas.find(g => g.codigoGuia === codigo))
+    .filter((g): g is GuiaLocal => g !== undefined);
+  const [guia] = guias;
+  const varias = codigosGuia.length > 1;
   const tipos = useTiposNovedad();
   const configuracion = useConfiguracionEntrega();
-  const reportar = useReportarNovedad(tenantDespachoId, codigoGuia);
+  const reportar = useReportarNovedad(tenantDespachoId, codigosGuia);
   const ubicacion = useUbicacion();
   const {control, handleSubmit} = useForm<FormularioNovedad>({
     resolver: zodResolver(esquemaFormularioNovedad),
@@ -58,10 +65,16 @@ export function NovedadPantalla({navigation, route}: Props) {
     <Encabezado
       alVolver={() => navigation.goBack()}
       detalle={
-        guia ? `${codigoGuia} · ${destinatario(guia)}` : String(codigoGuia)
+        varias
+          ? codigosGuia.join(', ')
+          : guia
+            ? `${guia.codigoGuia} · ${destinatario(guia)}`
+            : codigosGuia.join(', ')
       }
       tipoVolver="cerrar"
-      titulo="Reportar novedad"
+      titulo={
+        varias ? `Novedad en ${codigosGuia.length} guías` : 'Reportar novedad'
+      }
     />
   );
 
@@ -74,11 +87,13 @@ export function NovedadPantalla({navigation, route}: Props) {
   }
 
   const permiso =
-    guia && despacho
-      ? puedeReportarNovedad(despacho, guia)
+    despacho && guias.length === codigosGuia.length
+      ? permisoTodas(guias, g => puedeReportarNovedad(despacho, g))
       : {
           permitido: false as const,
-          motivo: 'La guía ya no está en el teléfono.',
+          motivo: varias
+            ? 'Alguna guía ya no está en el teléfono.'
+            : 'La guía ya no está en el teléfono.',
         };
   if (!guia || !permiso.permitido) {
     return (
@@ -100,7 +115,11 @@ export function NovedadPantalla({navigation, route}: Props) {
         {...datos, ubicacion},
         {
           onSuccess: () => {
-            mostrarExito('Novedad guardada');
+            mostrarExito(
+              varias
+                ? `${codigosGuia.length} novedades guardadas`
+                : 'Novedad guardada',
+            );
             navigation.popTo('Despacho', {tenantDespachoId});
           },
           onError: error => mostrarError(mensajeUsuario(error)),

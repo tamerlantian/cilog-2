@@ -1,4 +1,5 @@
 import {
+  copyFile,
   DocumentDirectoryPath,
   exists,
   getFSInfo,
@@ -42,6 +43,22 @@ export const guardarEvidencia = async (
   if (!(await exists(CARPETA))) await mkdir(CARPETA);
   const ruta = `${CARPETA}/${nombre}.${extension}`;
   await moveFile(sinEsquema(origen), ruta);
+  const {size} = await stat(ruta);
+  return {ruta, bytes: Number(size)};
+};
+
+/**
+ * Copia una evidencia ya guardada con otro nombre. Una entrega de varias guías
+ * lleva la misma foto y firma en cada una, y cada operación borra sus propios
+ * archivos al confirmarse: no pueden compartir el mismo (docs/offline.md §8).
+ */
+export const copiarEvidencia = async (
+  origen: string,
+  nombre: string,
+  extension: 'jpg' | 'png',
+) => {
+  const ruta = `${CARPETA}/${nombre}.${extension}`;
+  await copyFile(origen, ruta);
   const {size} = await stat(ruta);
   return {ruta, bytes: Number(size)};
 };

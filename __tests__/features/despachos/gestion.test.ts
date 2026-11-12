@@ -11,7 +11,9 @@ import type {
 } from '@/features/despachos/api/despachos';
 import {
   registrarEntrega,
+  registrarEntregas,
   registrarNovedad,
+  registrarNovedades,
   registrarTerminar,
 } from '@/features/despachos/db/gestion';
 import {
@@ -22,8 +24,11 @@ import {
 } from '@/features/despachos/db/repositorio';
 import {fechaLocalIso} from '@/features/despachos/domain/formato';
 import {
+  cobroTotal,
   CONFIGURACION_ENTREGA_PROVISIONAL,
   cuerpoEntrega,
+  destinatarioComun,
+  permisoTodas,
   evidenciaFaltante,
   puedeEntregar,
   puedeTerminar,
@@ -367,6 +372,130 @@ describe('registrar gestiones', () => {
     expect(rutas.sort()).toEqual([
       '/documentos/evidencias/a.jpg',
       '/documentos/evidencias/b.png',
+    ]);
+  });
+});
+
+describe('varias guías juntas', () => {
+  beforeEach(abrirBaseMemoria);
+
+  const varias = (codigosGuia: number[]) => ({
+    usuarioId: USUARIO,
+    tenantDespachoId: DESPACHO,
+    codigosGuia,
+    ahora: AHORA,
+  });
+
+  it('suma el cobro y reconoce el mismo destinatario', () => {
+    expect(cobroTotal([{vrCobroEntrega: 18000}, {vrCobroEntrega: 2000}])).toBe(
+      20000,
+    );
+    expect(
+      destinatarioComun([
+        {nombreDestinatario: 'María Peña'},
+        {nombreDestinatario: ' maría peña '},
+      ]),
+    ).toBe('María Peña');
+    expect(
+      destinatarioComun([
+        {nombreDestinatario: 'María Peña'},
+        {nombreDestinatario: 'Juan'},
+      ]),
+    ).toBeNull();
+    expect(destinatarioComun([{nombreDestinatario: null}])).toBeNull();
+  });
+
+  it('el permiso dice qué guía falla', () => {
+    const regla = (g: {codigoGuia: number}) =>
+      g.codigoGuia === 2
+        ? {permitido: false as const, motivo: 'La guía ya está entregada.'}
+        : {permitido: true as const};
+    expect(permisoTodas([{codigoGuia: 1}, {codigoGuia: 2}], regla)).toEqual({
+      permitido: false,
+      motivo: 'Guía 2: La guía ya está entregada.',
+    });
+    expect(permisoTodas([{codigoGuia: 2}], regla)).toEqual({
+      permitido: false,
+      motivo: 'La guía ya está entregada.',
+    });
+    expect(permisoTodas([], regla).permitido).toBe(false);
+  });
+
+  it('encola una entrega por guía con la misma hora', async () => {
+    await conGuias([guiaFluor(1), guiaFluor(2)]);
+
+    const ids = await escribir(tx =>
+      registrarEntregas(tx, varias([1, 2]), {recibe: 'Ana'}, CONFIG),
+    );
+
+    expect(ids).toHaveLength(2);
+    const cola = await leer(db => db.select().from(operaciones));
+    expect(cola.map(o => JSON.parse(o.cuerpo))).toEqual([
+      expect.objectContaining({guia: 1, fecha_entrega: '2026-10-30T14:05:09'}),
+      expect.objectContaining({guia: 2, fecha_entrega: '2026-10-30T14:05:09'}),
+    ]);
+    expect(
+      (await leer(db => leerGuias(db, DESPACHO))).map(g => g.gestionLocal),
+    ).toEqual(['entregada', 'entregada']);
+  });
+
+  it('si una guía no se puede entregar, no se guarda ninguna', async () => {
+    await conGuias([guiaFluor(1), guiaFluor(2)]);
+    await entregar(2);
+
+    await expect(
+      escribir(tx => registrarEntregas(tx, varias([1, 2]), {}, CONFIG)),
+    ).rejects.toThrow('Guía 2: La guía ya está entregada.');
+    expect(await leer(db => db.select().from(operaciones))).toHaveLength(1);
+    const [guia1] = await leer(db => leerGuias(db, DESPACHO));
+    expect(guia1?.gestionLocal).toBeNull();
+  });
+
+  it('rechaza guías repetidas', async () => {
+    await conGuias([guiaFluor(1)]);
+    await expect(
+      escribir(tx => registrarEntregas(tx, varias([1, 1]), {}, CONFIG)),
+    ).rejects.toThrow('Una guía está repetida en la selección.');
+  });
+
+  it('confirmar una entrega no borra la copia de la otra', async () => {
+    await conGuias([guiaFluor(1), guiaFluor(2)]);
+    enDisco.set('/documentos/evidencias/a1.jpg', 200_000);
+    enDisco.set('/documentos/evidencias/a2.jpg', 200_000);
+    const [id1] = await escribir(tx =>
+      registrarEntregas(tx, varias([1, 2]), {}, CONFIG, [
+        [{tipo: 'foto', ruta: '/documentos/evidencias/a1.jpg', bytes: 200_000}],
+        [{tipo: 'foto', ruta: '/documentos/evidencias/a2.jpg', bytes: 200_000}],
+      ]),
+    );
+
+    // Fluor acepta la primera y la segunda falla por red.
+    await crearMotor({
+      enviadores: {
+        entrega: async ({idOperacion}) => {
+          if (idOperacion !== id1) throw new Error('Network Error');
+        },
+      },
+      usuarioActual: () => USUARIO,
+    }).ejecutar();
+
+    expect(enDisco.has('/documentos/evidencias/a1.jpg')).toBe(false);
+    expect(enDisco.has('/documentos/evidencias/a2.jpg')).toBe(true);
+  });
+
+  it('la novedad de varias guías queda preparada', async () => {
+    await conGuias([guiaFluor(1), guiaFluor(2)]);
+
+    await escribir(tx =>
+      registrarNovedades(tx, varias([1, 2]), {tipo: 'AUSENTE'}),
+    );
+
+    const cola = await leer(db => db.select().from(operaciones));
+    expect(
+      cola.map(o => [o.tipo, JSON.parse(o.cuerpo).codigo_guia_pk]),
+    ).toEqual([
+      ['novedad', 1],
+      ['novedad', 2],
     ]);
   });
 });

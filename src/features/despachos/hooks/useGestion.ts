@@ -2,13 +2,17 @@ import {useMutation, useQueryClient} from '@tanstack/react-query';
 
 import {v4 as uuidV4} from 'uuid';
 
-import {borrarEvidencia, guardarEvidencia} from '@/core/archivos';
+import {
+  borrarEvidencia,
+  copiarEvidencia,
+  guardarEvidencia,
+} from '@/core/archivos';
 import {escribir} from '@/core/db';
 import {sincronizarAhora} from '@/core/sync';
 
 import {
-  registrarEntrega,
-  registrarNovedad,
+  registrarEntregas,
+  registrarNovedades,
   registrarTerminar,
   type Evidencia,
 } from '../db/gestion';
@@ -30,7 +34,7 @@ export const useTiposNovedad = () => TIPOS_NOVEDAD_PROVISIONALES;
  * envío sin esperarlo. Con señal sale al instante; sin ella, queda en la cola.
  */
 const useGuardarLocal = <T>(
-  guardar: (usuarioId: number, datos: T) => Promise<string>,
+  guardar: (usuarioId: number, datos: T) => Promise<string | string[]>,
 ) => {
   const usuarioId = useUsuarioId();
   const consultas = useQueryClient();
@@ -57,10 +61,12 @@ export type Entrega = {
 };
 
 /**
- * Pasa las evidencias de la caché a documentos antes de guardar. Si la
- * entrega no se guarda, se borran: no quedan archivos sin operación.
+ * Pasa las evidencias de la caché a documentos antes de guardar: una copia
+ * por guía, porque cada entrega borra sus archivos al confirmarse (docs/
+ * offline.md §8). Si la entrega no se guarda, se borran: no quedan archivos
+ * sin operación.
  */
-const moverEvidencias = async ({fotos, firma}: Entrega) => {
+const moverEvidencias = async ({fotos, firma}: Entrega, guias: number) => {
   const pendientes = [
     ...fotos.map(uri => ({
       tipo: 'foto' as const,
@@ -71,31 +77,42 @@ const moverEvidencias = async ({fotos, firma}: Entrega) => {
       ? [{tipo: 'firma' as const, uri: firma, extension: 'png' as const}]
       : []),
   ];
-  const guardadas: Evidencia[] = [];
+  const porGuia: Evidencia[][] = Array.from({length: guias}, () => []);
   try {
     for (const {tipo, uri, extension} of pendientes) {
-      const {ruta, bytes} = await guardarEvidencia(uri, uuidV4(), extension);
-      guardadas.push({tipo, ruta, bytes});
+      const original = await guardarEvidencia(uri, uuidV4(), extension);
+      porGuia[0]?.push({tipo, ...original});
+      for (const copias of porGuia.slice(1)) {
+        const copia = await copiarEvidencia(original.ruta, uuidV4(), extension);
+        copias.push({tipo, ...copia});
+      }
     }
   } catch (error) {
-    await Promise.all(guardadas.map(e => borrarEvidencia(e.ruta)));
+    await borrarTodas(porGuia);
     throw error;
   }
-  return guardadas;
+  return porGuia;
 };
 
-export const useEntregar = (tenantDespachoId: number, codigoGuia: number) => {
+const borrarTodas = (evidencias: readonly (readonly Evidencia[])[]) =>
+  Promise.all(evidencias.flat().map(e => borrarEvidencia(e.ruta)));
+
+/** Una o varias guías del mismo despacho con la misma evidencia. */
+export const useEntregar = (
+  tenantDespachoId: number,
+  codigosGuia: readonly number[],
+) => {
   const configuracion = useConfiguracionEntrega();
   return useGuardarLocal(async (usuarioId, entrega: Entrega) => {
-    const evidencias = await moverEvidencias(entrega);
+    const evidencias = await moverEvidencias(entrega, codigosGuia.length);
     try {
       return await escribir(tx =>
-        registrarEntrega(
+        registrarEntregas(
           tx,
           {
             usuarioId,
             tenantDespachoId,
-            codigoGuia,
+            codigosGuia,
             ubicacion: entrega.ubicacion,
           },
           entrega.datos,
@@ -104,7 +121,7 @@ export const useEntregar = (tenantDespachoId: number, codigoGuia: number) => {
         ),
       );
     } catch (error) {
-      await Promise.all(evidencias.map(e => borrarEvidencia(e.ruta)));
+      await borrarTodas(evidencias);
       throw error;
     }
   });
@@ -112,7 +129,7 @@ export const useEntregar = (tenantDespachoId: number, codigoGuia: number) => {
 
 export const useReportarNovedad = (
   tenantDespachoId: number,
-  codigoGuia: number,
+  codigosGuia: readonly number[],
 ) =>
   useGuardarLocal(
     (
@@ -123,9 +140,9 @@ export const useReportarNovedad = (
       }: {tipo: string; descripcion?: string; ubicacion: Ubicacion | null},
     ) =>
       escribir(tx =>
-        registrarNovedad(
+        registrarNovedades(
           tx,
-          {usuarioId, tenantDespachoId, codigoGuia, ubicacion},
+          {usuarioId, tenantDespachoId, codigosGuia, ubicacion},
           datos,
         ),
       ),

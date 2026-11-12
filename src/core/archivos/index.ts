@@ -1,5 +1,6 @@
 export {
   borrarEvidencia,
+  copiarEvidencia,
   ESPACIO_MINIMO_BYTES,
   guardarEvidencia,
   hayEspacioParaEvidencias,

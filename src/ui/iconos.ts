@@ -20,6 +20,7 @@ export {default as EyeOff} from 'lucide-react-native/icons/eye-off';
 export {default as Flag} from 'lucide-react-native/icons/flag';
 export {default as Info} from 'lucide-react-native/icons/info';
 export {default as KeyRound} from 'lucide-react-native/icons/key-round';
+export {default as ListChecks} from 'lucide-react-native/icons/list-checks';
 export {default as LogOut} from 'lucide-react-native/icons/log-out';
 export {default as Mail} from 'lucide-react-native/icons/mail';
 export {default as MailWarning} from 'lucide-react-native/icons/mail-warning';
