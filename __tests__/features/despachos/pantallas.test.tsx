@@ -495,6 +495,63 @@ describe('pantallas de despachos', () => {
       expect(launchCamera).not.toHaveBeenCalled();
     });
 
+    describe('foto sin permiso de cámara (Android)', () => {
+      const sistema = Platform.OS;
+      let pedir: jest.SpyInstance | undefined;
+      afterEach(() => {
+        pedir?.mockRestore();
+        Platform.OS = sistema;
+      });
+
+      const intentarFoto = async (
+        resultado: (typeof PermissionsAndroid.RESULTS)[keyof typeof PermissionsAndroid.RESULTS],
+      ) => {
+        await abrirGuia('Guía 2, María Peña');
+        await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
+        Platform.OS = 'android';
+        pedir = jest
+          .spyOn(PermissionsAndroid, 'request')
+          .mockResolvedValue(resultado);
+        await fireEvent.press(
+          await screen.findByRole('button', {name: 'Tomar foto'}),
+        );
+      };
+
+      it('si lo niega, lo explica sin abrir la cámara', async () => {
+        await intentarFoto(PermissionsAndroid.RESULTS.DENIED);
+
+        await waitFor(() =>
+          expect(Toast.show).toHaveBeenCalledWith(
+            expect.objectContaining({
+              text1: 'Sin permiso de cámara no se pueden tomar fotos.',
+            }),
+          ),
+        );
+        expect(launchCamera).not.toHaveBeenCalled();
+      });
+
+      it('si quedó bloqueado, ofrece abrir los ajustes', async () => {
+        await intentarFoto(PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN);
+
+        await waitFor(() =>
+          expect(alerta).toHaveBeenCalledWith(
+            'Cámara sin permiso',
+            'Actívala en los ajustes del teléfono para tomar las fotos de la entrega.',
+            expect.arrayContaining([
+              expect.objectContaining({text: 'Abrir ajustes'}),
+            ]),
+          ),
+        );
+        expect(launchCamera).not.toHaveBeenCalled();
+      });
+
+      it('con permiso abre la cámara', async () => {
+        await intentarFoto(PermissionsAndroid.RESULTS.GRANTED);
+
+        expect(await screen.findByLabelText('Foto 1')).toBeTruthy();
+      });
+    });
+
     it('cerrar la entrega a mitad no guarda nada', async () => {
       await abrirGuia('Guía 2, María Peña');
       await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));

@@ -1,23 +1,10 @@
 import {useState} from 'react';
-import {Alert, Linking, PermissionsAndroid, Platform} from 'react-native';
 
+import {
+  avisarPermisoCamaraBloqueado,
+  pedirPermisoCamara,
+} from '@/core/archivos';
 import {mostrarError} from '@/ui';
-
-/** En iOS el sistema pregunta solo la primera vez que se abre la cámara. */
-const pedirPermisoCamara = async () => {
-  if (Platform.OS !== 'android') return PermissionsAndroid.RESULTS.GRANTED;
-  return PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
-};
-
-const avisarPermisoBloqueado = () =>
-  Alert.alert(
-    'Cámara sin permiso',
-    'Actívala en los ajustes del teléfono para leer códigos.',
-    [
-      {text: 'Cancelar', style: 'cancel'},
-      {text: 'Abrir ajustes', onPress: () => Linking.openSettings()},
-    ],
-  );
 
 /** Abre el lector solo si hay permiso de cámara. */
 export const useLectorGuia = () => {
@@ -25,10 +12,10 @@ export const useLectorGuia = () => {
 
   const abrir = async () => {
     const permiso = await pedirPermisoCamara();
-    if (permiso === PermissionsAndroid.RESULTS.GRANTED) {
+    if (permiso === 'concedido') {
       setAbierto(true);
-    } else if (permiso === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-      avisarPermisoBloqueado();
+    } else if (permiso === 'bloqueado') {
+      avisarPermisoCamaraBloqueado('leer códigos');
     } else {
       mostrarError('Sin permiso de cámara no se pueden leer códigos.');
     }

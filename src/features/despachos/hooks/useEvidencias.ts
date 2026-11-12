@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from 'react';
 
 import {
+  avisarPermisoCamaraBloqueado,
   ErrorCamara,
   hayEspacioParaEvidencias,
   tomarFoto,
@@ -40,6 +41,10 @@ export const useTomarFoto = () => {
       }
       return await tomarFoto();
     } catch (error) {
+      if (error instanceof ErrorCamara && error.sinPermiso === 'bloqueado') {
+        avisarPermisoCamaraBloqueado('tomar las fotos de la entrega');
+        return null;
+      }
       mostrarError(
         error instanceof ErrorCamara
           ? error.message

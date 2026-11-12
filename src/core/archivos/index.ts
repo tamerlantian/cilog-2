@@ -6,3 +6,8 @@ export {
   uriEvidencia,
 } from './evidencias';
 export {ErrorCamara, tomarFoto} from './camara';
+export {
+  avisarPermisoCamaraBloqueado,
+  pedirPermisoCamara,
+  type PermisoCamara,
+} from './permisoCamara';
