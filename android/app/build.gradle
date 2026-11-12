@@ -87,6 +87,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2
         versionName "1.0.1"
+        // Licencia del rastreo: fuera del repo, como la firma (docs/release-play.md).
+        manifestPlaceholders["transistorsoftLicense"] =
+            project.findProperty("TRANSISTORSOFT_LICENSE") ?: ""
     }
     signingConfigs {
         release {

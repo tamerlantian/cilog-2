@@ -82,7 +82,8 @@ Inter (lectura: 400, 500, 600), Space Grotesk 700 (títulos: variantes `marca`, 
 - Los componentes de `ui/` se construyen cuando una pantalla los necesita, no por adelantado.
 - Evidencias (`core/archivos`): la cámara es la del sistema (`react-native-image-picker`, máx. 1.280 px, calidad 0,7, sin guardar en la galería). Android declara `CAMERA` por el lector de códigos (`react-native-camera-kit`), y con eso la cámara del sistema también exige el permiso concedido: `tomarFoto` lo pide antes de abrirla (`pedirPermisoCamara`). Si quedó bloqueado ("no volver a preguntar" o negado dos veces), se ofrece abrir los ajustes. La firma se dibuja con `react-native-svg` y se guarda como PNG con `react-native-view-shot`; usa los colores `papel`/`tinta` del tema, iguales en claro y oscuro, porque la imagen va a la empresa. Antes de guardar, los archivos pasan de la caché a `documentos/evidencias` (`@dr.pogodin/react-native-fs`); si la transacción falla, se borran. Se borran también al confirmarse en Fluor o al descartarse.
 - Ubicación (`core/ubicacion`): se pide al abrir el formulario y nunca bloquea; sin GPS la operación sale con `latitud`/`longitud` en null.
-- Versiones nativas fijadas exactas (`--save-exact`) en image-picker, geolocation, react-native-fs y view-shot: las más nuevas tenían menos de dos semanas.
+- Rastreo (`core/rastreo`): ubicación del conductor en tiempo real con `react-native-background-geolocation` (Transistorsoft, licencia por `TRANSISTORSOFT_LICENSE`). `core/sesion` lo conecta con el token (`conectarSesionConRastreo`) y lo detiene al cerrar sesión. Ver `docs/rastreo.md`.
+- Versiones nativas fijadas exactas (`--save-exact`) en image-picker, geolocation, react-native-fs, view-shot y background-geolocation: las más nuevas tenían menos de dos semanas.
 
 ## Estado de la implementación
 

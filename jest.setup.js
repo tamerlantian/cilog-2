@@ -150,3 +150,43 @@ jest.mock('react-native-image-picker', () => {
 jest.mock('react-native-view-shot', () => ({
   captureRef: jest.fn(async () => 'file:///cache/firma.png'),
 }));
+
+// Rastreo de ubicación (Transistorsoft): nativo. Guarda los oyentes para que
+// las pruebas disparen respuestas de Fluor o renovaciones de token.
+jest.mock('react-native-background-geolocation', () => {
+  const oyentes = {};
+  const suscribir = nombre =>
+    jest.fn(cb => {
+      oyentes[nombre] = cb;
+      return {remove: jest.fn()};
+    });
+  const estado = {enabled: false};
+  const BackgroundGeolocation = {
+    __oyentes: oyentes,
+    __estado: estado,
+    onHttp: suscribir('http'),
+    onAuthorization: suscribir('authorization'),
+    onHeartbeat: suscribir('heartbeat'),
+    ready: jest.fn(async () => ({...estado})),
+    setConfig: jest.fn(async () => ({...estado})),
+    getState: jest.fn(async () => ({...estado})),
+    start: jest.fn(async () => {
+      estado.enabled = true;
+      return {...estado};
+    }),
+    stop: jest.fn(async () => {
+      estado.enabled = false;
+      return {...estado};
+    }),
+    sync: jest.fn(async () => []),
+    destroyLocations: jest.fn(async () => true),
+    getCurrentPosition: jest.fn(async () => ({})),
+  };
+  return {
+    __esModule: true,
+    default: BackgroundGeolocation,
+    AuthorizationStrategy: {Jwt: 'jwt', Sas: 'sas'},
+    DesiredAccuracy: {High: -1},
+    LogLevel: {Warning: 2, Verbose: 5},
+  };
+});

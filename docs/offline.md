@@ -415,6 +415,8 @@ Va con `X-Tenant-Despacho-ID` = el id de la asignación (`mas_tenant_despacho`),
 Primera versión: el motor corre **solo con la app abierta** (primer plano), más un intento al pasar a segundo plano. Es lo predecible en Android e iOS.
 Después, si hace falta: Android WorkManager (tarea periódica con condición "hay red") para vaciar la cola con la app cerrada. iOS no garantiza tiempos de ejecución en segundo plano, así que no se promete.
 
+**Excepción: la ubicación del conductor.** Los puntos del rastreo no pasan por esta cola: el plugin de Transistorsoft los guarda en su propia base, los envía en lotes y los reintenta también con la app cerrada (`core/rastreo`, `docs/rastreo.md`). Son telemetría de alto volumen, Fluor los deduplica por fecha y perder la cola de un despacho ya terminado es aceptable.
+
 ## 16. Pruebas
 
 | Prueba | Cómo |

@@ -166,20 +166,31 @@ La respuesta actual `{codigo_guia_pk, estado_recogido, fecha_recogido}` se manti
 
 Respuesta actual se mantiene. Si `unidades` difiere de `tte_guia.unidades`, debe registrar la diferencia (hoy la app envía el valor corregido por el usuario).
 
-### 12. `POST /tte/despacho/posicion`
+### 12. Ubicación del conductor: **hecho en Fluor** como `POST /tte/movil/despacho/ubicacion-lote` (`d9038b9`, `e28ce9f`)
 
-Monitoreo: reemplaza `api/despacho/monitoreo/detalle/nuevo`.
+Reemplaza el monitoreo de la app anterior. La app lo usa desde `core/rastreo` (ver `docs/rastreo.md`). Con `X-Tenant-Despacho-ID`.
 
 ```json
-{"id_operacion": "uuid", "codigo_despacho_pk": 9001, "latitud": 6.2442, "longitud": -75.5812, "comentario": "Parada por tráfico", "fecha_reporte": "2026-10-27T12:00:00"}
+{"ubicaciones": [{"fecha": "2026-11-12T20:30:05.120Z", "latitud": 6.2442, "longitud": -75.5812,
+  "velocidad": 12.5, "altitud": 1495, "exactitud": 8, "exactitud_altitud": 3}]}
 ```
 
 ```json
-// 201
-{"codigo_monitoreo_detalle_pk": 3301, "codigo_despacho_pk": 9001, "fecha_reporte": "2026-10-27T12:00:00"}
+// 200
+{"codigo_despacho": 9001, "recibidas": 5, "registradas": 5, "duplicadas": 0, "fecha_ultimo_reporte": "2026-11-12T15:30:05"}
 ```
 
-Escribe `tte_despacho.ultima_latitud/longitud`, `fecha_ultimo_reporte` y crea `tte_monitoreo_detalle`.
+Lo que hace Fluor (revisado en el código):
+
+- De 1 a 500 puntos por lote. Crea `tte_ubicacion` y actualiza `tte_despacho.ultima_latitud/longitud` y `fecha_ultimo_reporte` si el lote trae un punto más reciente.
+- `fecha` con zona horaria (también UTC con `Z`) se pasa a la hora del negocio; sin zona se asume que ya lo está. Descarta milisegundos y recorta fechas futuras a la hora del servidor.
+- **Idempotente por fecha al segundo**: un punto en el mismo segundo que uno ya guardado del despacho se omite. Reenviar un lote no duplica.
+- `velocidad`, `altitud`, `exactitud` y `exactitud_altitud` sin unidad ni límites; `null` se guarda como 0 y un `-1` (desconocido en Android) se guarda tal cual. La app manda velocidad en **m/s**.
+- 404 si la asignación no existe, es de otro usuario, la empresa está inactiva o el despacho está anulado; 409 si el despacho está cerrado. La app detiene el rastreo en ambos casos.
+
+Existe también `POST /tte/movil/despacho/ubicacion` (un punto, con la hora del servidor). La app no lo usa.
+
+Opcional para Fluor: guardar los negativos como `null`, y aceptar `simulada` (GPS falso) y `bateria`.
 
 ### 13. `POST /auth/user/cambiar-clave`
 

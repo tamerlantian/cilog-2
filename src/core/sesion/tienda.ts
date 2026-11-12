@@ -2,6 +2,11 @@ import {create} from 'zustand';
 
 import {clienteConsultas, configurarSesionApi} from '@/core/api';
 import {
+  actualizarCredencialesRastreo,
+  detenerRastreo,
+  prepararRastreo,
+} from '@/core/rastreo';
+import {
   almacen,
   borrarCredenciales,
   guardarCredenciales,
@@ -155,6 +160,13 @@ export const useSesion = create<Tienda>((set, get) => ({
   },
 }));
 
+const sesionInvalida = () => {
+  if (useSesion.getState().estado === 'sinSesion') return;
+  useSesion
+    .getState()
+    .cerrarSesion('Tu sesión expiró. Inicia sesión de nuevo.');
+};
+
 /** Conecta el cliente HTTP con la sesión. Se llama una sola vez al arrancar. */
 export const conectarSesionConApi = () =>
   configurarSesionApi({
@@ -162,10 +174,36 @@ export const conectarSesionConApi = () =>
     obtenerTokenRenovacion: () => useSesion.getState().tokenRenovacion,
     alRenovarToken: token => useSesion.getState().renovarToken(token),
     obtenerTenantId: () => useSesion.getState().empresa?.tenant_id ?? null,
-    alSesionInvalida: () => {
-      if (useSesion.getState().estado === 'sinSesion') return;
-      useSesion
-        .getState()
-        .cerrarSesion('Tu sesión expiró. Inicia sesión de nuevo.');
-    },
+    alSesionInvalida: sesionInvalida,
   });
+
+/**
+ * Conecta el rastreo de ubicación con la sesión: el plugin envía con el token
+ * vigente, guarda el que renueve por su cuenta y se detiene al cerrar sesión
+ * (los puntos pendientes se borran: no deben salir con el token de otro).
+ * Se llama una sola vez al arrancar; devuelve cómo desconectarlo.
+ */
+export const conectarSesionConRastreo = () => {
+  const credenciales = () => {
+    const {token, tokenRenovacion} = useSesion.getState();
+    return {token, tokenRenovacion};
+  };
+  prepararRastreo({
+    credenciales,
+    alRenovarToken: token => useSesion.getState().renovarToken(token),
+    alSesionInvalida: sesionInvalida,
+  }).catch(() => undefined);
+
+  return useSesion.subscribe((actual, anterior) => {
+    if (actual.estado === 'sinSesion' && anterior.estado !== 'sinSesion') {
+      detenerRastreo({enviarPendientes: false}).catch(() => undefined);
+      return;
+    }
+    if (
+      actual.token !== anterior.token ||
+      actual.tokenRenovacion !== anterior.tokenRenovacion
+    ) {
+      actualizarCredencialesRastreo(credenciales()).catch(() => undefined);
+    }
+  });
+};

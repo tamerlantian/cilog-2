@@ -4,4 +4,9 @@ export {
   type Empresa,
   type Usuario,
 } from './esquemas';
-export {conectarSesionConApi, useSesion, type EstadoSesion} from './tienda';
+export {
+  conectarSesionConApi,
+  conectarSesionConRastreo,
+  useSesion,
+  type EstadoSesion,
+} from './tienda';

@@ -5,6 +5,12 @@
     <!-- Dónde se entrega o se reporta la novedad. Solo con la app abierta. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- El rastreo de la ruta arranca con la app abierta (foreground service de tipo
+         location): no necesita ubicación "todo el tiempo" y así Play no la revisa.
+         Ver docs/rastreo.md. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        tools:node="remove" />
     <!-- Las evidencias van en la carpeta privada de la app: no hace falta (lo agrega react-native-fs). -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -27,6 +33,11 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
+      <!-- Licencia de Transistorsoft (rastreo). Sale de TRANSISTORSOFT_LICENSE en
+           ~/.gradle/gradle.properties; sin ella solo funciona en debug. -->
+      <meta-data
+        android:name="com.transistorsoft.locationmanager.license"
+        android:value="${transistorsoftLicense}" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

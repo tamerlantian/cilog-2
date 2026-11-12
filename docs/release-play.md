@@ -16,8 +16,9 @@ Además, `targetSdk` 36 y las librerías nativas alineadas a 16 KB son requisito
 ## Preparar la máquina (una sola vez)
 
 1. En `~/.gradle/gradle.properties` deben existir las cuatro variables de firma: `MYAPP_UPLOAD_STORE_FILE`, `MYAPP_UPLOAD_KEY_ALIAS`, `MYAPP_UPLOAD_STORE_PASSWORD`, `MYAPP_UPLOAD_KEY_PASSWORD`.
-2. Crear `.env.prod` a partir de `.env.example` con la URL de producción. No se versiona.
-3. Firebase todavía no está integrado. Cuando se integre, registrar `com.semantica.cilog2` como app Android nueva en el proyecto y usar su `google-services.json` (fuera del repo): el de la app anterior es de `com.plutonio` y no sirve.
+2. En el mismo archivo, `TRANSISTORSOFT_LICENSE=<clave JWT>`: la licencia del rastreo de ubicación, emitida para `com.semantica.cilog2`. Sin ella el build de release compila pero **el rastreo no funciona** (en logcat: `LICENSE VALIDATION FAILURE`). Ver `docs/rastreo.md`.
+3. Crear `.env.prod` a partir de `.env.example` con la URL de producción. No se versiona.
+4. Firebase todavía no está integrado. Cuando se integre, registrar `com.semantica.cilog2` como app Android nueva en el proyecto y usar su `google-services.json` (fuera del repo): el de la app anterior es de `com.plutonio` y no sirve.
 
 El build de release **falla a propósito** si faltan las variables de firma, para no generar un archivo firmado con la clave de debug.
 

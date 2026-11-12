@@ -33,6 +33,7 @@
     "react": "19.3.0",
     "react-hook-form": "^7.91.0",
     "react-native": "0.88.0",
+    "react-native-background-geolocation": "5.8.2",
     "react-native-bootsplash": "7.3.5",
     "react-native-camera-kit": "18.0.1",
     "react-native-config": "^1.7.2",
