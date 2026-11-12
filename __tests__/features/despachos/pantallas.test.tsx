@@ -340,7 +340,7 @@ describe('pantallas de despachos', () => {
       await screen.findByLabelText('Paso 3 de 3, Firma');
     };
 
-    it('entregar va por pasos, guarda en el teléfono y ofrece la siguiente guía', async () => {
+    it('entregar va por pasos, guarda en el teléfono y vuelve a los pendientes', async () => {
       await abrirGuia('Guía 2, María Peña');
       await fireEvent.press(screen.getByRole('button', {name: 'Entregar'}));
 
@@ -395,8 +395,12 @@ describe('pantallas de despachos', () => {
         screen.getByRole('button', {name: 'Confirmar entrega'}),
       );
 
-      expect(await screen.findByText('Entrega guardada')).toBeTruthy();
-      expect(screen.getByText('Enviando a la empresa…')).toBeTruthy();
+      // Vuelve directo a la lista de pendientes del despacho.
+      await screen.findByRole('button', {name: '1 por enviar'});
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({text1: 'Entrega guardada'}),
+      );
+      expect(nombresVisibles()).toEqual(['Destinatario 3']);
       const [operacion] = await operacionesGuardadas();
       expect(operacion).toMatchObject({
         tipo: 'entrega',
@@ -410,14 +414,6 @@ describe('pantallas de despachos', () => {
         recibe_celular: '3001234567',
         recibe_numero_identificacion: '43123456',
       });
-
-      await fireEvent.press(
-        screen.getByRole('button', {name: 'Siguiente guía'}),
-      );
-      expect(await screen.findByText('Guía 3')).toBeTruthy();
-      await fireEvent.press(screen.getByRole('button', {name: 'Volver'}));
-      await screen.findByRole('button', {name: '1 por enviar'});
-      expect(nombresVisibles()).toEqual(['Destinatario 3']);
     });
 
     it('la entrega lleva fotos, firma y ubicación, y las guarda en documentos', async () => {
@@ -451,7 +447,7 @@ describe('pantallas de despachos', () => {
       await fireEvent.press(
         screen.getByRole('button', {name: 'Confirmar entrega'}),
       );
-      await screen.findByText('Entrega guardada');
+      await screen.findByRole('button', {name: '1 por enviar'});
 
       const cola = await operacionesGuardadas();
       expect(cola.map(o => o.tipo)).toEqual(['entrega']);

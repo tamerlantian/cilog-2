@@ -15,14 +15,9 @@ export type RutasDespachos = {
   /** Las pestañas. Para abrir una desde otra pantalla: `navigate('Inicio', {screen: 'Envios'})`. */
   Inicio: NavigatorScreenParams<RutasPestanas> | undefined;
   VincularDespacho: undefined;
-  Despacho: {tenantDespachoId: number};
+  /** `verPendientes`: al cambiar (p. ej. `Date.now()`), la lista vuelve a pendientes sin búsqueda. */
+  Despacho: {tenantDespachoId: number; verPendientes?: number};
   Guia: {tenantDespachoId: number; codigoGuia: number};
   Entregar: {tenantDespachoId: number; codigoGuia: number};
-  /** `guardadaEn`: la hora que se muestra, en milisegundos. */
-  EntregaGuardada: {
-    tenantDespachoId: number;
-    codigoGuia: number;
-    guardadaEn: number;
-  };
   Novedad: {tenantDespachoId: number; codigoGuia: number};
 };

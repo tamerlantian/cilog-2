@@ -53,9 +53,10 @@ export function FilaGuia({guia, alPresionar}: Props) {
             {destinatario(guia)}
           </Texto>
           <Texto
-            media
+            media={cobro === 0}
+            negrita={cobro > 0}
             numerico
-            tono={cobro > 0 ? 'normal' : 'secundario'}
+            tono={cobro > 0 ? 'advertencia' : 'secundario'}
             variante="etiqueta">
             {cobro > 0 ? pesos(cobro) : 'Sin cobro'}
           </Texto>

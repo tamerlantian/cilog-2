@@ -13,8 +13,8 @@ type Props = {
   titulo?: string;
   /** Línea pequeña sobre el título (empresa, contexto). */
   subtitulo?: string;
-  /** Código bajo el título, en mono ("777001 · $ 18.000 por cobrar"). */
-  detalle?: string;
+  /** Código bajo el título, en mono ("777001 · $ 18.000 por cobrar"). Admite `Texto` anidado para resaltar una parte. */
+  detalle?: ReactNode;
   accion?: ReactNode;
   /** Título de pantalla principal (las de pestaña): grande y sin volver. */
   grande?: boolean;

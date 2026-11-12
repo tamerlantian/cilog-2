@@ -18,7 +18,6 @@ import {
 } from '@/features/auth';
 import {
   DespachoPantalla,
-  EntregaGuardadaPantalla,
   EntregarPantalla,
   GuiaPantalla,
   NovedadPantalla,
@@ -111,11 +110,6 @@ export function Navegador() {
               component={EntregarPantalla}
               name="Entregar"
               options={{presentation: 'modal'}}
-            />
-            <Stack.Screen
-              component={EntregaGuardadaPantalla}
-              name="EntregaGuardada"
-              options={{presentation: 'modal', gestureEnabled: false}}
             />
             <Stack.Screen
               component={NovedadPantalla}

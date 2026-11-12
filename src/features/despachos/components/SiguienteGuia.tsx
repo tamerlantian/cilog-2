@@ -1,11 +1,11 @@
 import {Pressable, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
-import {Boton, Insignia, Texto} from '@/ui';
+import {Boton, Texto} from '@/ui';
 
 import type {GuiaLocal} from '../db/repositorio';
-import {pesos} from '../domain/formato';
 import {aCobrar} from '../domain/gestion';
+import {Cobro} from './Cobro';
 import {destinatario, referenciaGuia, ubicacionGuia} from './FilaGuia';
 import {TarjetaDestacada} from './TarjetaDestacada';
 
@@ -37,9 +37,7 @@ export function SiguienteGuia({
           <Texto tono="secundario" variante="pie">
             Siguiente
           </Texto>
-          {cobro > 0 ? (
-            <Insignia texto={`Cobrar ${pesos(cobro)}`} tono="accion" />
-          ) : null}
+          {cobro > 0 ? <Cobro monto={cobro} /> : null}
         </View>
         <Texto numberOfLines={2} style={styles.nombre} variante="titulo">
           {destinatario(guia)}

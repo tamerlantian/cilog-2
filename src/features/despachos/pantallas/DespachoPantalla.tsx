@@ -1,5 +1,5 @@
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {Alert, FlatList, RefreshControl, View} from 'react-native';
 import {StyleSheet, useUnistyles} from 'react-native-unistyles';
 
@@ -82,6 +82,14 @@ export function DespachoPantalla({navigation, route}: Props) {
   const [filtro, setFiltro] = useState<FiltroGuias>('pendientes');
   const [busqueda, setBusqueda] = useState('');
   const [confirmandoTerminar, setConfirmandoTerminar] = useState(false);
+
+  // Al volver de una entrega, la lista muestra lo que falta.
+  const {verPendientes} = route.params;
+  useEffect(() => {
+    if (verPendientes === undefined) return;
+    setFiltro('pendientes');
+    setBusqueda('');
+  }, [verPendientes]);
 
   const visibles = useMemo(
     () => filtrarGuias(guias, filtro, busqueda),
@@ -169,8 +177,10 @@ export function DespachoPantalla({navigation, route}: Props) {
     cuentas.pendientes === 0;
 
   // La próxima parada sale de la lista y va arriba, con sus acciones a la mano.
+  // TEMPORAL: tarjeta "Siguiente" oculta; volver a `true` para mostrarla.
+  const mostrarSiguiente = false as boolean;
   const siguiente =
-    filtro === 'pendientes' && busqueda === '' && !terminado
+    mostrarSiguiente && filtro === 'pendientes' && busqueda === '' && !terminado
       ? visibles[0]
       : undefined;
   const lista = siguiente ? visibles.slice(1) : visibles;

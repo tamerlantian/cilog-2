@@ -17,6 +17,7 @@ import {
   Icono,
   Input,
   mostrarError,
+  mostrarExito,
   Pantalla,
   Pasos,
   Selector,
@@ -200,12 +201,13 @@ export function EntregarPantalla({navigation, route}: Props) {
       entregar.mutate(
         {datos, fotos, firma: archivo, ubicacion},
         {
-          onSuccess: () =>
-            navigation.replace('EntregaGuardada', {
+          onSuccess: () => {
+            mostrarExito('Entrega guardada');
+            navigation.popTo('Despacho', {
               tenantDespachoId,
-              codigoGuia,
-              guardadaEn: Date.now(),
-            }),
+              verPendientes: Date.now(),
+            });
+          },
           onError: error => mostrarError(mensajeUsuario(error)),
         },
       ),
@@ -278,9 +280,16 @@ export function EntregarPantalla({navigation, route}: Props) {
       <Encabezado
         alVolver={cerrar}
         detalle={
-          cobro > 0
-            ? `${codigoGuia} · ${pesos(cobro)} por cobrar`
-            : String(codigoGuia)
+          cobro > 0 ? (
+            <>
+              {codigoGuia} ·{' '}
+              <Texto negrita tono="advertencia" variante="pie">
+                {pesos(cobro)} por cobrar
+              </Texto>
+            </>
+          ) : (
+            String(codigoGuia)
+          )
         }
         tipoVolver="cerrar"
         titulo={`Entregar a ${destinatario(guia)}`}

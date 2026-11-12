@@ -46,17 +46,19 @@ function Dato({
   etiqueta,
   children,
   mono = false,
+  tono,
 }: {
   etiqueta: string;
   children: ReactNode;
   mono?: boolean;
+  tono?: 'advertencia';
 }) {
   return (
     <View style={styles.dato}>
       <Texto tono="secundario" variante="etiqueta">
         {etiqueta}
       </Texto>
-      <Texto mono={mono} negrita numerico style={styles.valor}>
+      <Texto mono={mono} negrita numerico style={styles.valor} tono={tono}>
         {children}
       </Texto>
     </View>
@@ -147,7 +149,11 @@ export function GuiaPantalla({navigation, route}: Props) {
       ? {etiqueta: 'Recaudo', valor: pesos(guia.vrRecaudo)}
       : null,
     guia.vrCobroEntrega > 0
-      ? {etiqueta: 'Cobro en la entrega', valor: pesos(guia.vrCobroEntrega)}
+      ? {
+          etiqueta: 'Cobro en la entrega',
+          valor: pesos(guia.vrCobroEntrega),
+          tono: 'advertencia' as const,
+        }
       : null,
     guia.requiereCita ? {etiqueta: 'Cita', valor: 'Requiere cita'} : null,
     guia.fechaEntrega
@@ -224,7 +230,7 @@ export function GuiaPantalla({navigation, route}: Props) {
         {datos.map((dato, indice) => (
           <View key={dato.etiqueta}>
             {indice > 0 ? <View style={styles.separador} /> : null}
-            <Dato etiqueta={dato.etiqueta} mono={dato.mono}>
+            <Dato etiqueta={dato.etiqueta} mono={dato.mono} tono={dato.tono}>
               {dato.valor}
             </Dato>
           </View>

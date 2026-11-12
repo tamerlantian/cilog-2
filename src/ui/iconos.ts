@@ -4,6 +4,7 @@
  * Para usar uno nuevo, agrégalo aquí (nombres en https://lucide.dev/icons).
  */
 export {default as ArrowRight} from 'lucide-react-native/icons/arrow-right';
+export {default as Banknote} from 'lucide-react-native/icons/banknote';
 export {default as Building} from 'lucide-react-native/icons/building';
 export {default as Camera} from 'lucide-react-native/icons/camera';
 export {default as Check} from 'lucide-react-native/icons/check';

@@ -1,5 +1,4 @@
 export {DespachoPantalla} from './pantallas/DespachoPantalla';
-export {EntregaGuardadaPantalla} from './pantallas/EntregaGuardadaPantalla';
 export {EntregarPantalla} from './pantallas/EntregarPantalla';
 export {EnviosPantalla} from './pantallas/EnviosPantalla';
 export {GuiaPantalla} from './pantallas/GuiaPantalla';
