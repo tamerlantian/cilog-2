@@ -92,7 +92,7 @@ const styles = StyleSheet.create(tema => ({
       },
     },
   },
-  // El avance va en el color del texto: bosque sobre claro, blanco sobre la marca.
+  // El avance va en el color del texto: navy sobre claro, blanco sobre la marca.
   entregadas: {backgroundColor: tema.colores.texto},
   novedades: {backgroundColor: tema.colores.advertenciaRelleno},
   ancho: (ancho: `${number}%`) => ({width: ancho}),

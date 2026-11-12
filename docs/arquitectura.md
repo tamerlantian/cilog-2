@@ -48,7 +48,8 @@ Además, en todo `src`:
 - Estado: sesión y preferencias en zustand (MMKV); datos del servidor en TanStack Query; formularios en react-hook-form. Tokens en el llavero seguro, no en MMKV.
 - Estilos: solo `StyleSheet` de unistyles con el tema de `ui/tema`. Sin colores literales ni estilos inline (ESLint lo bloquea).
 - Íconos: `lucide-react-native`, pero solo a través de `ui/iconos.ts`, que importa cada ícono por su ruta. Metro no elimina código sin usar y el paquete completo suma ~2 MB al bundle; ESLint bloquea importarlo directo. Se dibujan con `Icono` (color del tema).
-- Color: ver *Paletas* abajo. Dirección visual en el canvas https://claude.ai/artifact/DHeeTJvpyQEjdpSax84QgP (variante *Ruta*, paleta *Bosque y lima*).
+- Color: ver *Paletas* abajo. Dirección visual en el canvas https://claude.ai/artifact/DHeeTJvpyQEjdpSax84QgP (variante *Ruta*, paleta *Navy Cilog*).
+- Marca: los SVG de `assets/marca/` son la fuente del ícono y de la pantalla de carga. Si cambian, se regeneran los PNG: la pantalla de carga con `npx react-native-bootsplash generate assets/marca/logo.svg --platforms=android,ios --background=#143049 --logo-width=168 --assets-output=<carpeta temporal>` (luego descartar lo que el generador reformatea en `AndroidManifest.xml` y `styles.xml`), y los `mipmap-*/ic_launcher*.png`, el `AppIcon` de iOS y `icono-play-512.png` desde `icono.svg` con `sharp`. El ícono adaptativo de Android usa `drawable/ic_launcher_foreground.xml` y `ic_launcher_background` de `values/colors.xml`.
 
 ## Paletas
 
@@ -57,8 +58,9 @@ Todos los colores de la app viven en `src/ui/tema/paletas/`, y en ningún otro l
 ```
 ui/tema/paletas/
   tipos.ts         Escena y Paleta: los roles que toda paleta debe llenar (TypeScript avisa si falta uno)
-  bosqueLima.ts    la paleta actual
-  cilogClasica.ts  la anterior (verde azulado y amarillo), lista como alternativa
+  navyCilog.ts     la paleta actual (colores de marca: navy y azules)
+  bosqueLima.ts    la anterior (bosque y lima), lista como alternativa
+  cilogClasica.ts  la de la app vieja (verde azulado y amarillo), lista como alternativa
   index.ts         registro `paletas` y PALETA_ACTIVA
 ui/tema/tema.ts    arma los temas desde PALETA_ACTIVA; espaciado, radios y tipografía
 ```
@@ -69,7 +71,7 @@ ui/tema/tema.ts    arma los temas desde PALETA_ACTIVA; espaciado, radios y tipog
 - `__tests__/ui/paletas.test.ts` recorre todas las paletas registradas y exige 4.5:1 en los pares de texto y 3:1 en el borde de los campos. Una paleta que no pasa no entra.
 - `papel` y `tinta` (la firma) son fijos en toda paleta (`FIRMA`).
 - Tarjetas destacadas sobre fondo claro (despacho en curso, siguiente entrega): `TarjetaDestacada` de despachos, que es `Escena` de marca con el `suelo` de esa escena.
-- La escena `oscuro` de *Bosque y lima* no está en el canvas: se derivó de la de marca.
+- La escena `oscuro` de *Navy Cilog* no está en el canvas: se derivó de la de marca.
 - `ScopedTheme` solo alcanza a los componentes de React Native que procesa el plugin de babel de unistyles. Un fondo puesto en un componente de terceros (p. ej. `SafeAreaView`) no toma la escena: por eso `Pantalla` pinta el fondo en un `View` propio.
 - El fast refresh a veces pierde la escena por zona y la pantalla sale con los colores del tema claro. Para revisar colores hay que reiniciar la app.
 - `Pantalla` elige la barra de estado (clara u oscura) según la luminancia de su fondo, así que funciona con cualquier paleta y en modo oscuro.
@@ -87,7 +89,7 @@ Inter (lectura: 400, 500, 600), Space Grotesk 700 (títulos: variantes `marca`, 
 | Pieza | Fase | Estado |
 | --- | --- | --- |
 | Cliente API, errores, paginación, entorno | 0 | Hecho, con pruebas |
-| Tema y primitivas de UI | 0 | Hecho, con pruebas. Paletas centralizadas (`ui/tema/paletas`, *Bosque y lima* activa), escenas con `Escena` y tipografía nueva (Inter, Space Grotesk, JetBrains Mono) |
+| Tema y primitivas de UI | 0 | Hecho, con pruebas. Paletas centralizadas (`ui/tema/paletas`, *Navy Cilog* activa), escenas con `Escena` y tipografía nueva (Inter, Space Grotesk, JetBrains Mono) |
 | Navegación por estado de sesión (`app/navegacion`) | 1 | Hecho, con pruebas |
 | Sesión: token en llavero, perfil y empresa en MMKV (`core/sesion`) | 1 | Hecho, con pruebas |
 | Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas. La empresa es opcional (solo ingreso y envíos). Rediseño *Ruta · Bosque y lima*: todo el acceso va en la escena de marca (`PantallaAcceso`); probado en el emulador |
