@@ -1,7 +1,10 @@
 import {enlaceLlamar, enlaceMapa} from '@/features/despachos/domain/contacto';
 import {estadoBarra} from '@/features/despachos/domain/envios';
 import {fechaCorta, numero, pesos} from '@/features/despachos/domain/formato';
-import {esquemaFormularioVincular} from '@/features/despachos/domain/formularios';
+import {
+  esquemaFormularioVincular,
+  leerQrDespacho,
+} from '@/features/despachos/domain/formularios';
 import {aCobrar} from '@/features/despachos/domain/gestion';
 import {
   contarGuias,
@@ -190,5 +193,35 @@ describe('vincular', () => {
 
   it('solo acepta letras y números en el token', () => {
     expect(vincular('A1-B2').success).toBe(false);
+  });
+
+  it('lee el QR del manifiesto', () => {
+    const qr = JSON.stringify({
+      operador: 18,
+      codigoDespacho: 272345,
+      token: '76c7',
+      contenido: 'MEC:127416909\nFecha:2026-11-12\nPlaca:SNW554\n',
+    });
+
+    expect(leerQrDespacho(qr)).toEqual({
+      operador: '18',
+      despacho: '272345',
+      token: '76C7',
+    });
+  });
+
+  it('acepta los números del QR como texto', () => {
+    expect(
+      leerQrDespacho('{"operador":"18","codigoDespacho":"272345","token":"X"}'),
+    ).toEqual({operador: '18', despacho: '272345', token: 'X'});
+  });
+
+  it('un código que no es de manifiesto no se lee', () => {
+    expect(leerQrDespacho('272345')).toBeNull();
+    expect(leerQrDespacho('no es json')).toBeNull();
+    expect(leerQrDespacho('{"operador":18,"token":"76C7"}')).toBeNull();
+    expect(
+      leerQrDespacho('{"operador":-1,"codigoDespacho":1,"token":"A"}'),
+    ).toBeNull();
   });
 });

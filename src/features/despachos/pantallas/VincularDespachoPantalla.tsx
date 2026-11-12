@@ -10,29 +10,36 @@ import {
   CircleAlert,
   Encabezado,
   Input,
+  mostrarError,
   mostrarExito,
   Pantalla,
+  ScanLine,
   Texto,
 } from '@/ui';
+
+import {LectorCodigo} from '../components/LectorCodigo';
 
 import {
   esquemaFormularioVincular,
   type DatosFormularioVincular,
   type FormularioVincular,
+  leerQrDespacho,
 } from '../domain/formularios';
 import {
   mensajeVincular,
   useVincularDespacho,
 } from '../hooks/useAccionesDespacho';
+import {useLectorGuia} from '../hooks/useLectorGuia';
 import {useNavegacionDespachos} from '../hooks/useNavegacionDespachos';
 
-/** Vincular a mano con los datos del QR. El escáner llega cuando se conozca su formato. */
+/** Vincular con el QR del manifiesto o escribiendo sus tres datos a mano. */
 export function VincularDespachoPantalla() {
   const navegacion = useNavegacionDespachos();
   const despachoRef = useRef<ComponentRef<typeof TextInput>>(null);
   const tokenRef = useRef<ComponentRef<typeof TextInput>>(null);
   const {mutate, isPending, error} = useVincularDespacho();
-  const {control, handleSubmit} = useForm<
+  const lector = useLectorGuia();
+  const {control, handleSubmit, setValue} = useForm<
     FormularioVincular,
     unknown,
     DatosFormularioVincular
@@ -51,10 +58,32 @@ export function VincularDespachoPantalla() {
       }),
     )();
 
+  // Llena el formulario y deja que el conductor confirme con "Vincular".
+  const alLeerQr = (crudo: string) => {
+    lector.cerrar();
+    const datos = leerQrDespacho(crudo);
+    if (!datos) {
+      mostrarError('Ese código no es el QR de un manifiesto.');
+      return;
+    }
+    const opciones = {shouldValidate: true, shouldDirty: true};
+    setValue('operador', datos.operador, opciones);
+    setValue('despacho', datos.despacho, opciones);
+    setValue('token', datos.token, opciones);
+  };
+
   return (
     <Pantalla
       desplazable
       pie={<Boton cargando={isPending} titulo="Vincular" onPress={enviar} />}>
+      {lector.abierto ? (
+        <LectorCodigo
+          alCerrar={lector.cerrar}
+          alLeer={alLeerQr}
+          ayuda="Apunta al QR del manifiesto"
+          titulo="Escanear manifiesto"
+        />
+      ) : null}
       <Encabezado alVolver={() => navegacion.goBack()} />
       <View style={styles.cuerpo}>
         <View style={styles.textos}>
@@ -62,10 +91,17 @@ export function VincularDespachoPantalla() {
             Vincular despacho
           </Texto>
           <Texto tono="secundario">
-            Escribe los datos del manifiesto que te dio el despachador.
-            Necesitas señal solo para este paso.
+            Escanea el QR del manifiesto que te dio el despachador o escribe sus
+            datos. Necesitas señal solo para este paso.
           </Texto>
         </View>
+
+        <Boton
+          icono={ScanLine}
+          tipo="secundario"
+          titulo="Escanear QR"
+          onPress={lector.abrir}
+        />
 
         <View style={styles.fila}>
           <View style={styles.operador}>

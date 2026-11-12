@@ -29,6 +29,39 @@ export type DatosFormularioVincular = z.output<
   typeof esquemaFormularioVincular
 >;
 
+const numeroQr = z.union([
+  z.number().int().nonnegative(),
+  z.string().trim().regex(/^\d+$/),
+]);
+
+/**
+ * El QR del manifiesto es un JSON:
+ * `{"operador":18,"codigoDespacho":272345,"token":"76C7","contenido":"MEC:..."}`.
+ * `contenido` es el texto impreso del manifiesto; no se usa.
+ */
+const esquemaQrDespacho = z.object({
+  operador: numeroQr,
+  codigoDespacho: numeroQr,
+  token: z.string().trim().min(1),
+});
+
+/** Los datos del QR listos para el formulario, o `null` si no es un QR de despacho. */
+export const leerQrDespacho = (crudo: string): FormularioVincular | null => {
+  let json: unknown;
+  try {
+    json = JSON.parse(crudo.trim());
+  } catch {
+    return null;
+  }
+  const qr = esquemaQrDespacho.safeParse(json);
+  if (!qr.success) return null;
+  return {
+    operador: String(qr.data.operador),
+    despacho: String(qr.data.codigoDespacho),
+    token: qr.data.token.toUpperCase(),
+  };
+};
+
 const textoOpcional = (maximo: number, mensaje: string) =>
   z.string().trim().max(maximo, mensaje);
 

@@ -702,6 +702,54 @@ describe('pantallas de despachos', () => {
       await fireEvent.press(screen.getByRole('button', {name: 'Vincular'}));
     };
 
+    const escanearQr = async (codigo: string) => {
+      await fireEvent.press(screen.getByRole('button', {name: 'Escanear QR'}));
+      await fireEvent(await screen.findByTestId('camara'), 'readCode', {
+        nativeEvent: {codeStringValue: codigo},
+      });
+    };
+
+    it('el QR del manifiesto llena los datos y se vincula con ellos', async () => {
+      apiSimulada.vincularDespachoApi.mockResolvedValue(asignacion);
+      apiSimulada.descargarGuiasApi.mockResolvedValue(descarga(GUIAS));
+      await abrirVincular();
+
+      await escanearQr(
+        JSON.stringify({
+          operador: 18,
+          codigoDespacho: 272345,
+          token: '76C7',
+          contenido: 'MEC:127416909\nPlaca:SNW554\n',
+        }),
+      );
+
+      expect(screen.queryByTestId('camara')).toBeNull();
+      expect(screen.getByLabelText('Operador').props.value).toBe('18');
+      expect(screen.getByLabelText('Número de despacho').props.value).toBe(
+        '272345',
+      );
+      expect(screen.getByLabelText('Token').props.value).toBe('76C7');
+
+      await fireEvent.press(screen.getByRole('button', {name: 'Vincular'}));
+
+      expect(await screen.findByText('María Peña')).toBeTruthy();
+      expect(apiSimulada.vincularDespachoApi).toHaveBeenCalledWith({
+        tenantId: 18,
+        codigoDespacho: 272345,
+        token: '76C7',
+      });
+    });
+
+    it('un QR que no es de manifiesto avisa y no llena nada', async () => {
+      await abrirVincular();
+
+      await escanearQr('12345');
+
+      expect(screen.queryByTestId('camara')).toBeNull();
+      expect(screen.getByLabelText('Operador').props.value).toBe('');
+      expect(apiSimulada.vincularDespachoApi).not.toHaveBeenCalled();
+    });
+
     it('valida los datos antes de llamar a Fluor', async () => {
       await abrirVincular();
       await fireEvent.changeText(screen.getByLabelText('Operador'), '7a');

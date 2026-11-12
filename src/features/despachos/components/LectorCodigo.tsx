@@ -9,10 +9,17 @@ import {Encabezado, mostrarError, Pantalla, Texto} from '@/ui';
 type Props = {
   alLeer: (codigo: string) => void;
   alCerrar: () => void;
+  titulo?: string;
+  ayuda?: string;
 };
 
 /** Cámara a pantalla completa. Se monta al abrir y se desmonta al cerrar. */
-export function LectorCodigo({alLeer, alCerrar}: Props) {
+export function LectorCodigo({
+  alLeer,
+  alCerrar,
+  titulo = 'Escanear guía',
+  ayuda = 'Apunta al código de la guía',
+}: Props) {
   const {theme} = useUnistyles();
   // La cámara sigue reportando el mismo código mientras la vista se cierra.
   const leido = useRef(false);
@@ -26,7 +33,7 @@ export function LectorCodigo({alLeer, alCerrar}: Props) {
       onRequestClose={alCerrar}>
       <SafeAreaProvider>
         <Pantalla>
-          <Encabezado alVolver={alCerrar} titulo="Escanear guía" />
+          <Encabezado alVolver={alCerrar} titulo={titulo} />
           <View style={styles.visor}>
             <Camera
               cameraType={CameraType.Back}
@@ -47,7 +54,7 @@ export function LectorCodigo({alLeer, alCerrar}: Props) {
             />
           </View>
           <Texto centrado style={styles.ayuda} tono="secundario">
-            Apunta al código de la guía
+            {ayuda}
           </Texto>
         </Pantalla>
       </SafeAreaProvider>
