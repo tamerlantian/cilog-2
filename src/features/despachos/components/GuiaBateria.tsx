@@ -38,6 +38,8 @@ export function GuiaBateria({
       visible={visible}
       onRequestClose={alCerrar}>
       <Pantalla
+        desplazable
+        estiloContenido={styles.pantalla}
         pie={
           <View style={styles.acciones}>
             <Boton titulo="Abrir ajustes" onPress={alAbrirAjustes} />
@@ -79,6 +81,11 @@ export function GuiaBateria({
 }
 
 const styles = StyleSheet.create(tema => ({
+  // Mismo margen lateral que el pie, para que todo quede alineado.
+  pantalla: {
+    paddingHorizontal: tema.espaciado.xl,
+    paddingTop: tema.espaciado.sm,
+  },
   cerrar: {alignItems: 'flex-start', marginLeft: -tema.espaciado.sm},
   contenido: {gap: tema.espaciado.lg},
   paso: {flexDirection: 'row', gap: tema.espaciado.md},
