@@ -124,7 +124,9 @@ export const useUbicacionDespacho = (
         estado?.permiso === 'bloqueado'
           ? 'bloqueado'
           : await pedirPermisoUbicacion();
-      if (permiso === 'bloqueado') await Linking.openSettings();
+      // Tras negarlo dos veces Android ya no muestra el diálogo y el plugin
+      // responde "negado" (no "bloqueado"): sin esto el botón no haría nada.
+      if (permiso !== 'concedido') await Linking.openSettings();
       await actualizar();
     } else if (indicador === 'gpsApagado') {
       await Linking.sendIntent(

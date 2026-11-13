@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import {eq} from 'drizzle-orm';
-import {Alert, PermissionsAndroid, Platform} from 'react-native';
+import {Alert, Linking, PermissionsAndroid, Platform} from 'react-native';
 import * as fs from '@dr.pogodin/react-native-fs';
 import {getFSInfo} from '@dr.pogodin/react-native-fs';
 import BackgroundGeolocation from 'react-native-background-geolocation';
@@ -866,6 +866,25 @@ describe('pantallas de despachos', () => {
       expect(
         await screen.findByText('Ubicación en vivo para Transportes Sur'),
       ).toBeTruthy();
+    });
+
+    it('si Android ya no muestra el diálogo, "Permitir" abre los ajustes', async () => {
+      const abrirAjustes = jest
+        .spyOn(Linking, 'openSettings')
+        .mockResolvedValue(undefined);
+      rastreo.__proveedor.status = 2;
+      await abrirDespacho();
+
+      // Negado dos veces: el plugin responde "negado" sin mostrar nada.
+      await fireEvent.press(
+        await screen.findByRole('button', {
+          name: 'Permitir: Sin permiso: la empresa no te ve',
+        }),
+      );
+
+      await waitFor(() => expect(abrirAjustes).toHaveBeenCalledTimes(1));
+      expect(rastreo.start).not.toHaveBeenCalled();
+      abrirAjustes.mockRestore();
     });
 
     it('con el GPS apagado lo avisa en la línea', async () => {
