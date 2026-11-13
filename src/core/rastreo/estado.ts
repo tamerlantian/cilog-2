@@ -2,7 +2,13 @@ import BackgroundGeolocation, {
   AuthorizationStatus,
   type ProviderChangeEvent,
 } from 'react-native-background-geolocation';
+import {PermissionsAndroid, Platform} from 'react-native';
 import {getBrand} from 'react-native-device-info';
+
+import {almacen} from '@/core/storage';
+
+/** Ya se pidió el permiso de notificaciones una vez en este teléfono. */
+const CLAVE_NOTIFICACIONES = 'rastreo.notificacionesPedidas';
 
 /**
  * - concedido: "mientras se usa la app" o "siempre".
@@ -51,6 +57,25 @@ export const pedirPermisoUbicacion = async (): Promise<PermisoUbicacion> => {
     return comoPermiso(await BackgroundGeolocation.requestPermission());
   } catch (estado) {
     return typeof estado === 'number' ? comoPermiso(estado) : 'negado';
+  }
+};
+
+/**
+ * Android 13+ oculta la notificación "ruta en curso" sin este permiso (el
+ * rastreo sigue, pero el conductor no ve que comparte la ubicación). Se pide
+ * una sola vez: si lo niega no se insiste en cada regreso a la app.
+ */
+export const pedirPermisoNotificaciones = async () => {
+  if (Platform.OS !== 'android' || Number(Platform.Version) < 33) return;
+  if (almacen.getString(CLAVE_NOTIFICACIONES) === '1') return;
+  const permiso = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
+  try {
+    if (await PermissionsAndroid.check(permiso)) return;
+    // Antes del diálogo: las relecturas simultáneas no lo muestran dos veces.
+    almacen.set(CLAVE_NOTIFICACIONES, '1');
+    await PermissionsAndroid.request(permiso);
+  } catch {
+    // Sin el permiso el rastreo funciona igual.
   }
 };
 

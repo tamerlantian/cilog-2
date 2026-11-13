@@ -84,6 +84,8 @@ describe('rastreo de ubicación', () => {
       refreshUrl: 'https://api.prueba.test/auth/seguridad/refresh',
     });
     expect(config.geolocation.locationAuthorizationRequest).toBe('WhenInUse');
+    // Con "mientras se usa", el servicio no puede cerrarse al quedar quieto.
+    expect(config.app.notification.sticky).toBe(true);
   });
 
   it('al volver a abrir la app retoma la asignación que estaba rastreando', async () => {

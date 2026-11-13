@@ -12,6 +12,7 @@ import {
   iniciarRastreo,
   leerEstadoUbicacion,
   marcaTelefono,
+  pedirPermisoNotificaciones,
   pedirPermisoUbicacion,
   type EstadoUbicacion,
 } from '@/core/rastreo';
@@ -77,6 +78,8 @@ export const useUbicacionDespacho = (
     const actual = await leerEstadoUbicacion();
     if (actual.permiso === 'concedido') {
       await iniciarRastreo(id).catch(() => undefined);
+      // Después del de ubicación: así ve la notificación de ruta en curso.
+      await pedirPermisoNotificaciones();
     }
     const libre = await bateriaSinRestricciones();
     // Juntos: la línea cambia una sola vez, ya con todo leído.

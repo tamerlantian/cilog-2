@@ -21,6 +21,19 @@ reintenta los puntos sin señal.
   quita del manifest y no hace falta la revisión de Play para ubicación en
   segundo plano. Por lo mismo, no se reanuda solo al reiniciar el teléfono
   (`startOnBoot: false`).
+- **Servicio siempre abierto (`notification.sticky: true`)**: es lo que hace
+  posible la decisión anterior. Sin `sticky`, el plugin cierra el servicio y
+  su notificación cada vez que el vehículo queda quieto, y para reanudar
+  depende de una geocerca (exige "Siempre") y de abrir el servicio desde
+  segundo plano (Android 12+ no lo permite sin `ACCESS_BACKGROUND_LOCATION`).
+  Resultado en la prueba en ruta del 13 nov 2026 (Xiaomi, Android 15): 4
+  puntos al arrancar y nada más en todo el trayecto. Con el servicio abierto
+  el GPS igual se apaga quieto (detección de movimiento), así que el costo en
+  batería es bajo.
+- **Notificación visible**: en Android 13+ hace falta `POST_NOTIFICATIONS`
+  en tiempo de ejecución; sin él Android oculta la notificación aunque el
+  servicio corra. Se pide una vez, después del permiso de ubicación
+  (`pedirPermisoNotificaciones`). Si lo niega, el rastreo sigue igual.
 - **Excepción a la cola de operaciones**: los puntos no pasan por `core/sync`.
   El plugin los guarda en su propia base, los envía en lotes y los reintenta
   aunque JS no esté corriendo. Ver la regla en `docs/offline.md`.

@@ -86,6 +86,11 @@ export const configuracion = (
     // Quieto, un punto cada 5 min para que el mapa sepa que sigue ahí.
     heartbeatInterval: 300,
     notification: {
+      // Sin esto el plugin cierra el servicio al quedar quieto y, con permiso
+      // "mientras se usa", Android no lo deja volver a abrirlo desde segundo
+      // plano: dejaba de reportar en la primera parada (prueba en ruta, 13 nov
+      // 2026). Con el servicio siempre abierto el GPS igual se apaga quieto.
+      sticky: true,
       title: 'Cilog: ruta en curso',
       text: 'La empresa ve tu ubicación mientras tengas el despacho abierto.',
       channelName: 'Ruta en curso',

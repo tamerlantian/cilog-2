@@ -842,6 +842,39 @@ describe('pantallas de despachos', () => {
       ).toBeTruthy();
     });
 
+    it('en Android 13+ pide una sola vez el permiso de notificaciones', async () => {
+      const sistema = Platform.OS;
+      Platform.OS = 'android';
+      const version = jest
+        .spyOn(Platform, 'Version', 'get')
+        .mockReturnValue(34);
+      almacen.remove('rastreo.notificacionesPedidas');
+      const revisar = jest
+        .spyOn(PermissionsAndroid, 'check')
+        .mockResolvedValue(false);
+      const pedir = jest
+        .spyOn(PermissionsAndroid, 'request')
+        .mockResolvedValue(PermissionsAndroid.RESULTS.DENIED);
+      try {
+        await abrirDespacho();
+        await waitFor(() => expect(asignacionRastreada()).toBe(DESPACHO));
+        await waitFor(() =>
+          expect(pedir).toHaveBeenCalledWith(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          ),
+        );
+
+        expect(pedir).toHaveBeenCalledTimes(1);
+        // Lo negó: queda anotado para no insistir al volver a la app.
+        expect(almacen.getString('rastreo.notificacionesPedidas')).toBe('1');
+      } finally {
+        revisar.mockRestore();
+        pedir.mockRestore();
+        version.mockRestore();
+        Platform.OS = sistema;
+      }
+    });
+
     it('sin permiso no arranca y la línea deja volver a pedirlo', async () => {
       rastreo.__proveedor.status = 2;
       await abrirDespacho();

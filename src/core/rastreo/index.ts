@@ -5,6 +5,7 @@ export {
   escucharEstadoUbicacion,
   leerEstadoUbicacion,
   marcaTelefono,
+  pedirPermisoNotificaciones,
   pedirPermisoUbicacion,
   type EstadoUbicacion,
   type PermisoUbicacion,
