@@ -5,7 +5,7 @@
  *
  * Una escena es un ambiente completo de color. Hay tres:
  * - `claro` y `oscuro`: la app según el tema del sistema.
- * - `marca`: superficie de marca (acceso, tarjeta destacada). Se aplica con
+ * - `marca`: superficie de marca (portada del login, tarjeta destacada). Se aplica con
  *   `<Escena nombre="marca">` y todos los componentes dentro toman sus colores.
  */
 export type Escena = {

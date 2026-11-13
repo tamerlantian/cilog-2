@@ -2,6 +2,7 @@ import {zodResolver} from '@hookform/resolvers/zod';
 import {type ComponentRef, useEffect, useRef} from 'react';
 import {Controller, useForm} from 'react-hook-form';
 import {type TextInput, View} from 'react-native';
+import type {Edge} from 'react-native-safe-area-context';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {versionApp} from '@/core/config';
@@ -11,15 +12,14 @@ import {
   Aviso,
   Boton,
   Input,
-  Marca,
   mostrarInfo,
   PROPS_CORREO,
   Texto,
   Mail,
 } from '@/ui';
 
-import {IlustracionRuta} from '../components/IlustracionRuta';
 import {PantallaAcceso} from '../components/PantallaAcceso';
+import {PortadaLogin, SOLAPE_PORTADA} from '../components/PortadaLogin';
 import {
   esquemaFormularioLogin,
   type FormularioLogin,
@@ -29,6 +29,9 @@ import {
   useIniciarSesion,
 } from '../hooks/useIniciarSesion';
 import {useNavegacionAuth} from '../hooks/useNavegacionAuth';
+
+/** La portada navy llega hasta arriba y respeta ella misma el safe area. */
+const BORDES_SIN_ARRIBA: readonly Edge[] = ['bottom', 'left', 'right'];
 
 export function LoginPantalla() {
   const claveRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -48,17 +51,15 @@ export function LoginPantalla() {
   const correoEscrito = () => getValues('email').trim();
 
   return (
-    <PantallaAcceso desplazable estiloContenido={styles.contenido}>
-      <View style={styles.portada}>
-        <IlustracionRuta />
-        <View style={styles.marca}>
-          <Marca />
-        </View>
-      </View>
+    <PantallaAcceso
+      bordes={BORDES_SIN_ARRIBA}
+      desplazable
+      estiloContenido={styles.contenido}>
+      <PortadaLogin />
 
       <View style={styles.formulario}>
-        <Texto style={styles.lema} tono="secundario">
-          Tus entregas del día, en orden.
+        <Texto negrita variante="subtitulo">
+          Iniciar sesión
         </Texto>
         <Controller
           control={control}
@@ -156,23 +157,17 @@ export function LoginPantalla() {
 
 const styles = StyleSheet.create(tema => ({
   contenido: {padding: 0, gap: 0},
-  portada: {height: IlustracionRuta.alto, justifyContent: 'flex-end'},
-  marca: {
-    position: 'absolute',
-    left: tema.espaciado.xl + 4,
-    bottom: 0,
-  },
+  // Hoja blanca montada sobre la portada, con las esquinas de arriba redondeadas.
   formulario: {
     flexGrow: 1,
+    marginTop: -SOLAPE_PORTADA,
+    borderTopLeftRadius: tema.radio.xl,
+    borderTopRightRadius: tema.radio.xl,
+    backgroundColor: tema.colores.fondo,
     gap: tema.espaciado.lg + 2,
     paddingHorizontal: tema.espaciado.xl + 4,
-    paddingTop: tema.espaciado.sm,
+    paddingTop: tema.espaciado.xxl,
     paddingBottom: tema.espaciado.xl,
-  },
-  lema: {
-    fontSize: tema.tipografia.tamano.campo,
-    lineHeight: 24,
-    marginBottom: tema.espaciado.sm + 2,
   },
   olvido: {alignItems: 'flex-end'},
   registro: {

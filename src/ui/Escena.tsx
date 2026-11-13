@@ -2,7 +2,7 @@ import type {ReactNode} from 'react';
 import {ScopedTheme} from 'react-native-unistyles';
 
 type Props = {
-  /** `marca`: superficie de marca de la paleta (acceso, tarjeta destacada). */
+  /** `marca`: superficie de marca de la paleta (portada del login, tarjeta destacada). */
   nombre: 'marca';
   children: ReactNode;
 };

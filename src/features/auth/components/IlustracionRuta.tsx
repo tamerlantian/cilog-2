@@ -3,15 +3,14 @@ import Svg, {Circle, Path} from 'react-native-svg';
 
 const ALTO = 248;
 const PARADAS = [
-  {x: 102, y: 150},
-  {x: 176, y: 110},
-  {x: 244, y: 84},
+  {x: 168, y: 118},
+  {x: 308, y: 186},
 ];
 
-/** Ruta punteada con paradas hasta el destino, arriba del login. Decorativa. */
+/** Ruta punteada con paradas en la portada del login; pasa por detrás del logo. Decorativa. */
 export function IlustracionRuta() {
   const {theme} = useUnistyles();
-  const {suelo, traza, nodo, acento} = theme.colores;
+  const {suelo, traza, nodo} = theme.colores;
   return (
     <Svg
       accessibilityElementsHidden
@@ -22,7 +21,7 @@ export function IlustracionRuta() {
       viewBox={`0 0 390 ${ALTO}`}
       width="100%">
       <Path
-        d="M-10 196 H84 a18 18 0 0 0 18 -18 V128 a18 18 0 0 1 18 -18 H226 a18 18 0 0 0 18 -18 V76 a18 18 0 0 1 18 -18 H318"
+        d="M-10 92 H150 a18 18 0 0 1 18 18 V130 a18 18 0 0 0 18 18 H290 a18 18 0 0 1 18 18 V200 a18 18 0 0 0 18 18 H400"
         stroke={traza}
         strokeDasharray="2 8"
         strokeLinecap="round"
@@ -39,8 +38,6 @@ export function IlustracionRuta() {
           strokeWidth={2}
         />
       ))}
-      <Circle cx={326} cy={58} fill={acento} fillOpacity={0.18} r={16} />
-      <Circle cx={326} cy={58} fill={acento} r={7} />
     </Svg>
   );
 }

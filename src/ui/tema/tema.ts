@@ -44,7 +44,7 @@ export type Tema = ReturnType<typeof crearTema>;
 
 export const temaClaro: Tema = crearTema(PALETA_ACTIVA.claro);
 export const temaOscuro: Tema = crearTema(PALETA_ACTIVA.oscuro);
-/** Superficie de marca (acceso, tarjeta destacada); igual en claro y oscuro. */
+/** Superficie de marca (portada del login, tarjeta destacada); igual en claro y oscuro. */
 export const temaMarca: Tema = crearTema(PALETA_ACTIVA.marca);
 
 export type ColorTema = keyof Tema['colores'];

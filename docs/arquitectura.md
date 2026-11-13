@@ -66,7 +66,7 @@ ui/tema/tema.ts    arma los temas desde PALETA_ACTIVA; espaciado, radios y tipog
 ```
 
 - Los componentes solo usan roles (`tema.colores.accion`), nunca valores. Cambiar de paleta es cambiar `PALETA_ACTIVA` en `paletas/index.ts`; una paleta nueva es un archivo más con la forma de `Paleta`, registrado en `paletas`.
-- Cada paleta tiene tres escenas: `claro` y `oscuro` (siguen al sistema) y `marca` (superficie de marca: acceso, tarjeta destacada). `<Escena nombre="marca">` de `@/ui` aplica la escena a todo lo que envuelve (`ScopedTheme` de unistyles), así que `Input`, `Boton` o `Texto` no necesitan variantes "sobre marca".
+- Cada paleta tiene tres escenas: `claro` y `oscuro` (siguen al sistema) y `marca` (superficie de marca: portada del login, tarjeta destacada). `<Escena nombre="marca">` de `@/ui` aplica la escena a todo lo que envuelve (`ScopedTheme` de unistyles), así que `Input`, `Boton` o `Texto` no necesitan variantes "sobre marca".
 - Roles principales: `suelo` es el fondo de pantalla y `fondo` el de tarjetas, diálogos y campos elevados; `campo`/`bordeCampo` los campos de texto; `primario` es el color de marca para texto, foco, selección y progreso; `accion`/`sobreAccion` el relleno del botón principal; `acento` es decorativo. `exito`, `advertencia`, `peligro` e `info` son texto sobre `suelo` y sobre su `*Suave`. El dinero por cobrar en la entrega va siempre en `advertencia` (componente `Cobro` en despachos, con ícono `Banknote`); lo ya cobrado, en `exito`.
 - `__tests__/ui/paletas.test.ts` recorre todas las paletas registradas y exige 4.5:1 en los pares de texto y 3:1 en el borde de los campos. Una paleta que no pasa no entra.
 - `papel` y `tinta` (la firma) son fijos en toda paleta (`FIRMA`).
@@ -93,7 +93,7 @@ Inter (lectura: 400, 500, 600), Space Grotesk 700 (títulos: variantes `marca`, 
 | Tema y primitivas de UI | 0 | Hecho, con pruebas. Paletas centralizadas (`ui/tema/paletas`, *Navy Cilog* activa), escenas con `Escena` y tipografía nueva (Inter, Space Grotesk, JetBrains Mono) |
 | Navegación por estado de sesión (`app/navegacion`) | 1 | Hecho, con pruebas |
 | Sesión: token en llavero, perfil y empresa en MMKV (`core/sesion`) | 1 | Hecho, con pruebas |
-| Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas. La empresa es opcional (solo ingreso y envíos). Rediseño *Ruta · Bosque y lima*: todo el acceso va en la escena de marca (`PantallaAcceso`); probado en el emulador |
+| Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas. La empresa es opcional (solo ingreso y envíos). Diseño *Banda navy*: el login lleva una portada navy en la escena de marca (`PortadaLogin`) y el formulario en una hoja blanca; el resto del acceso va sobre blanco (`PantallaAcceso`). Probado en el emulador |
 | Firebase (push y sesión única), Sentry | 1 | Pendiente |
 | Registro, recuperación de clave y reenvío de verificación | 1 | Hecho, con pruebas. Falta probar contra el Fluor desplegado |
 | SQLite, cola y motor de sincronización (`core/db`, `core/sync`) | 2 | Hecho, con pruebas. Sin enviadores aún: Fluor no publica entregar, novedad ni terminar |
