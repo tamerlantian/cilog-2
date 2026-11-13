@@ -1098,7 +1098,7 @@ describe('pantallas de despachos', () => {
 
       expect(await screen.findByText('María Peña')).toBeTruthy();
       expect(apiSimulada.vincularDespachoApi).toHaveBeenCalledWith({
-        tenantId: 18,
+        tenantId: 4, // TEMPORAL: operador 18 → tenant 4 (domain/operadores.ts)
         codigoDespacho: 272345,
         token: '76C7',
       });

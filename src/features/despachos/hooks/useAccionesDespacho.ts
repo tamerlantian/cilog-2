@@ -3,6 +3,7 @@ import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {mensajeUsuario, traducirError} from '@/core/api';
 
 import type {DatosFormularioVincular} from '../domain/formularios';
+import {tenantDeOperador} from '../domain/operadores';
 import {
   actualizarDespachos,
   descargarDespacho,
@@ -66,7 +67,7 @@ export const useVincularDespacho = () => {
   return useMutation({
     mutationFn: (datos: DatosFormularioVincular) =>
       vincularDespacho(conUsuario(usuarioId), {
-        tenantId: datos.operador,
+        tenantId: tenantDeOperador(datos.operador),
         codigoDespacho: datos.despacho,
         token: datos.token,
       }),
