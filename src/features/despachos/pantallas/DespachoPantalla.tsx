@@ -32,9 +32,12 @@ import {
 } from '@/ui';
 
 import {BarraAvance, Leyenda} from '../components/BarraAvance';
+import {AvisoUbicacion} from '../components/AvisoUbicacion';
 import {ChipEnvios} from '../components/ChipEnvios';
 import {FilaGuia} from '../components/FilaGuia';
+import {GuiaBateria} from '../components/GuiaBateria';
 import {LectorCodigo} from '../components/LectorCodigo';
+import {LineaUbicacion} from '../components/LineaUbicacion';
 import {SiguienteGuia} from '../components/SiguienteGuia';
 import {
   codigoDespacho,
@@ -69,7 +72,7 @@ import {
   useTerminarDespacho,
 } from '../hooks/useGestion';
 import {useLectorGuia} from '../hooks/useLectorGuia';
-import {useRastrearDespacho} from '../hooks/useRastreo';
+import {useUbicacionDespacho} from '../hooks/useRastreo';
 import {useSeleccion} from '../hooks/useSeleccion';
 import type {GuiaLocal} from '../db/repositorio';
 import type {RutasDespachos} from '../rutas';
@@ -91,7 +94,7 @@ export function DespachoPantalla({navigation, route}: Props) {
   const [confirmandoTerminar, setConfirmandoTerminar] = useState(false);
   const seleccion = useSeleccion();
   const salirSeleccion = seleccion.salir;
-  useRastrearDespacho(despacho);
+  const ubicacion = useUbicacionDespacho(despacho);
 
   // Al volver de una entrega, la lista muestra lo que falta.
   const {verPendientes} = route.params;
@@ -332,6 +335,15 @@ export function DespachoPantalla({navigation, route}: Props) {
           novedades={resumen.novedades}
           total={cuentas.todas}
         />
+        {ubicacion.indicador ? (
+          <LineaUbicacion
+            alResolver={() => {
+              ubicacion.resolver().catch(() => undefined);
+            }}
+            empresa={despacho.tenantNombre}
+            indicador={ubicacion.indicador}
+          />
+        ) : null}
       </View>
       {siguiente && !seleccion.activa ? (
         <SiguienteGuia
@@ -596,6 +608,19 @@ export function DespachoPantalla({navigation, route}: Props) {
           </View>
         </View>
       </Dialogo>
+      <AvisoUbicacion
+        alContinuar={ubicacion.aceptarAviso}
+        alSalir={volver}
+        empresa={despacho.tenantNombre}
+        visible={ubicacion.avisoVisible}
+      />
+      <GuiaBateria
+        alAbrirAjustes={ubicacion.bateria.abrirAjustes}
+        alCerrar={ubicacion.bateria.cerrar}
+        alTerminar={ubicacion.bateria.listo}
+        guia={ubicacion.bateria.guia}
+        visible={ubicacion.bateria.visible}
+      />
     </Pantalla>
   );
 }

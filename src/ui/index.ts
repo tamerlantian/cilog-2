@@ -8,6 +8,7 @@ export {Dialogo} from './Dialogo';
 export {Encabezado} from './Encabezado';
 export {Escena} from './Escena';
 export {EstadoVacio} from './EstadoVacio';
+export {Hoja} from './Hoja';
 export {Icono, type TipoIcono} from './Icono';
 export {IconoDestacado} from './IconoDestacado';
 export * from './iconos';

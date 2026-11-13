@@ -82,12 +82,31 @@ con un despacho real (permiso nativo, notificación y puntos en Fluor).
 
 ### Sprint 3: experiencia del conductor
 
-- Aviso previo propio antes de pedir el permiso (qué se recoge, para qué,
-  cuándo se detiene).
-- Guía para quitar la optimización de batería (Xiaomi, Huawei, Oppo, Samsung).
-- Indicador en el despacho: "Ubicación activa", "Sin permiso" o "GPS apagado",
-  con acción para corregirlo.
-- Sin permiso, el despacho funciona igual.
+**Estado (12 nov 2026)**: hecho, con pruebas. Diseño elegido en el canvas
+*Cilog — dirección visual*, fila "Ubicación en ruta": aviso de la opción A
+(hoja) con el indicador de la opción C (línea junto al avance). Falta verlo
+en un teléfono real.
+
+- **Compartir es obligatorio** con un despacho en curso: el aviso no tiene
+  "Ahora no" y no hay "Dejar de compartir". Atrás de Android sale del
+  despacho. Si el conductor niega el permiso de Android, el despacho funciona
+  igual y la línea lo muestra.
+- **Aviso** (`AvisoUbicacion`, sobre `ui/Hoja`): la primera vez por usuario
+  (`rastreo.aviso.<usuario>` en MMKV). "Continuar" pide el permiso; el rastreo
+  solo arranca con el permiso concedido, para que Android no repita su diálogo
+  cada vez que el conductor vuelve a la app.
+- **Línea** (`LineaUbicacion`), del problema más urgente al estado normal
+  (`indicadorUbicacion`): sin permiso → Permitir (o los ajustes si quedó
+  bloqueado), GPS apagado → Activar, ahorro de batería → Revisar, y si no,
+  "Ubicación en vivo para <empresa>". Se relee al volver a la app y cuando
+  cambia el permiso o el GPS.
+- **Guía de batería** (`GuiaBateria`): pasos por marca (`guiaBateria`) y
+  "Abrir ajustes" con los del fabricante del plugin. "Ya lo hice" deja de
+  insistir en ese teléfono (`rastreo.bateriaRevisada`). Los nombres de los
+  menús se verifican en teléfonos reales en el Sprint 4.
+- Pendiente menor: en pruebas queda un aviso de `act` intermitente (cerca de
+  1 de cada 10 corridas) por la re-medición diferida de `VirtualizedList`
+  cuando cambia la cabecera; no hace fallar nada.
 
 ### Sprint 4: Play y prueba en campo
 

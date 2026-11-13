@@ -18,6 +18,7 @@ import {clienteConsultas} from '@/core/api/clienteConsultas';
 import {ErrorApi} from '@/core/api';
 import {archivos, escribir, guias, leer, operaciones} from '@/core/db';
 import {asignacionRastreada} from '@/core/rastreo';
+import {almacen} from '@/core/storage';
 import {useSesion} from '@/core/sesion';
 import {encolar, obtenerMotor} from '@/core/sync';
 import * as apiAuth from '@/features/auth/api/auth';
@@ -26,6 +27,7 @@ import type {GuiaFluor} from '@/features/despachos/api/despachos';
 import * as apiEntrega from '@/features/despachos/api/entrega';
 import {claveGuia} from '@/features/despachos/domain/claves';
 import {funciones} from '@/features/despachos/domain/gestion';
+import {claveAvisoUbicacion} from '@/features/despachos/hooks/useRastreo';
 
 import {crearJwt, firmar, usuarioPrueba} from '../../helpers';
 
@@ -125,9 +127,28 @@ const conDespacho = async () => {
 const botonDespacho = () =>
   screen.findByRole('button', {name: /^(Continuar entregas|Abrir despacho)$/});
 
-const abrirDespacho = async () => {
-  await fireEvent.press(await conDespacho());
+/** Lo que dice la línea de ubicación del despacho, en cualquiera de sus estados. */
+const LINEA_UBICACION =
+  /^Ubicación en vivo|la empresa no te ve$|puede apagarla$/;
+
+/**
+ * Entra al despacho. Con el aviso ya aceptado espera a que la línea de
+ * ubicación lea el permiso y el GPS: si no, se actualiza fuera de act.
+ */
+const entrarAlDespacho = async () => {
+  await fireEvent.press(await botonDespacho());
   await screen.findByLabelText('Guía, documento o destinatario');
+  if (almacen.getString(claveAvisoUbicacion(usuarioPrueba.id))) {
+    await screen.findByText(LINEA_UBICACION);
+    // La línea cambia la cabecera de la lista y VirtualizedList re-mide en
+    // diferido (~50 ms): que eso también pase dentro de act.
+    await act(() => new Promise<void>(listo => setTimeout(listo, 80)));
+  }
+};
+
+const abrirDespacho = async () => {
+  await conDespacho();
+  await entrarAlDespacho();
 };
 
 /** Lo que haría el paso 3 al entregar: marca la guía y encola en la misma transacción. */
@@ -148,9 +169,14 @@ const entregarLocal = (codigo: number) =>
 
 /** El plugin de rastreo simulado (jest.setup.js). */
 const rastreo = BackgroundGeolocation as unknown as Record<
-  'setConfig' | 'start' | 'stop',
+  'setConfig' | 'start' | 'stop' | 'requestPermission',
   jest.Mock
-> & {__oyentes: {http: (evento: unknown) => void}};
+> & {
+  __oyentes: {http: (evento: unknown) => void};
+  /** Permiso (status) y GPS (enabled) que ve la app. */
+  __proveedor: {status: number; enabled: boolean};
+  deviceSettings: Record<'isIgnoringBatteryOptimizations' | 'show', jest.Mock>;
+};
 
 /** Encabezado con el que el plugin envía los puntos ahora. */
 const asignacionDelPlugin = () =>
@@ -191,6 +217,15 @@ describe('pantallas de despachos', () => {
     rastreo.setConfig.mockClear();
     rastreo.start.mockClear();
     rastreo.stop.mockClear();
+    rastreo.requestPermission.mockClear();
+    rastreo.deviceSettings.isIgnoringBatteryOptimizations.mockResolvedValue(
+      true,
+    );
+    rastreo.deviceSettings.show.mockClear();
+    Object.assign(rastreo.__proveedor, {status: 4, enabled: true});
+    // El aviso de ubicación ya se aceptó: las pruebas que lo revisan lo quitan.
+    almacen.set(claveAvisoUbicacion(usuarioPrueba.id), '1');
+    almacen.remove('rastreo.bateriaRevisada');
     useSesion.setState({estado: 'iniciando', avisoSesion: null});
   });
   afterEach(async () => {
@@ -740,7 +775,7 @@ describe('pantallas de despachos', () => {
         ]),
       );
       await iniciarSesion();
-      await fireEvent.press(await botonDespacho());
+      await entrarAlDespacho();
 
       await fireEvent.press(
         await screen.findByRole('button', {name: 'Terminar despacho'}),
@@ -770,12 +805,105 @@ describe('pantallas de despachos', () => {
   });
 
   describe('ubicación', () => {
+    it('la primera vez explica qué se comparte antes de pedir el permiso', async () => {
+      almacen.remove(claveAvisoUbicacion(usuarioPrueba.id));
+      await abrirDespacho();
+
+      expect(
+        await screen.findByText('Comparte tu ubicación durante la ruta'),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          'Transportes Sur verá en el mapa por dónde vas mientras este despacho esté en curso.',
+        ),
+      ).toBeTruthy();
+      // Obligatorio: no hay "Ahora no".
+      expect(screen.queryByText('Ahora no')).toBeNull();
+      expect(rastreo.requestPermission).not.toHaveBeenCalled();
+      expect(rastreo.start).not.toHaveBeenCalled();
+
+      await fireEvent.press(screen.getByRole('button', {name: 'Continuar'}));
+
+      await waitFor(() => expect(asignacionRastreada()).toBe(DESPACHO));
+      expect(rastreo.requestPermission).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByText('Comparte tu ubicación durante la ruta'),
+      ).toBeNull();
+    });
+
     it('abrir un despacho en curso empieza a compartir la ubicación con él', async () => {
       await abrirDespacho();
 
       await waitFor(() => expect(asignacionDelPlugin()).toBe(String(DESPACHO)));
       expect(asignacionRastreada()).toBe(DESPACHO);
       expect(rastreo.start).toHaveBeenCalledTimes(1);
+      expect(
+        await screen.findByText('Ubicación en vivo para Transportes Sur'),
+      ).toBeTruthy();
+    });
+
+    it('sin permiso no arranca y la línea deja volver a pedirlo', async () => {
+      rastreo.__proveedor.status = 2;
+      await abrirDespacho();
+
+      expect(
+        await screen.findByText('Sin permiso: la empresa no te ve'),
+      ).toBeTruthy();
+      expect(rastreo.start).not.toHaveBeenCalled();
+
+      // Esta vez lo concede.
+      rastreo.requestPermission.mockImplementationOnce(async () => {
+        rastreo.__proveedor.status = 4;
+        return 4;
+      });
+      await fireEvent.press(
+        screen.getByRole('button', {
+          name: 'Permitir: Sin permiso: la empresa no te ve',
+        }),
+      );
+
+      await waitFor(() => expect(asignacionRastreada()).toBe(DESPACHO));
+      expect(
+        await screen.findByText('Ubicación en vivo para Transportes Sur'),
+      ).toBeTruthy();
+    });
+
+    it('con el GPS apagado lo avisa en la línea', async () => {
+      rastreo.__proveedor.enabled = false;
+      await abrirDespacho();
+
+      expect(
+        await screen.findByText('GPS apagado: la empresa no te ve'),
+      ).toBeTruthy();
+    });
+
+    it('con ahorro de batería muestra la guía de la marca y deja de insistir', async () => {
+      rastreo.deviceSettings.isIgnoringBatteryOptimizations.mockResolvedValue(
+        false,
+      );
+      await abrirDespacho();
+
+      await fireEvent.press(
+        await screen.findByRole('button', {
+          name: 'Revisar: El ahorro de batería puede apagarla',
+        }),
+      );
+      expect(await screen.findByText('En tu Xiaomi')).toBeTruthy();
+      expect(
+        screen.getByText('Activa Inicio automático para Cilog.'),
+      ).toBeTruthy();
+
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Abrir ajustes'}),
+      );
+      await waitFor(() =>
+        expect(rastreo.deviceSettings.show).toHaveBeenCalled(),
+      );
+
+      await fireEvent.press(screen.getByRole('button', {name: 'Ya lo hice'}));
+      expect(
+        await screen.findByText('Ubicación en vivo para Transportes Sur'),
+      ).toBeTruthy();
     });
 
     it('cerrar sesión deja de compartir la ubicación', async () => {

@@ -43,6 +43,7 @@ jest.mock('react-native-keychain', () => {
 jest.mock('react-native-device-info', () => ({
   getVersion: () => '1.0.0',
   getBuildNumber: () => '1',
+  getBrand: () => 'Xiaomi',
 }));
 
 jest.mock('react-native-bootsplash', () => ({
@@ -161,12 +162,16 @@ jest.mock('react-native-background-geolocation', () => {
       return {remove: jest.fn()};
     });
   const estado = {enabled: false};
+  // Permiso "mientras se usa la app" (4) y GPS encendido, salvo que la prueba lo cambie.
+  const proveedor = {enabled: true, gps: true, network: true, status: 4};
   const BackgroundGeolocation = {
     __oyentes: oyentes,
     __estado: estado,
+    __proveedor: proveedor,
     onHttp: suscribir('http'),
     onAuthorization: suscribir('authorization'),
     onHeartbeat: suscribir('heartbeat'),
+    onProviderChange: suscribir('providerchange'),
     ready: jest.fn(async () => ({...estado})),
     setConfig: jest.fn(async () => ({...estado})),
     getState: jest.fn(async () => ({...estado})),
@@ -181,11 +186,27 @@ jest.mock('react-native-background-geolocation', () => {
     sync: jest.fn(async () => []),
     destroyLocations: jest.fn(async () => true),
     getCurrentPosition: jest.fn(async () => ({})),
+    getProviderState: jest.fn(async () => ({...proveedor})),
+    requestPermission: jest.fn(async () => proveedor.status),
+    deviceSettings: {
+      isIgnoringBatteryOptimizations: jest.fn(async () => true),
+      showPowerManager: jest.fn(async () => ({})),
+      showIgnoreBatteryOptimizations: jest.fn(async () => ({})),
+      show: jest.fn(async () => true),
+    },
   };
   return {
     __esModule: true,
     default: BackgroundGeolocation,
     AuthorizationStrategy: {Jwt: 'jwt', Sas: 'sas'},
+    AuthorizationStatus: {
+      NotDetermined: 0,
+      Restricted: 1,
+      Denied: 2,
+      Always: 3,
+      WhenInUse: 4,
+      DeniedAlways: 5,
+    },
     DesiredAccuracy: {High: -1},
     LogLevel: {Warning: 2, Verbose: 5},
   };
