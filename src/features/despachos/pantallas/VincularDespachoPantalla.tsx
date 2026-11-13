@@ -81,6 +81,7 @@ export function VincularDespachoPantalla() {
           alCerrar={lector.cerrar}
           alLeer={alLeerQr}
           ayuda="Apunta al QR del manifiesto"
+          forma="qr"
           titulo="Escanear manifiesto"
         />
       ) : null}

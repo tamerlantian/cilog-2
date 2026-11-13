@@ -311,7 +311,11 @@ describe('pantallas de despachos', () => {
       await fireEvent.press(
         screen.getByRole('button', {name: 'Escanear código'}),
       );
-      await fireEvent(await screen.findByTestId('camara'), 'readCode', {
+      const camara = await screen.findByTestId('camara');
+      // Las guías traen código de barras: se deja el visor rectangular.
+      expect(camara.props.barcodeFrameSize).toBeUndefined();
+      expect(camara.props.allowedBarcodeTypes).toBeUndefined();
+      await fireEvent(camara, 'readCode', {
         nativeEvent: {codeStringValue: codigo},
       });
     };
@@ -1101,7 +1105,11 @@ describe('pantallas de despachos', () => {
 
     const escanearQr = async (codigo: string) => {
       await fireEvent.press(screen.getByRole('button', {name: 'Escanear QR'}));
-      await fireEvent(await screen.findByTestId('camara'), 'readCode', {
+      const camara = await screen.findByTestId('camara');
+      // Visor cuadrado y solo QR: el rectangular obliga a alejar el manifiesto.
+      expect(camara.props.barcodeFrameSize).toEqual({width: 260, height: 260});
+      expect(camara.props.allowedBarcodeTypes).toEqual(['qr']);
+      await fireEvent(camara, 'readCode', {
         nativeEvent: {codeStringValue: codigo},
       });
     };
