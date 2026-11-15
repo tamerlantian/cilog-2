@@ -7,6 +7,8 @@
     "android": "react-native run-android",
     "android:prod": "ENVFILE=.env.prod react-native run-android",
     "ios": "react-native run-ios",
+    "ios:prod": "ENVFILE=.env.prod react-native run-ios",
+    "ios:pods": "cd ios && bundle exec pod install",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "jest",
@@ -14,6 +16,7 @@
     "validar": "npm run lint && npm run typecheck && npm test",
     "build:aab": "ENVFILE=.env.prod sh -c 'cd android && ./gradlew bundleRelease'",
     "build:apk": "ENVFILE=.env.prod sh -c 'cd android && ./gradlew assembleRelease'",
+    "build:ios": "cd ios && xcodebuild -workspace plutonio.xcworkspace -scheme plutonio -configuration Release -destination 'generic/platform=iOS' -archivePath build/Cilog.xcarchive archive",
     "prepare": "husky"
   },
   "dependencies": {
