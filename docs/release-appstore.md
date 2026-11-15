@@ -1,6 +1,6 @@
 # Publicar en el App Store
 
-La app se publica como **app nueva** con el nombre **Cilog2**, igual que en Play. En el iPhone se ve "Cilog" (`CFBundleDisplayName`). Solo iPhone: no se publica para iPad.
+La app se publica como **app nueva** con el nombre **Cilog2**, igual que en Play, desde la cuenta de Apple Developer de **Mario Andrés Estrada Zuluaga** (Semantica no tiene cuenta propia). En el iPhone se ve "Cilog" (`CFBundleDisplayName`). Solo iPhone: no se publica para iPad.
 
 | Qué | Valor | Dónde se controla |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ La app se publica como **app nueva** con el nombre **Cilog2**, igual que en Play
 1. Copiar `ios/Secretos.xcconfig.example` a `ios/Secretos.xcconfig` y poner la licencia v5 de Transistorsoft para `com.semantica.cilog2` (sin comillas). Llega al `Info.plist` como `TSLocationManagerLicense`. Sin ella el build de release compila, pero **el rastreo no funciona** (en la consola: `LICENSE VALIDATION FAILURE`). Debug funciona sin licencia.
 2. `.env.prod` como en Android. El build Release de iOS lo usa siempre: lo fija el `Podfile` en el target `react-native-config`, también al archivar desde Xcode.
 3. `npm run ios:pods` después de instalar o actualizar una librería nativa.
-4. En Xcode, *Signing & Capabilities*: el equipo de Semantica y firma automática.
+4. En Xcode, *Settings > Accounts*: iniciar sesión con el Apple ID de Mario. Luego, en el target *plutonio*, *Signing & Capabilities*: su equipo y firma automática. Para instalar en un iPhone, Xcode debe soportar la versión de iOS del teléfono (iOS 27 necesita Xcode 27).
 
 Los `.xcconfig` del target (`ios/plutonio/Debug.xcconfig` y `Release.xcconfig`) incluyen los de CocoaPods y, si existe, `ios/Secretos.xcconfig`. No volver a apuntar el target directo a los de `Pods/`.
 
