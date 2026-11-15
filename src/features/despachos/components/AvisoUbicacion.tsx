@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {View} from 'react-native';
+import {Platform, View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {
@@ -23,28 +23,49 @@ type Props = {
   alSalir: () => void;
 };
 
-const PUNTOS: {icono: TipoIcono; titulo: string; texto: string}[] = [
-  {
-    icono: Clock,
-    titulo: 'Solo en este despacho.',
-    texto: 'Se detiene al terminarlo, al desvincularlo o al cerrar sesión.',
-  },
-  {
-    icono: Smartphone,
-    titulo: 'Sigue con la pantalla apagada.',
-    texto: 'Verás un aviso fijo de Cilog mientras esté activa.',
-  },
-  {
-    icono: ShieldCheck,
-    titulo: 'Android te pedirá dos permisos:',
-    texto:
-      'ubicación y actividad física, que sirve para saber si vas en movimiento y ahorrar batería.',
-  },
-];
+type Punto = {icono: TipoIcono; titulo: string; texto: string};
+
+const SOLO_ESTE_DESPACHO: Punto = {
+  icono: Clock,
+  titulo: 'Solo en este despacho.',
+  texto: 'Se detiene al terminarlo, al desvincularlo o al cerrar sesión.',
+};
+
+const PUNTOS: Punto[] =
+  Platform.OS === 'ios'
+    ? [
+        SOLO_ESTE_DESPACHO,
+        {
+          icono: Smartphone,
+          titulo: 'Sigue aunque cierres Cilog.',
+          texto:
+            'Verás el indicador de ubicación del iPhone mientras esté activa.',
+        },
+        {
+          icono: ShieldCheck,
+          titulo: 'El iPhone te preguntará dos veces por la ubicación:',
+          texto:
+            'elige Permitir al usar la app y luego Cambiar a Permitir siempre. También pedirá Movimiento, que sirve para ahorrar batería.',
+        },
+      ]
+    : [
+        SOLO_ESTE_DESPACHO,
+        {
+          icono: Smartphone,
+          titulo: 'Sigue con la pantalla apagada.',
+          texto: 'Verás un aviso fijo de Cilog mientras esté activa.',
+        },
+        {
+          icono: ShieldCheck,
+          titulo: 'Android te pedirá dos permisos:',
+          texto:
+            'ubicación y actividad física, que sirve para saber si vas en movimiento y ahorrar batería.',
+        },
+      ];
 
 /**
- * Explica qué se comparte antes del diálogo de Android (lo exige Play). Es
- * obligatorio con un despacho en curso: no hay "Ahora no".
+ * Explica qué se comparte antes del diálogo del sistema (lo exigen Play y
+ * Apple). Es obligatorio con un despacho en curso: no hay "Ahora no".
  */
 export function AvisoUbicacion({
   visible,

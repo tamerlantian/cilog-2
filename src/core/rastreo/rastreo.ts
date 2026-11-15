@@ -10,6 +10,7 @@ import {
   configuracion,
   configuracionAutorizacion,
   configuracionHttp,
+  configuracionSegunPermiso,
   type CredencialesRastreo,
 } from './config';
 
@@ -157,6 +158,11 @@ export const prepararRastreo = (proveedor: ProveedorRastreo) => {
         persist: true,
       }).catch(() => undefined);
     });
+    // iOS: el conductor sube o baja el permiso en los ajustes con el
+    // despacho en curso.
+    BackgroundGeolocation.onProviderChange(({status}) => {
+      ajustarSegunPermiso(status).catch(() => undefined);
+    });
     await BackgroundGeolocation.ready(
       configuracion(asignacionRastreada(), proveedor.credenciales()),
     );
@@ -165,6 +171,12 @@ export const prepararRastreo = (proveedor: ProveedorRastreo) => {
     throw error;
   });
   return preparado;
+};
+
+/** iOS: ajusta las paradas al permiso que dio el conductor (config.ts). */
+const ajustarSegunPermiso = async (status: number) => {
+  const ajuste = configuracionSegunPermiso(status);
+  if (ajuste) await BackgroundGeolocation.setConfig(ajuste);
 };
 
 const esperarPreparado = () => {
@@ -190,6 +202,8 @@ export const iniciarRastreo = async (asignacion: number) => {
   }
   guardarAsignacion(asignacion);
   await BackgroundGeolocation.setConfig({http: configuracionHttp(asignacion)});
+  const {status} = await BackgroundGeolocation.getProviderState();
+  await ajustarSegunPermiso(status);
   const {enabled} = await BackgroundGeolocation.getState();
   if (!enabled) await BackgroundGeolocation.start();
   return true;

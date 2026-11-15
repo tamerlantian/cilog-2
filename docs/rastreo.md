@@ -44,6 +44,48 @@ reintenta los puntos sin señal.
   (`locationTemplate`), sin transformarlos en JS. Velocidad en m/s; `-1`
   significa desconocido.
 
+## iOS (15 nov 2026)
+
+iOS no tiene foreground service, así que la decisión de Android ("mientras se
+usa" con el servicio fijo) no sirve allí: al quedar quieto el plugin apaga el
+GPS, iOS suspende la app y solo una geocerca la despierta, y la geocerca exige
+permiso "Siempre". Por eso en iOS se pide **"Siempre"**, con respaldo:
+
+| Permiso en iOS | Qué hace el rastreo | Qué ve el conductor |
+|---|---|---|
+| Siempre | Detección de paradas normal: quieto apaga el GPS y lo vuelve a encender al salir de la geocerca (~200 m). Si cierra la app, iOS la relanza al moverse. | "Ubicación en vivo para <empresa>" |
+| Mientras se usa | Respaldo: GPS encendido todo el despacho (`pausesLocationUpdatesAutomatically: false`, `disableStopDetection: true`). No se corta en las paradas, gasta más batería y **se pierde si cierra la app** hasta que la abra. | "Si cierras Cilog, la empresa deja de verte" → Permitir siempre (Ajustes) |
+| Negado | No arranca, como en Android. | "Sin permiso" → Permitir |
+
+- `configuracionSegunPermiso` (`core/rastreo/config.ts`) decide el modo; se
+  aplica al iniciar y cada vez que cambia el permiso (`onProviderChange`).
+  En Android devuelve null: allí no cambia nada.
+- **Diálogos**: iOS muestra primero "Permitir al usar la app" y después
+  "Cambiar a Permitir siempre" (una sola vez por instalación). El aviso
+  previo lo explica. Después, solo se cambia en Ajustes > Cilog > Ubicación.
+- El diálogo propio del plugin (en inglés) va apagado
+  (`disableLocationAuthorizationAlert`); la línea del despacho cumple ese
+  papel.
+- **Movimiento**: iOS pide "Movimiento y actividad física"
+  (`NSMotionUsageDescription`). Si lo niega, el plugin usa solo la geocerca.
+- **Latido**: en iOS `onHeartbeat` solo corre con `preventSuspend`, que no se
+  usa por la batería. Quieto, el mapa muestra el último punto hasta que el
+  vehículo se mueva.
+- **Sin equivalente en iOS**: notificación fija, `POST_NOTIFICATIONS` y la
+  guía de batería por marca (`bateriaSinRestricciones` devuelve true).
+- iOS recuerda de vez en cuando al conductor que Cilog usa la ubicación en
+  segundo plano (con un mapa). Si lo baja a "mientras se usa", queda en el
+  respaldo y la línea lo muestra.
+- `Info.plist`: `UIBackgroundModes` (`location`, `fetch`, `processing`),
+  `BGTaskSchedulerPermittedIdentifiers` (`com.transistorsoft.fetch`; sin él
+  la app se cae al registrar la tarea) y los textos de ubicación y
+  movimiento. Licencia: `TSLocationManagerLicense` desde
+  `ios/Secretos.xcconfig` (ver `docs/release-appstore.md`).
+- **Sin verificar en un iPhone real**: todo lo anterior sale de la
+  documentación del plugin. La prueba en ruta debe cubrir "Siempre",
+  "Mientras se usa" y app cerrada desde el selector, con paradas de más de
+  5 min.
+
 ## Contrato
 
 `POST /tte/movil/despacho/ubicacion-lote`. Ver §12 en `docs/contratos-fluor.md`.

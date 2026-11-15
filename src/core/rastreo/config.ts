@@ -1,4 +1,5 @@
 import {
+  AuthorizationStatus,
   AuthorizationStrategy,
   DesiredAccuracy,
   LogLevel,
@@ -6,6 +7,7 @@ import {
   type Config,
   type HttpConfig,
 } from 'react-native-background-geolocation';
+import {Platform} from 'react-native';
 
 import {env} from '@/core/config';
 
@@ -64,6 +66,25 @@ export const configuracionAutorizacion = ({
             }),
       };
 
+/**
+ * iOS no tiene foreground service: con "mientras se usa", al quedar quieto el
+ * plugin apaga el GPS, iOS suspende la app y solo una geocerca (que exige
+ * "Siempre") la despierta. Sin "Siempre" se deja el GPS encendido todo el
+ * despacho y se pierde la detección de paradas (más batería, pero no deja de
+ * reportar). Con "Siempre" vuelve la detección. Android no cambia: allí lo
+ * resuelve el servicio fijo (`notification.sticky`). Ver docs/rastreo.md, iOS.
+ */
+export const configuracionSegunPermiso = (
+  status: number,
+): Pick<Config, 'geolocation' | 'activity'> | null => {
+  if (Platform.OS !== 'ios') return null;
+  const siempre = status === AuthorizationStatus.Always;
+  return {
+    geolocation: {pausesLocationUpdatesAutomatically: siempre},
+    activity: {disableStopDetection: !siempre},
+  };
+};
+
 export const configuracion = (
   asignacion: number | null,
   credenciales: CredencialesRastreo,
@@ -74,16 +95,23 @@ export const configuracion = (
     distanceFilter: 50,
     // 5 min quieto: apaga el GPS hasta que el vehículo se vuelva a mover.
     stopTimeout: 5,
-    // El servicio arranca con la app abierta: no hace falta "todo el tiempo"
-    // (docs/rastreo.md, Decisiones).
-    locationAuthorizationRequest: 'WhenInUse',
+    // Android: el servicio arranca con la app abierta y no hace falta "todo
+    // el tiempo". iOS: "Siempre" para seguir con la app cerrada y en las
+    // paradas; si lo niega, ver `configuracionSegunPermiso` (docs/rastreo.md).
+    locationAuthorizationRequest:
+      Platform.OS === 'ios' ? 'Always' : 'WhenInUse',
+    // Sin el diálogo del plugin (en inglés): la línea del despacho avisa y
+    // lleva a los ajustes.
+    disableLocationAuthorizationAlert: true,
   },
   app: {
     // Sigue reportando si el conductor cierra la app desde recientes.
     stopOnTerminate: false,
     // Sin permiso de segundo plano no podría arrancar tras reiniciar.
     startOnBoot: false,
-    // Quieto, un punto cada 5 min para que el mapa sepa que sigue ahí.
+    // Quieto, un punto cada 5 min para que el mapa sepa que sigue ahí. En iOS
+    // solo corre con `preventSuspend`, que no se usa por la batería: quieto,
+    // el mapa muestra el último punto hasta que el vehículo se mueva.
     heartbeatInterval: 300,
     notification: {
       // Sin esto el plugin cierra el servicio al quedar quieto y, con permiso

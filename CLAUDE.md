@@ -13,7 +13,7 @@ npm run build:aab   # AAB de release con .env.prod
 ## Reglas que no se negocian
 
 - No cambiar `applicationId` (`com.semantica.cilog2`) una vez publicado, ni la clave de subida. `versionCode` siempre mayor que el último subido a Play. No tocar la app anterior (`com.plutonio`). Ver `docs/release-play.md`.
-- Secretos fuera del repo: `.env*`, `google-services.json` y las `MYAPP_UPLOAD_*` de `~/.gradle/gradle.properties`. Nunca agregarlos a `android/gradle.properties`.
+- Secretos fuera del repo: `.env*`, `google-services.json`, las `MYAPP_UPLOAD_*` y `TRANSISTORSOFT_LICENSE` de `~/.gradle/gradle.properties`, e `ios/Secretos.xcconfig`. Nunca agregarlos a `android/gradle.properties`. iOS: ver `docs/release-appstore.md`.
 - Capas: `ui` no importa `core`/`features`; `core` no importa `features`/`app`; `features` no importan `app` ni otras features. Módulos de `core` y `ui` se importan por su `index.ts` (`@/core/api`), y los relativos no suben más de un nivel. ESLint lo hace cumplir. Detalle en `docs/arquitectura.md`.
 - Las pantallas no llaman a axios ni SQLite; usan hooks de su feature. Toda escritura offline pasa por la cola de operaciones pendientes con `id_operacion` UUID.
 - Respuestas de Fluor siempre validadas con zod. Errores con `mensajeUsuario(error)` de `@/core/api`.

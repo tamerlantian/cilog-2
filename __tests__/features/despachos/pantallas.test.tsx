@@ -129,7 +129,7 @@ const botonDespacho = () =>
 
 /** Lo que dice la línea de ubicación del despacho, en cualquiera de sus estados. */
 const LINEA_UBICACION =
-  /^Ubicación en vivo|la empresa no te ve$|puede apagarla$/;
+  /^Ubicación en vivo|la empresa no te ve$|deja de verte$|puede apagarla$/;
 
 /**
  * Entra al despacho. Con el aviso ya aceptado espera a que la línea de
@@ -222,7 +222,8 @@ describe('pantallas de despachos', () => {
       true,
     );
     rastreo.deviceSettings.show.mockClear();
-    Object.assign(rastreo.__proveedor, {status: 4, enabled: true});
+    // "Siempre": las pruebas corren como iOS, donde "mientras se usa" (4) es limitado.
+    Object.assign(rastreo.__proveedor, {status: 3, enabled: true});
     // El aviso de ubicación ya se aceptó: las pruebas que lo revisan lo quitan.
     almacen.set(claveAvisoUbicacion(usuarioPrueba.id), '1');
     almacen.remove('rastreo.bateriaRevisada');
@@ -890,8 +891,8 @@ describe('pantallas de despachos', () => {
 
       // Esta vez lo concede.
       rastreo.requestPermission.mockImplementationOnce(async () => {
-        rastreo.__proveedor.status = 4;
-        return 4;
+        rastreo.__proveedor.status = 3;
+        return 3;
       });
       await fireEvent.press(
         screen.getByRole('button', {
@@ -924,6 +925,50 @@ describe('pantallas de despachos', () => {
       abrirAjustes.mockRestore();
     });
 
+    it('iPhone con "mientras se usa": avisa que se pierde al cerrar y lleva a los ajustes', async () => {
+      const abrirAjustes = jest
+        .spyOn(Linking, 'openSettings')
+        .mockResolvedValue(undefined);
+      rastreo.__proveedor.status = 4;
+      try {
+        await abrirDespacho();
+
+        // Comparte igual: el respaldo deja el GPS encendido todo el despacho.
+        await waitFor(() => expect(asignacionRastreada()).toBe(DESPACHO));
+        expect(
+          await screen.findByText('Si cierras Cilog, la empresa deja de verte'),
+        ).toBeTruthy();
+        expect(rastreo.setConfig).toHaveBeenCalledWith({
+          geolocation: {pausesLocationUpdatesAutomatically: false},
+          activity: {disableStopDetection: true},
+        });
+
+        await fireEvent.press(
+          screen.getByRole('button', {
+            name: 'Permitir siempre: Si cierras Cilog, la empresa deja de verte',
+          }),
+        );
+        await waitFor(() => expect(abrirAjustes).toHaveBeenCalledTimes(1));
+      } finally {
+        abrirAjustes.mockRestore();
+      }
+    });
+
+    it('en Android "mientras se usa" es suficiente: no avisa nada', async () => {
+      const sistema = Platform.OS;
+      Platform.OS = 'android';
+      rastreo.__proveedor.status = 4;
+      try {
+        await abrirDespacho();
+
+        expect(
+          await screen.findByText('Ubicación en vivo para Transportes Sur'),
+        ).toBeTruthy();
+      } finally {
+        Platform.OS = sistema;
+      }
+    });
+
     it('con el GPS apagado lo avisa en la línea', async () => {
       rastreo.__proveedor.enabled = false;
       await abrirDespacho();
@@ -934,32 +979,39 @@ describe('pantallas de despachos', () => {
     });
 
     it('con ahorro de batería muestra la guía de la marca y deja de insistir', async () => {
-      rastreo.deviceSettings.isIgnoringBatteryOptimizations.mockResolvedValue(
-        false,
-      );
-      await abrirDespacho();
+      // Solo Android: iOS no tiene ahorro de batería por app.
+      const sistema = Platform.OS;
+      Platform.OS = 'android';
+      try {
+        rastreo.deviceSettings.isIgnoringBatteryOptimizations.mockResolvedValue(
+          false,
+        );
+        await abrirDespacho();
 
-      await fireEvent.press(
-        await screen.findByRole('button', {
-          name: 'Revisar: El ahorro de batería puede apagarla',
-        }),
-      );
-      expect(await screen.findByText('En tu Xiaomi')).toBeTruthy();
-      expect(
-        screen.getByText('Activa Inicio automático para Cilog.'),
-      ).toBeTruthy();
+        await fireEvent.press(
+          await screen.findByRole('button', {
+            name: 'Revisar: El ahorro de batería puede apagarla',
+          }),
+        );
+        expect(await screen.findByText('En tu Xiaomi')).toBeTruthy();
+        expect(
+          screen.getByText('Activa Inicio automático para Cilog.'),
+        ).toBeTruthy();
 
-      await fireEvent.press(
-        screen.getByRole('button', {name: 'Abrir ajustes'}),
-      );
-      await waitFor(() =>
-        expect(rastreo.deviceSettings.show).toHaveBeenCalled(),
-      );
+        await fireEvent.press(
+          screen.getByRole('button', {name: 'Abrir ajustes'}),
+        );
+        await waitFor(() =>
+          expect(rastreo.deviceSettings.show).toHaveBeenCalled(),
+        );
 
-      await fireEvent.press(screen.getByRole('button', {name: 'Ya lo hice'}));
-      expect(
-        await screen.findByText('Ubicación en vivo para Transportes Sur'),
-      ).toBeTruthy();
+        await fireEvent.press(screen.getByRole('button', {name: 'Ya lo hice'}));
+        expect(
+          await screen.findByText('Ubicación en vivo para Transportes Sur'),
+        ).toBeTruthy();
+      } finally {
+        Platform.OS = sistema;
+      }
     });
 
     it('cerrar sesión deja de compartir la ubicación', async () => {
