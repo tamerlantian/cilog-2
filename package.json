@@ -16,7 +16,8 @@
     "validar": "npm run lint && npm run typecheck && npm test",
     "build:aab": "ENVFILE=.env.prod sh -c 'cd android && ./gradlew bundleRelease'",
     "build:apk": "ENVFILE=.env.prod sh -c 'cd android && ./gradlew assembleRelease'",
-    "build:ios": "cd ios && xcodebuild -workspace plutonio.xcworkspace -scheme plutonio -configuration Release -destination 'generic/platform=iOS' -archivePath build/Cilog.xcarchive archive",
+    "build:ios": "cd ios && xcodebuild -workspace plutonio.xcworkspace -scheme plutonio -configuration Release -destination 'generic/platform=iOS' -archivePath build/Cilog.xcarchive -allowProvisioningUpdates archive",
+    "subir:ios": "npm run build:ios && cd ios && xcodebuild -exportArchive -archivePath build/Cilog.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/subida -allowProvisioningUpdates",
     "prepare": "husky"
   },
   "dependencies": {

@@ -33,7 +33,13 @@ npm run validar
 npm run build:ios        # ios/build/Cilog.xcarchive
 ```
 
-Luego se sube con Xcode (*Window > Organizer > Distribute App > App Store Connect*). También se puede archivar directo desde Xcode: *Product > Archive* con el esquema *plutonio*.
+O todo de una vez, archivar y subir a App Store Connect (queda en TestFlight tras 10–30 min de procesamiento):
+
+```bash
+npm run subir:ios        # usa ios/ExportOptions.plist y la cuenta de Xcode
+```
+
+También se puede subir con Xcode (*Window > Organizer > Distribute App > App Store Connect*). También se puede archivar directo desde Xcode: *Product > Archive* con el esquema *plutonio*.
 
 ## Crear la ficha (una sola vez)
 
