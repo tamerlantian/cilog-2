@@ -96,6 +96,13 @@ export function DespachoPantalla({navigation, route}: Props) {
   const salirSeleccion = seleccion.salir;
   const ubicacion = useUbicacionDespacho(despacho);
 
+  // iOS no tiene botón atrás: en modo selección, deslizar para volver no
+  // saca del despacho (como el atrás de Android en useSeleccion).
+  const enSeleccion = seleccion.activa;
+  useEffect(() => {
+    navigation.setOptions({gestureEnabled: !enSeleccion});
+  }, [navigation, enSeleccion]);
+
   // Al volver de una entrega, la lista muestra lo que falta.
   const {verPendientes} = route.params;
   useEffect(() => {

@@ -10,7 +10,13 @@ La app se publica como **app nueva** con el nombre **Cilog2**, igual que en Play
 | Dispositivos | Solo iPhone (`TARGETED_DEVICE_FAMILY = 1`). Si se publica con iPad ya no se puede quitar | Xcode, target *plutonio* |
 | Licencia del rastreo | `TRANSISTORSOFT_LICENSE` | `ios/Secretos.xcconfig` (fuera del repo) |
 
-## Preparar la máquina (una sola vez)
+## Diferencias de comportamiento con Android
+
+- **Rastreo**: pide "Siempre", con respaldo si el conductor solo da "mientras se usa". Ver `docs/rastreo.md`, iOS.
+- **Atrás**: iOS no tiene botón atrás. En la entrega, pasado el primer paso, deslizar hacia abajo no cierra el asistente (se vuelve con *Atrás* o se cierra con la X). En modo selección, deslizar desde el borde no sale del despacho. Equivale al atrás de Android (`BackHandler`).
+- **Cámara**: iOS pregunta una sola vez. El lector de códigos revisa el permiso antes de abrirse (`pedirPermisoCamara`) y, si fue negado, ofrece Ajustes; sin esto camera-kit mostraba la vista en negro sin avisar.
+- **Sesión al reinstalar**: el llavero de iOS sobrevive a desinstalar la app, pero `restaurar` borra las credenciales si falta el perfil de MMKV (que sí se borra), así que siempre pide iniciar sesión.
+
 
 1. Copiar `ios/Secretos.xcconfig.example` a `ios/Secretos.xcconfig` y poner la licencia v5 de Transistorsoft para `com.semantica.cilog2` (sin comillas). Llega al `Info.plist` como `TSLocationManagerLicense`. Sin ella el build de release compila, pero **el rastreo no funciona** (en la consola: `LICENSE VALIDATION FAILURE`). Debug funciona sin licencia.
 2. `.env.prod` como en Android. El build Release de iOS lo usa siempre: lo fija el `Podfile` en el target `react-native-config`, también al archivar desde Xcode.
