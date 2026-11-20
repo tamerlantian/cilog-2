@@ -23,6 +23,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- No todos los teléfonos la tienen, y sin ella la app sigue sirviendo (búsqueda manual). -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- ACCESS_WIFI_STATE (netinfo y el rastreo) hace que Play exija wifi. La app
+         funciona con datos móviles: sin esto Play restringe los teléfonos sin wifi. -->
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
 
     <application
       android:name=".MainApplication"

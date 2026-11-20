@@ -85,7 +85,7 @@ android {
         applicationId "com.semantica.cilog2"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
+        versionCode 6
         versionName "1.2.0"
         // Licencia del rastreo: fuera del repo, como la firma (docs/release-play.md).
         manifestPlaceholders["transistorsoftLicense"] =
