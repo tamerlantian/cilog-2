@@ -8,6 +8,7 @@
     "android:prod": "ENVFILE=.env.prod react-native run-android",
     "ios": "react-native run-ios",
     "ios:prod": "ENVFILE=.env.prod react-native run-ios",
+    "ios:iphone": "sh scripts/ios-iphone.sh",
     "ios:pods": "cd ios && bundle exec pod install",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
