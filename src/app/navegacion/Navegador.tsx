@@ -4,8 +4,10 @@ import {
   type Theme,
 } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {useEffect, useMemo} from 'react';
+import {type ComponentProps, useEffect, useMemo} from 'react';
+import {Platform} from 'react-native';
 import BootSplash from 'react-native-bootsplash';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {useUnistyles} from 'react-native-unistyles';
 
 import {useSesion} from '@/core/sesion';
@@ -29,6 +31,27 @@ import {useDatosLocales} from '../providers/useDatosLocales';
 
 import {Pestanas} from './Pestanas';
 import type {ParametrosRutas} from './rutas';
+
+/**
+ * iOS: pantalla completa, sin la hoja que se cierra deslizando hacia abajo.
+ * Ese gesto de UIKit se adueña de cualquier arrastre vertical (aunque
+ * `gestureEnabled` sea false) y cortaba el trazo de la firma.
+ */
+const PRESENTACION_ENTREGA =
+  Platform.OS === 'ios' ? 'fullScreenModal' : 'modal';
+
+/**
+ * Al presentar a pantalla completa, iOS saca del window la pantalla de abajo
+ * y con ella el SafeAreaProvider de la raíz, que pasa a medir bordes en 0.
+ * Uno propio mide los bordes dentro de la pantalla presentada.
+ */
+function EntregarConBordes(props: ComponentProps<typeof EntregarPantalla>) {
+  return (
+    <SafeAreaProvider>
+      <EntregarPantalla {...props} />
+    </SafeAreaProvider>
+  );
+}
 
 const Stack = createNativeStackNavigator<ParametrosRutas>();
 
@@ -107,9 +130,9 @@ export function Navegador() {
             <Stack.Screen component={DespachoPantalla} name="Despacho" />
             <Stack.Screen component={GuiaPantalla} name="Guia" />
             <Stack.Screen
-              component={EntregarPantalla}
+              component={EntregarConBordes}
               name="Entregar"
-              options={{presentation: 'modal'}}
+              options={{presentation: PRESENTACION_ENTREGA}}
             />
             <Stack.Screen
               component={NovedadPantalla}

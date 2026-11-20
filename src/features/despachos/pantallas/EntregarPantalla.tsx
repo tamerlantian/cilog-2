@@ -134,11 +134,6 @@ export function EntregarPantalla({navigation, route}: Props) {
     );
     return () => suscripcion.remove();
   }, [paso]);
-  // iOS: pasado el primer paso, deslizar hacia abajo no cierra la entrega a
-  // medias; se vuelve con "atrás" o se cierra con la X, como en Android.
-  useEffect(() => {
-    navigation.setOptions({gestureEnabled: paso === FOTOS});
-  }, [navigation, paso]);
 
   const cerrar = () => navigation.goBack();
 

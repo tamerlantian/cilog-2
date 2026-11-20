@@ -13,7 +13,7 @@ La app se publica como **app nueva** con el nombre **Cilog2**, igual que en Play
 ## Diferencias de comportamiento con Android
 
 - **Rastreo**: pide "Siempre", con respaldo si el conductor solo da "mientras se usa". Ver `docs/rastreo.md`, iOS.
-- **Atrás**: iOS no tiene botón atrás. En la entrega, pasado el primer paso, deslizar hacia abajo no cierra el asistente (se vuelve con *Atrás* o se cierra con la X). En modo selección, deslizar desde el borde no sale del despacho. Equivale al atrás de Android (`BackHandler`).
+- **Atrás**: iOS no tiene botón atrás. La entrega se abre a pantalla completa (`fullScreenModal`), sin deslizar hacia abajo para cerrar: el gesto de la hoja de iOS se adueñaba de los trazos verticales y cortaba la firma. Se vuelve con *Atrás* o se cierra con la X. En modo selección, deslizar desde el borde no sale del despacho. Equivale al atrás de Android (`BackHandler`).
 - **Cámara**: iOS pregunta una sola vez. El lector de códigos revisa el permiso antes de abrirse (`pedirPermisoCamara`) y, si fue negado, ofrece Ajustes; sin esto camera-kit mostraba la vista en negro sin avisar.
 - **Sesión al reinstalar**: el llavero de iOS sobrevive a desinstalar la app, pero `restaurar` borra las credenciales si falta el perfil de MMKV (que sí se borra), así que siempre pide iniciar sesión.
 

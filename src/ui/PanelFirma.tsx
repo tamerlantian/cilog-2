@@ -43,6 +43,14 @@ export function PanelFirma({ref, alCambiar, leyenda = 'Firma aquí'}: Props) {
   const enCurso = useRef('');
   const gestos = useMemo(() => {
     const punto = (x: number, y: number) => `${x.toFixed(1)} ${y.toFixed(1)}`;
+    const terminarTrazo = () => {
+      const trazo = enCurso.current;
+      enCurso.current = '';
+      setActual('');
+      if (!trazo) return;
+      setTrazos(previos => [...previos, trazo]);
+      avisar.current?.(true);
+    };
     return PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
@@ -54,14 +62,12 @@ export function PanelFirma({ref, alCambiar, leyenda = 'Firma aquí'}: Props) {
         enCurso.current += ` L${punto(nativeEvent.locationX, nativeEvent.locationY)}`;
         setActual(enCurso.current);
       },
-      onPanResponderRelease: () => {
-        const trazo = enCurso.current;
-        enCurso.current = '';
-        setActual('');
-        if (!trazo) return;
-        setTrazos(previos => [...previos, trazo]);
-        avisar.current?.(true);
-      },
+      // Nadie más se queda con el dedo mientras se firma.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderRelease: () => terminarTrazo(),
+      // Si el sistema corta el toque igual, lo dibujado hasta ahí se conserva.
+      onPanResponderTerminate: () => terminarTrazo(),
     });
   }, []);
 
