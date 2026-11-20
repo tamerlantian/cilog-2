@@ -1,8 +1,9 @@
 import type {ReactNode} from 'react';
-import {Modal, View} from 'react-native';
+import {View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {StyleSheet} from 'react-native-unistyles';
 
+import {HojaAnimada} from './HojaAnimada';
 import {Icono, type TipoIcono} from './Icono';
 import {Texto} from './Texto';
 
@@ -31,48 +32,29 @@ export function Hoja({
 }: Props) {
   const {bottom} = useSafeAreaInsets();
   return (
-    <Modal
-      animationType="slide"
-      navigationBarTranslucent
-      statusBarTranslucent
-      transparent
-      visible={visible}
-      onRequestClose={alCerrar}>
-      <View style={styles.raiz}>
-        <View style={styles.velo} />
-        <View
-          accessibilityViewIsModal
-          style={[styles.hoja, {paddingBottom: bottom + 20}]}>
-          <View style={styles.asa} />
-          <View style={styles.encabezado}>
-            <View style={styles.icono}>
-              <Icono color="info" icono={icono} tamano={26} />
-            </View>
-            <Texto
-              accessibilityRole="header"
-              style={styles.titulo}
-              variante="titulo">
-              {titulo}
-            </Texto>
-          </View>
-          {children}
-          <View style={styles.acciones}>{acciones}</View>
+    <HojaAnimada
+      alCerrar={alCerrar}
+      estilo={[styles.hoja, {paddingBottom: bottom + 20}]}
+      visible={visible}>
+      <View style={styles.asa} />
+      <View style={styles.encabezado}>
+        <View style={styles.icono}>
+          <Icono color="info" icono={icono} tamano={26} />
         </View>
+        <Texto
+          accessibilityRole="header"
+          style={styles.titulo}
+          variante="titulo">
+          {titulo}
+        </Texto>
       </View>
-    </Modal>
+      {children}
+      <View style={styles.acciones}>{acciones}</View>
+    </HojaAnimada>
   );
 }
 
 const styles = StyleSheet.create(tema => ({
-  raiz: {flex: 1, justifyContent: 'flex-end'},
-  velo: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: tema.colores.velo,
-  },
   hoja: {
     gap: tema.espaciado.lg + 2,
     paddingTop: tema.espaciado.sm + 2,

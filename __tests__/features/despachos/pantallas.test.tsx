@@ -927,9 +927,12 @@ describe('pantallas de despachos', () => {
 
       await waitFor(() => expect(asignacionRastreada()).toBe(DESPACHO));
       expect(rastreo.requestPermission).toHaveBeenCalledTimes(1);
-      expect(
-        screen.queryByText('Comparte tu ubicación durante la ruta'),
-      ).toBeNull();
+      // La hoja se desmonta al terminar de bajar.
+      await waitFor(() =>
+        expect(
+          screen.queryByText('Comparte tu ubicación durante la ruta'),
+        ).toBeNull(),
+      );
     });
 
     it('abrir un despacho en curso empieza a compartir la ubicación con él', async () => {
