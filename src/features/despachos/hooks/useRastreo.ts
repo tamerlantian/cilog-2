@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
-import {AppState, Linking} from 'react-native';
+import {AppState, Linking, Platform} from 'react-native';
 
 import {
   abrirAjustesBateria,
@@ -132,9 +132,16 @@ export const useUbicacionDespacho = (
       if (permiso !== 'concedido') await Linking.openSettings();
       await actualizar();
     } else if (indicador === 'gpsApagado') {
-      await Linking.sendIntent(
-        'android.settings.LOCATION_SOURCE_SETTINGS',
+      // iOS no deja abrir Localización directamente: van los ajustes de Cilog.
+      await (
+        Platform.OS === 'android'
+          ? Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS')
+          : Promise.reject(new Error('iOS'))
       ).catch(() => Linking.openSettings());
+    } else if (indicador === 'limitada') {
+      // iOS muestra el diálogo de "siempre" una sola vez: después, solo en
+      // Ajustes > Cilog > Ubicación.
+      await Linking.openSettings();
     } else if (indicador === 'bateria') {
       setGuiaVisible(true);
     }

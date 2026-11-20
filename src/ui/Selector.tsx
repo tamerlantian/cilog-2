@@ -1,15 +1,10 @@
 import {useMemo, useState} from 'react';
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Pressable,
-  View,
-} from 'react-native';
-import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
+import {FlatList, Pressable, View} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {StyleSheet} from 'react-native-unistyles';
 
 import {Buscador} from './Buscador';
+import {HojaAnimada} from './HojaAnimada';
 import {Check, ChevronRight, CircleAlert} from './iconos';
 import {Icono} from './Icono';
 import {Texto} from './Texto';
@@ -59,6 +54,7 @@ export function Selector({
 }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const {bottom} = useSafeAreaInsets();
   const elegida = opciones.find(opcion => opcion.valor === valor);
   styles.useVariants({conError: Boolean(error), vacio: !elegida});
 
@@ -116,84 +112,71 @@ export function Selector({
         </View>
       ) : null}
 
-      <Modal
-        animationType="slide"
-        statusBarTranslucent
-        transparent
-        visible={abierto}
-        onRequestClose={cerrar}>
-        <SafeAreaProvider>
-          <KeyboardAvoidingView behavior="padding" style={styles.raizHoja}>
-            <Pressable
-              accessibilityLabel="Cerrar"
-              accessibilityRole="button"
-              style={styles.velo}
-              onPress={cerrar}
+      <HojaAnimada
+        alCerrar={cerrar}
+        alTocarVelo={cerrar}
+        estilo={[styles.hoja, {paddingBottom: bottom}]}
+        visible={abierto}>
+        <View style={styles.agarradera} />
+        <View style={styles.cabeceraHoja}>
+          <Texto
+            accessibilityRole="header"
+            style={styles.pregunta}
+            variante="titulo">
+            {pregunta}
+          </Texto>
+          {buscable ? (
+            <Buscador
+              alCambiar={setBusqueda}
+              etiqueta={`Buscar entre ${opciones.length} opciones`}
+              valor={busqueda}
             />
-            <SafeAreaView edges={['bottom']} style={styles.hoja}>
-              <View style={styles.agarradera} />
-              <View style={styles.cabeceraHoja}>
+          ) : null}
+        </View>
+        <FlatList
+          contentContainerStyle={styles.lista}
+          data={filas}
+          keyboardShouldPersistTaps="handled"
+          keyExtractor={fila => fila.clave}
+          renderItem={({item}) => {
+            if (!item.opcion) {
+              return (
                 <Texto
-                  accessibilityRole="header"
-                  style={styles.pregunta}
-                  variante="titulo">
-                  {pregunta}
+                  mono
+                  style={styles.seccion}
+                  tono="secundario"
+                  variante="pie">
+                  {item.seccion?.toUpperCase()}
                 </Texto>
-                {buscable ? (
-                  <Buscador
-                    alCambiar={setBusqueda}
-                    etiqueta={`Buscar entre ${opciones.length} opciones`}
-                    valor={busqueda}
-                  />
-                ) : null}
-              </View>
-              <FlatList
-                contentContainerStyle={styles.lista}
-                data={filas}
-                keyboardShouldPersistTaps="handled"
-                keyExtractor={fila => fila.clave}
-                renderItem={({item}) => {
-                  if (!item.opcion) {
-                    return (
-                      <Texto
-                        mono
-                        style={styles.seccion}
-                        tono="secundario"
-                        variante="pie">
-                        {item.seccion?.toUpperCase()}
-                      </Texto>
-                    );
-                  }
-                  const opcion = item.opcion;
-                  const actual = opcion.valor === valor;
-                  return (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{selected: actual}}
-                      style={({pressed}) => [
-                        styles.opcion,
-                        actual && styles.actual,
-                        pressed && styles.presionada,
-                      ]}
-                      onPress={() => {
-                        alCambiar(opcion.valor);
-                        cerrar();
-                      }}>
-                      <Texto
-                        negrita={actual}
-                        style={styles.textoOpcion}
-                        tono={actual ? 'primario' : 'normal'}>
-                        {opcion.titulo}
-                      </Texto>
-                      {actual ? <Icono color="primario" icono={Check} /> : null}
-                    </Pressable>
-                  );
-                }}
-              />
-            </SafeAreaView>
-          </KeyboardAvoidingView>
-        </SafeAreaProvider>
-      </Modal>
+              );
+            }
+            const opcion = item.opcion;
+            const actual = opcion.valor === valor;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{selected: actual}}
+                style={({pressed}) => [
+                  styles.opcion,
+                  actual && styles.actual,
+                  pressed && styles.presionada,
+                ]}
+                onPress={() => {
+                  alCambiar(opcion.valor);
+                  cerrar();
+                }}>
+                <Texto
+                  negrita={actual}
+                  style={styles.textoOpcion}
+                  tono={actual ? 'primario' : 'normal'}>
+                  {opcion.titulo}
+                </Texto>
+                {actual ? <Icono color="primario" icono={Check} /> : null}
+              </Pressable>
+            );
+          }}
+        />
+      </HojaAnimada>
     </View>
   );
 }
@@ -233,15 +216,6 @@ const styles = StyleSheet.create(tema => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tema.espaciado.xs + 2,
-  },
-  raizHoja: {flex: 1, justifyContent: 'flex-end'},
-  velo: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: tema.colores.velo,
   },
   hoja: {
     maxHeight: '82%',

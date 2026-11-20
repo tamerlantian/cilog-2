@@ -10,6 +10,8 @@ type Props = {
   fotos: readonly string[];
   alCambiar: (fotos: string[]) => void;
   exigida: boolean;
+  titulo?: string;
+  descripcion?: string;
 };
 
 const filasDeDos = <T,>(elementos: T[]) =>
@@ -17,8 +19,14 @@ const filasDeDos = <T,>(elementos: T[]) =>
     elementos.slice(i * 2, i * 2 + 2),
   );
 
-/** Paso 1 de la entrega: hasta 4 fotos con la cámara del sistema. */
-export function PasoFotos({fotos, alCambiar, exigida}: Props) {
+/** Hasta 4 fotos con la cámara del sistema: paso 1 de la entrega y parte de la novedad. */
+export function PasoFotos({
+  fotos,
+  alCambiar,
+  exigida,
+  titulo = 'Fotos de la entrega',
+  descripcion = 'Que se vean el paquete y la fachada.',
+}: Props) {
   const {tomar, tomando} = useTomarFoto();
 
   const agregar = async () => {
@@ -84,14 +92,14 @@ export function PasoFotos({fotos, alCambiar, exigida}: Props) {
           accessibilityRole="header"
           style={styles.encabezado}
           variante="titulo">
-          Fotos de la entrega
+          {titulo}
         </Texto>
         <Texto mono tono="secundario" variante="etiqueta">
           {fotos.length} de {LIMITE_FOTOS}
         </Texto>
       </View>
       <Texto tono="secundario">
-        Que se vean el paquete y la fachada.
+        {descripcion}
         {exigida ? ' La empresa pide al menos una.' : ''}
       </Texto>
 

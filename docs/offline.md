@@ -106,7 +106,7 @@ erDiagram
         datetime confirmada_en
     }
     archivos {
-        string ruta PK "documentos de la app"
+        string ruta PK "nombre del archivo en documentos/evidencias"
         string id_operacion FK "la entrega"
         string tipo "F firma | I imagen"
         int bytes
@@ -117,7 +117,7 @@ Reglas del modelo:
 
 - **Lo que dijo Fluor y lo que hizo el conductor van en columnas distintas.** `estado_entregado` se sobreescribe al descargar; `gestion_local` no. La pantalla muestra `gestion_local ?? estado del servidor`. Así una descarga nunca borra una entrega que aún no se envió.
 - `usuario_id` en cada operación: el motor solo envía las del usuario con sesión (§9).
-- Las fotos y la firma son **archivos de la operación de entrega**, no operaciones aparte: viajan en la misma petición (§8). Un archivo pertenece a **una sola** operación (`ruta` es la llave): la entrega de varias guías guarda una copia por guía (§6.5).
+- Las fotos y la firma son **archivos de la operación de entrega**, no operaciones aparte: viajan en la misma petición (§8). Un archivo pertenece a **una sola** operación (`ruta` es la llave): la entrega de varias guías guarda una copia por guía (§6.5). `ruta` guarda **solo el nombre** (`abc.jpg`): en iOS la carpeta de la app cambia al reinstalar o actualizar, y una ruta completa dejaba la entrega reintentándose para siempre como "Sin conexión". La ruta se arma con la carpeta actual al usarla (`core/archivos`); la migración 5 recortó las filas viejas. Si al enviar falta un archivo, el motor rechaza la operación con ese motivo en vez de reintentarla.
 - `depende_de`: "terminar" no sale mientras haya entregas sin confirmar del despacho.
 - Base en modo **WAL** y toda escritura del conductor en **una transacción**: guía + operación + archivos se guardan juntos o no se guarda nada.
 
@@ -152,11 +152,11 @@ stateDiagram-v2
     pendiente --> bloqueada: depende de otra sin confirmar
     bloqueada --> pendiente: la dependencia se confirma
     pendiente --> enviando: el motor la toma
-    enviando --> confirmada: 2xx, o 409 con entrega true
+    enviando --> confirmada: 2xx, o 409 con entrega o novedad true
     enviando --> pendiente: red, timeout, 5xx o 429 (espera creciente)
     enviando --> pausada: sesión rechazada (refresh inválido)
     pausada --> pendiente: el mismo usuario inicia sesión
-    enviando --> conflicto: otro 409 de la novedad o el terminar
+    enviando --> conflicto: otro 409 del terminar
     enviando --> rechazada: 400, 403, 404, 422
     rechazada --> pendiente: el conductor toca Reintentar
     conflicto --> [*]: el conductor la descarta
@@ -269,7 +269,7 @@ Varios paquetes del mismo cliente se entregan de una vez. En la lista del despac
 - **Fluor no cambia**: recibe una petición `POST /tte/movil/guia/entrega` por guía. El motor, los reintentos, el `409` con `entrega: true` y los rechazos funcionan igual que con una guía; si Fluor rechaza una, las demás siguen.
 - **Cada guía con su copia de la evidencia**: las fotos y la firma se mueven una vez a documentos y se copian para las demás guías (`copiarEvidencia`). Así confirmar una entrega borra solo sus archivos y no los de las otras. Costo: N × ~1 MB en disco y en datos.
 - La selección es libre: puede mezclar destinatarios. El atajo "Recibe <titular>" aparece solo si todas las guías tienen el mismo destinatario, y el cobro que se muestra es la suma.
-- **Novedad de varias guías**: queda preparada (`registrarNovedades`, ruta `Novedad` con `codigosGuia`) y se activa con `funciones.novedades` cuando Fluor publique el endpoint.
+- **Novedad de varias guías**: `registrarNovedades` (ruta `Novedad` con `codigosGuia`) guarda una operación por guía, cada una con su copia de las fotos, igual que la entrega.
 
 ## 7. Errores
 
@@ -316,6 +316,7 @@ Fluor bloquea la fila de la guía al entregar, así que dos envíos de la misma 
 - **Guía entregada por otro**: Fluor responde lo mismo que a un reintento propio (`409` con `entrega: true`), así que la app la marca `confirmada` y el conductor no ve un aviso. Las fotos, la firma y los datos de quien recibe **no** llegan a Fluor. Para no perder esa evidencia, la app conserva los archivos locales hasta que se purga la operación (7 días) y reporta el `409` a Sentry. Lo detecta y resuelve la oficina; es un riesgo aceptado por backend.
 - **Despacho liberado** (`404` en cualquier operación del despacho): todas sus operaciones quedan `rechazada`; el despacho se muestra como "Liberado" y **no se borra** hasta que el conductor lo descarte o llame a la oficina. La evidencia (recibe, fotos, firma, hora) sigue en el teléfono y se puede exportar si hace falta.
 - **Guía con novedad y luego entregada**: se envían en orden. Hoy Fluor no revisa la regla de entregar con novedad; la app la aplica antes de guardar.
+- **Novedad solucionada**: si `/tte/movil/guias` trae `estado_novedad_solucion = true`, la guía vuelve a *pendiente* (se entrega o lleva otra novedad). Con la novedad abierta la app no deja reportar otra, porque Fluor la rechaza con `409`.
 
 ## 8. Fotos y firma
 
@@ -383,14 +384,14 @@ Va con `X-Tenant-Despacho-ID` = el id de la asignación (`mas_tenant_despacho`),
 
 ### 12.2 Decidido por backend (6 nov 2026)
 
-- **Sin `id_operacion`** ni `Idempotency-Key`: la idempotencia de la entrega sale de `409` + `entrega: true`.
-- **Sin códigos de error propios**: la app clasifica por estado HTTP y la marca `entrega`.
+- **Sin `id_operacion`** ni `Idempotency-Key`: la idempotencia de la entrega sale de `409` + `entrega: true`, y la de la novedad de `409` + `novedad: true`.
+- **Sin códigos de error propios**: la app clasifica por estado HTTP y las marcas `entrega` / `novedad`.
 - **Sin endpoint aparte para reenviar archivos**: si falla un archivo después de guardar la entrega, lo resuelve backend.
 
 ### 12.3 Pendiente en Fluor
 
 1. **Acceso por asignación**: resuelto en `9ea5e66` con `POST /tte/movil/guia/entrega` y `X-Tenant-Despacho-ID`; valida también que la guía sea de ese despacho.
-2. Endpoints de novedad, tipos de novedad, configuración de entrega y terminar despacho (`contratos-fluor.md`). Se espera el mismo patrón: un `409` reconocible cuando la acción ya estaba aplicada.
+2. **Novedad**: hecha (`02aeab6`, `14ff964`, `a9e96da`): `POST /tte/movil/guia/novedad` con `409` + `novedad: true` y `GET /tte/movil/novedad-tipo`, ambos por asignación. Falta `estado_novedad_solucion` en `/tte/movil/guias`. Faltan configuración de entrega y terminar despacho (`contratos-fluor.md`).
 3. **Aceptar operaciones tardías** (por decidir): una entrega con `fecha_entrega` de ayer, o que llega después de que el despacho se terminó desde la web, no debería rechazarse por eso. Hoy `/tte/movil/guia/entrega` responde `409 "El despacho está cerrado"` antes de revisar si la guía ya estaba entregada, así que también rechaza el reenvío de una entrega que sí se guardó (sin `entrega: true`).
 4. **`Retry-After` en los `429`.**
 5. Que la descarga de guías (`/tte/movil/guias`) siga incluyendo las ya entregadas o con novedad, para que la fusión (§5) sepa qué confirmó el servidor (ya lo hace).

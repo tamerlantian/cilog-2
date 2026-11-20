@@ -2026,6 +2026,29 @@ PODS:
     - React-perflogger (= 0.88.0)
     - React-utils (= 0.88.0)
     - ReactNativeDependencies
+  - ReactNativeCameraKit (18.0.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-bridging
+    - React-Core
+    - React-Core-prebuilt
+    - React-cxxstableapi
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - ReactNativeDependencies (0.88.0)
   - ReactNativeFs (2.40.3):
     - hermes-engine
@@ -2050,6 +2073,55 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNBackgroundGeolocation (5.8.2):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-bridging
+    - React-Core
+    - React-Core-prebuilt
+    - React-cxxstableapi
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - TSLocationManager (~> 4.8.0)
+    - Yoga
+  - RNBootSplash (7.3.5):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-bridging
+    - React-Core
+    - React-Core-prebuilt
+    - React-cxxstableapi
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - RNDeviceInfo (15.0.2):
+    - React-Core
   - RNKeychain (10.0.0):
     - hermes-engine
     - RCTRequired
@@ -2171,6 +2243,9 @@ PODS:
     - Yoga
   - SocketRocket (0.7.1):
     - ReactNativeDependencies
+  - TSBackgroundFetch (4.1.1)
+  - TSLocationManager (4.8.3):
+    - TSBackgroundFetch (~> 4.1.0)
   - Unistyles (3.6.0):
     - hermes-engine
     - NitroModules
@@ -2293,8 +2368,12 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios/ReactAppDependencyProvider`)
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - ReactNativeCameraKit (from `../node_modules/react-native-camera-kit`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
+  - RNBackgroundGeolocation (from `../node_modules/react-native-background-geolocation`)
+  - RNBootSplash (from `../node_modules/react-native-bootsplash`)
+  - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -2305,6 +2384,8 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - MMKVCore
+    - TSBackgroundFetch
+    - TSLocationManager
 
 EXTERNAL SOURCES:
   boost:
@@ -2494,10 +2575,18 @@ EXTERNAL SOURCES:
     :path: build/generated/ios/ReactCodegen
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  ReactNativeCameraKit:
+    :path: "../node_modules/react-native-camera-kit"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   ReactNativeFs:
     :path: "../node_modules/@dr.pogodin/react-native-fs"
+  RNBackgroundGeolocation:
+    :path: "../node_modules/react-native-background-geolocation"
+  RNBootSplash:
+    :path: "../node_modules/react-native-bootsplash"
+  RNDeviceInfo:
+    :path: "../node_modules/react-native-device-info"
   RNKeychain:
     :path: "../node_modules/react-native-keychain"
   RNScreens:
@@ -2606,15 +2695,21 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 782ee9546c9cd3b53b73f1e9e3dd728540085fc7
   ReactCodegen: 7b71f4464442e9b6eae41094d11076d56c51c0e3
   ReactCommon: 145a14b942b19fc2fe38927f261955ada56978aa
+  ReactNativeCameraKit: 19bb4a99e92365175c2b48ab8e2a5dcc16ea150d
   ReactNativeDependencies: d3b7423ba1e52525e42085c8470109abde583d2e
   ReactNativeFs: 2c369dd1d78a35518f97ba345496d1c84a49c0ef
+  RNBackgroundGeolocation: 41685d220fb6ca8657a452138bc6107bca6c5067
+  RNBootSplash: 214882f8e3111723685c27a575e88b158a2c14ae
+  RNDeviceInfo: 4c852998208b60dc192ae3529e5867817719ad1e
   RNKeychain: 990ea9078621f2617a9cdabdb4cfb485a8c1560d
   RNScreens: 6d0d3b7819284dbf9f222899eb819f069fce4b8b
   RNSVG: c35beed3dcf6fd14b50ca1fc0d4214a17ec5334d
   SocketRocket: 37aec555668fb852ec12e3c0de59a86ca58f0871
+  TSBackgroundFetch: 18918b6449a1e3f01eb0f5b44d6d79ce6160a5a5
+  TSLocationManager: 5e59b48b9117027db520f4c22ebbead20209cdd4
   Unistyles: 11916cf011baa67c13dc5f74e77979a4e2dab472
   Yoga: d1c536142c5ff8ec8cd856ab2a7c227a1d875c8e
 
-PODFILE CHECKSUM: 36a7bd3d7f03ec8e2e4d67ea2ea4b83c113e2b26
+PODFILE CHECKSUM: e7dd9050089e16e0563c9465184532e86d941e26
 
 COCOAPODS: 1.17.0

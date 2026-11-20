@@ -10,7 +10,13 @@ import {
   type SQL,
 } from 'drizzle-orm';
 
-import {despachos, guias, operaciones, type Consulta} from '@/core/db';
+import {
+  despachos,
+  guias,
+  novedadTipos,
+  operaciones,
+  type Consulta,
+} from '@/core/db';
 import {
   descartar,
   SIN_CONFIRMAR,
@@ -19,7 +25,9 @@ import {
 } from '@/core/sync';
 
 import type {Asignacion, DespachoGuias, GuiaFluor} from '../api/despachos';
+import type {TipoNovedadFluor} from '../api/novedad';
 import {claveGuia} from '../domain/claves';
+import type {TipoNovedad} from '../domain/gestion';
 
 export type DespachoLocal = typeof despachos.$inferSelect & {
   totalGuias: number;
@@ -143,6 +151,7 @@ const datosDeFluor = (guia: GuiaFluor) => ({
   comentario: guia.comentario,
   estadoEntregado: guia.estado_entregado,
   estadoNovedad: guia.estado_novedad,
+  estadoNovedadSolucion: guia.estado_novedad_solucion ?? false,
   fechaEntrega: guia.fecha_entrega,
   retirada: false,
 });
@@ -221,13 +230,49 @@ export const fusionarGuias = async (
   }
 };
 
+/**
+ * Reemplaza el catálogo de tipos de novedad de la empresa. Es por empresa, no
+ * por despacho: varios despachos de la misma empresa lo comparten.
+ */
+export const guardarTiposNovedad = async (
+  tx: Consulta,
+  tenantId: number,
+  tipos: readonly TipoNovedadFluor[],
+) => {
+  await tx.delete(novedadTipos).where(eq(novedadTipos.tenantId, tenantId));
+  for (const tipo of tipos) {
+    await tx
+      .insert(novedadTipos)
+      .values({
+        tenantId,
+        codigo: tipo.codigo_novedad_tipo_pk,
+        nombre: tipo.nombre?.trim() || tipo.codigo_novedad_tipo_pk,
+      })
+      .onConflictDoNothing();
+  }
+};
+
+/** Tipos de novedad de la empresa del despacho, en el orden en que llegaron. */
+export const leerTiposNovedad = (
+  db: Consulta,
+  tenantDespachoId: number,
+): Promise<TipoNovedad[]> =>
+  db
+    .select({codigo: novedadTipos.codigo, nombre: novedadTipos.nombre})
+    .from(novedadTipos)
+    .innerJoin(despachos, eq(despachos.tenantId, novedadTipos.tenantId))
+    .where(eq(despachos.tenantDespachoId, tenantDespachoId))
+    .orderBy(sql`novedad_tipos.rowid`);
+
 const consultarDespachos = async (
   db: Consulta,
   condicion: SQL | undefined,
 ): Promise<DespachoLocal[]> => {
-  const gestionada = sql`(${guias.gestionLocal} IS NOT NULL OR ${guias.estadoEntregado} = 1 OR ${guias.estadoNovedad} = 1)`;
+  // Una novedad solucionada deja la guía pendiente, igual que en `situacionGuia`.
+  const novedadAbierta = sql`(${guias.estadoNovedad} = 1 AND ${guias.estadoNovedadSolucion} = 0)`;
+  const gestionada = sql`(${guias.gestionLocal} IS NOT NULL OR ${guias.estadoEntregado} = 1 OR ${novedadAbierta})`;
   // Lo que hizo el conductor manda sobre Fluor, igual que en `situacionGuia`.
-  const conNovedad = sql`(${guias.gestionLocal} = 'novedad' OR (${guias.gestionLocal} IS NULL AND ${guias.estadoEntregado} = 0 AND ${guias.estadoNovedad} = 1))`;
+  const conNovedad = sql`(${guias.gestionLocal} = 'novedad' OR (${guias.gestionLocal} IS NULL AND ${guias.estadoEntregado} = 0 AND ${novedadAbierta}))`;
   const filas = await db
     .select({
       despacho: despachos,

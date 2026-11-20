@@ -19,6 +19,12 @@ export type PermisoUbicacion = 'concedido' | 'negado' | 'bloqueado';
 
 export type EstadoUbicacion = {
   permiso: PermisoUbicacion;
+  /**
+   * iOS con "mientras se usa" en vez de "siempre": reporta con la app abierta
+   * o en segundo plano, pero si el conductor la cierra deja de reportar hasta
+   * que la vuelva a abrir. En Android siempre es false.
+   */
+  limitada: boolean;
   /** El GPS (servicios de ubicación) del teléfono está encendido. */
   gpsEncendido: boolean;
 };
@@ -35,6 +41,7 @@ const comoPermiso = (status: number): PermisoUbicacion => {
 
 const comoEstado = ({status, enabled}: ProviderChangeEvent) => ({
   permiso: comoPermiso(status),
+  limitada: Platform.OS === 'ios' && status === AuthorizationStatus.WhenInUse,
   gpsEncendido: enabled,
 });
 
@@ -51,7 +58,11 @@ export const escucharEstadoUbicacion = (
   return () => suscripcion.remove();
 };
 
-/** Muestra el diálogo de Android. Si lo niega, el plugin rechaza con el estado. */
+/**
+ * Muestra el diálogo del sistema. En iOS son dos: "Permitir al usar la app" y
+ * luego "Cambiar a Permitir siempre". Si lo niega, el plugin rechaza con el
+ * estado.
+ */
 export const pedirPermisoUbicacion = async (): Promise<PermisoUbicacion> => {
   try {
     return comoPermiso(await BackgroundGeolocation.requestPermission());
@@ -81,6 +92,8 @@ export const pedirPermisoNotificaciones = async () => {
 
 /** Cilog está fuera del ahorro de batería de Android (no lo duermen). */
 export const bateriaSinRestricciones = async () => {
+  // iOS no tiene optimización de batería por app ni ajustes por marca.
+  if (Platform.OS !== 'android') return true;
   try {
     return await BackgroundGeolocation.deviceSettings.isIgnoringBatteryOptimizations();
   } catch {

@@ -1,0 +1,6 @@
+// Base del target en Debug: lo de CocoaPods más los secretos locales.
+// Secretos.xcconfig no se versiona (licencia de Transistorsoft); ver
+// docs/release-appstore.md. Sin él compila igual, pero en Release el
+// rastreo no funciona.
+#include "../Pods/Target Support Files/Pods-plutonio/Pods-plutonio.debug.xcconfig"
+#include? "../Secretos.xcconfig"

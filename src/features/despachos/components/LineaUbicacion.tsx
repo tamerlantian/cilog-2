@@ -18,6 +18,10 @@ const PROBLEMAS: Record<
 > = {
   sinPermiso: {texto: 'Sin permiso: la empresa no te ve', accion: 'Permitir'},
   gpsApagado: {texto: 'GPS apagado: la empresa no te ve', accion: 'Activar'},
+  limitada: {
+    texto: 'Si cierras Cilog, la empresa deja de verte',
+    accion: 'Permitir siempre',
+  },
   bateria: {
     texto: 'El ahorro de batería puede apagarla',
     accion: 'Revisar',

@@ -21,8 +21,10 @@ import {
   evidenciaFaltante,
   puedeTerminar,
   VERSION_CUERPO_ENTREGA,
+  VERSION_CUERPO_NOVEDAD,
   type ConfiguracionEntrega,
   type DatosEntrega,
+  type DatosNovedad,
   type TipoArchivo,
   type Ubicacion,
 } from '../domain/gestion';
@@ -78,6 +80,22 @@ type Gestion = {
 /** Foto o firma ya guardada en la carpeta de evidencias. */
 export type Evidencia = {tipo: TipoArchivo; ruta: string; bytes: number};
 
+/** Las evidencias cuelgan de la operación con la que viajan a Fluor. */
+const adjuntar = async (
+  tx: Consulta,
+  idOperacion: string,
+  evidencias: readonly Evidencia[],
+) => {
+  for (const evidencia of evidencias) {
+    await tx.insert(archivos).values({
+      ruta: evidencia.ruta,
+      idOperacion,
+      tipo: evidencia.tipo === 'firma' ? 'F' : 'I',
+      bytes: evidencia.bytes,
+    });
+  }
+};
+
 /**
  * La entrega y sus fotos y firma son una sola operación: viajan juntas en
  * `POST /tte/movil/guia/entrega` (docs/offline.md §8).
@@ -118,17 +136,14 @@ export const registrarEntrega = async (
     ahora,
   );
 
-  for (const evidencia of evidencias) {
-    await tx.insert(archivos).values({
-      ruta: evidencia.ruta,
-      idOperacion: idEntrega,
-      tipo: evidencia.tipo === 'firma' ? 'F' : 'I',
-      bytes: evidencia.bytes,
-    });
-  }
+  await adjuntar(tx, idEntrega, evidencias);
   return idEntrega;
 };
 
+/**
+ * La novedad y sus fotos son una sola operación: viajan juntas en
+ * `POST /tte/movil/guia/novedad`. La novedad no lleva firma.
+ */
 export const registrarNovedad = async (
   tx: Consulta,
   {
@@ -138,29 +153,31 @@ export const registrarNovedad = async (
     ahora = Date.now(),
     ubicacion = null,
   }: Gestion,
-  datos: {tipo: string; descripcion?: string},
+  datos: DatosNovedad,
+  fotos: readonly Evidencia[] = [],
 ) => {
   const {despacho, guia} = await cargar(tx, tenantDespachoId, codigoGuia);
   const permiso = puedeReportarNovedad(despacho, guia);
   if (!permiso.permitido) throw rechazar(permiso.motivo);
+  if (fotos.some(f => f.tipo !== 'foto')) {
+    throw rechazar('La novedad solo lleva fotos.');
+  }
 
   await marcarGuia(tx, tenantDespachoId, codigoGuia, 'novedad');
-  return encolar(
+  const idNovedad = await encolar(
     tx,
     {
       usuarioId,
       tipo: 'novedad',
       claveEntidad: claveGuia(tenantDespachoId, codigoGuia),
       tenantDespachoId,
-      cuerpo: cuerpoNovedad(
-        {codigoGuia, codigoDespacho: despacho.codigoDespacho},
-        datos,
-        fechaLocalIso(ahora),
-        ubicacion,
-      ),
+      cuerpo: cuerpoNovedad(codigoGuia, datos, fechaLocalIso(ahora), ubicacion),
+      versionCuerpo: VERSION_CUERPO_NOVEDAD,
     },
     ahora,
   );
+  await adjuntar(tx, idNovedad, fotos);
+  return idNovedad;
 };
 
 export const registrarTerminar = async (
@@ -249,12 +266,18 @@ export const registrarEntregas = (
     ),
   );
 
-/** Preparado para la novedad de varias guías; se activa con `funciones.novedades`. */
+/** `fotos[i]` son las copias de la guía `codigosGuia[i]`, como en la entrega. */
 export const registrarNovedades = (
   tx: Consulta,
   {codigosGuia, ahora = Date.now(), ...gestion}: GestionVarias,
-  datos: {tipo: string; descripcion?: string},
+  datos: DatosNovedad,
+  fotos: readonly (readonly Evidencia[])[] = [],
 ) =>
-  porGuia(codigosGuia, codigoGuia =>
-    registrarNovedad(tx, {...gestion, codigoGuia, ahora}, datos),
+  porGuia(codigosGuia, (codigoGuia, indice) =>
+    registrarNovedad(
+      tx,
+      {...gestion, codigoGuia, ahora},
+      datos,
+      fotos[indice] ?? [],
+    ),
   );

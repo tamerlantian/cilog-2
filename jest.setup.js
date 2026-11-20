@@ -162,8 +162,9 @@ jest.mock('react-native-background-geolocation', () => {
       return {remove: jest.fn()};
     });
   const estado = {enabled: false};
-  // Permiso "mientras se usa la app" (4) y GPS encendido, salvo que la prueba lo cambie.
-  const proveedor = {enabled: true, gps: true, network: true, status: 4};
+  // Permiso "siempre" (3) y GPS encendido, salvo que la prueba lo cambie. Las
+  // pruebas corren como iOS, donde "mientras se usa" (4) es permiso limitado.
+  const proveedor = {enabled: true, gps: true, network: true, status: 3};
   const BackgroundGeolocation = {
     __oyentes: oyentes,
     __estado: estado,

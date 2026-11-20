@@ -2,7 +2,12 @@ import type * as ModuloRastreo from '@/core/rastreo';
 import type * as ModuloSesion from '@/core/sesion';
 import type * as ModuloStorage from '@/core/storage';
 
-type Oyentes = Record<'http' | 'authorization', (evento: unknown) => void>;
+import {Platform} from 'react-native';
+
+type Oyentes = Record<
+  'http' | 'authorization' | 'providerchange',
+  (evento: unknown) => void
+>;
 
 type Metodo =
   | 'ready'
@@ -16,6 +21,7 @@ type Metodo =
 type PluginSimulado = Record<Metodo, jest.Mock> & {
   __oyentes: Oyentes;
   __estado: {enabled: boolean};
+  __proveedor: {status: number; enabled: boolean};
 };
 
 /** Los oyentes son asíncronos: deja correr sus promesas. */
@@ -83,9 +89,49 @@ describe('rastreo de ubicación', () => {
       refreshToken: 'renovacion-1',
       refreshUrl: 'https://api.prueba.test/auth/seguridad/refresh',
     });
-    expect(config.geolocation.locationAuthorizationRequest).toBe('WhenInUse');
-    // Con "mientras se usa", el servicio no puede cerrarse al quedar quieto.
+    // iOS (el sistema de las pruebas) pide "siempre" y sin el diálogo del plugin.
+    expect(config.geolocation.locationAuthorizationRequest).toBe('Always');
+    expect(config.geolocation.disableLocationAuthorizationAlert).toBe(true);
+    // Android: con "mientras se usa", el servicio no puede cerrarse al quedar quieto.
     expect(config.app.notification.sticky).toBe(true);
+  });
+
+  it('en Android pide solo "mientras se usa"', async () => {
+    const sistema = Platform.OS;
+    Platform.OS = 'android';
+    try {
+      const rastreo = cargarRastreo();
+      await rastreo.prepararRastreo(proveedor());
+      await rastreo.iniciarRastreo(10);
+
+      expect(
+        plugin.ready.mock.calls[0][0].geolocation.locationAuthorizationRequest,
+      ).toBe('WhenInUse');
+      // Android no ajusta las paradas según el permiso.
+      expect(plugin.setConfig).toHaveBeenCalledTimes(1);
+    } finally {
+      Platform.OS = sistema;
+    }
+  });
+
+  it('iOS: sin "siempre" deja el GPS encendido; con "siempre" detecta paradas', async () => {
+    const rastreo = cargarRastreo();
+    await rastreo.prepararRastreo(proveedor());
+
+    plugin.__proveedor.status = 4;
+    await rastreo.iniciarRastreo(10);
+    expect(plugin.setConfig).toHaveBeenLastCalledWith({
+      geolocation: {pausesLocationUpdatesAutomatically: false},
+      activity: {disableStopDetection: true},
+    });
+
+    // Lo sube a "siempre" en los ajustes con el despacho en curso.
+    plugin.__oyentes.providerchange({status: 3, enabled: true});
+    await esperar();
+    expect(plugin.setConfig).toHaveBeenLastCalledWith({
+      geolocation: {pausesLocationUpdatesAutomatically: true},
+      activity: {disableStopDetection: false},
+    });
   });
 
   it('al volver a abrir la app retoma la asignación que estaba rastreando', async () => {
@@ -118,9 +164,12 @@ describe('rastreo de ubicación', () => {
     await rastreo.iniciarRastreo(20);
 
     const orden = (mock: jest.Mock) => mock.mock.invocationCallOrder[0] ?? 0;
+    const encabezado20 = plugin.setConfig.mock.calls.findIndex(
+      ([config]) => config.http?.headers['X-Tenant-Despacho-ID'] === '20',
+    );
     expect(orden(plugin.sync)).toBeLessThan(orden(plugin.destroyLocations));
     expect(orden(plugin.destroyLocations)).toBeLessThan(
-      plugin.setConfig.mock.invocationCallOrder[1] ?? 0,
+      plugin.setConfig.mock.invocationCallOrder[encabezado20] ?? 0,
     );
     expect(rastreo.asignacionRastreada()).toBe(20);
     // Ya estaba encendido: no arranca dos veces.

@@ -30,5 +30,14 @@ target 'plutonio' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Release siempre con .env.prod (como build:aab en Android), también al
+    # archivar desde Xcode. En Debug manda ENVFILE del shell o, sin él, .env.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'react-native-config'
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['ENVFILE'] = '.env.prod' if build_config.name == 'Release'
+      end
+    end
   end
 end

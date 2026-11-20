@@ -1,6 +1,7 @@
 import {zodResolver} from '@hookform/resolvers/zod';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {Controller, useForm} from 'react-hook-form';
+import {useState} from 'react';
 import {View} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
 
@@ -13,15 +14,16 @@ import {
   Icono,
   Info,
   Input,
-  ListaOpciones,
   mostrarError,
   mostrarExito,
   Pantalla,
+  Selector,
   Texto,
   TriangleAlert,
 } from '@/ui';
 
 import {destinatario} from '../components/FilaGuia';
+import {PasoFotos} from '../components/PasoFotos';
 import type {GuiaLocal} from '../db/repositorio';
 import {
   esquemaFormularioNovedad,
@@ -32,16 +34,16 @@ import {
   permisoTodas,
   puedeReportarNovedad,
 } from '../domain/gestion';
-import {useDespacho, useGuias} from '../hooks/useDespachos';
+import {useDescargarTiposNovedad} from '../hooks/useAccionesDespacho';
+import {useDespacho, useGuias, useTiposNovedad} from '../hooks/useDespachos';
 import {useUbicacion} from '../hooks/useEvidencias';
-import {
-  useConfiguracionEntrega,
-  useReportarNovedad,
-  useTiposNovedad,
-} from '../hooks/useGestion';
+import {useConfiguracionEntrega, useReportarNovedad} from '../hooks/useGestion';
 import type {RutasDespachos} from '../rutas';
 
 type Props = NativeStackScreenProps<RutasDespachos, 'Novedad'>;
+
+/** Hasta aquí se ven todos de una vez; con más, la hoja trae buscador. */
+const TIPOS_SIN_BUSCADOR = 7;
 
 export function NovedadPantalla({navigation, route}: Props) {
   const {tenantDespachoId, codigosGuia} = route.params;
@@ -52,7 +54,14 @@ export function NovedadPantalla({navigation, route}: Props) {
     .filter((g): g is GuiaLocal => g !== undefined);
   const [guia] = guias;
   const varias = codigosGuia.length > 1;
-  const tipos = useTiposNovedad();
+  const {data: tipos = [], isPending: cargandoTipos} =
+    useTiposNovedad(tenantDespachoId);
+  const descargarTipos = useDescargarTiposNovedad(tenantDespachoId);
+  const opciones = tipos.map(tipo => ({
+    valor: tipo.codigo,
+    titulo: tipo.nombre,
+  }));
+  const [fotos, setFotos] = useState<string[]>([]);
   const configuracion = useConfiguracionEntrega();
   const reportar = useReportarNovedad(tenantDespachoId, codigosGuia);
   const ubicacion = useUbicacion();
@@ -78,7 +87,7 @@ export function NovedadPantalla({navigation, route}: Props) {
     />
   );
 
-  if (isPending) {
+  if (isPending || cargandoTipos) {
     return (
       <Pantalla>
         <Cargando />
@@ -109,10 +118,33 @@ export function NovedadPantalla({navigation, route}: Props) {
     );
   }
 
+  // Los tipos son de cada empresa y se bajan con el despacho.
+  if (tipos.length === 0) {
+    return (
+      <Pantalla>
+        {encabezado}
+        <EstadoVacio
+          accion={{
+            titulo: 'Descargar tipos de novedad',
+            cargando: descargarTipos.isPending,
+            alPresionar: () =>
+              descargarTipos.mutate(undefined, {
+                onError: error => mostrarError(mensajeUsuario(error)),
+              }),
+          }}
+          icono={TriangleAlert}
+          mensaje="Faltan los tipos de novedad de la empresa en el teléfono. Descárgalos con señal."
+          titulo="No se puede reportar novedad"
+          tono="advertencia"
+        />
+      </Pantalla>
+    );
+  }
+
   const guardar = () =>
     handleSubmit(datos =>
       reportar.mutate(
-        {...datos, ubicacion},
+        {datos, fotos, ubicacion},
         {
           onSuccess: () => {
             mostrarExito(
@@ -145,15 +177,14 @@ export function NovedadPantalla({navigation, route}: Props) {
           control={control}
           name="tipo"
           render={({field, fieldState}) => (
-            <ListaOpciones
+            <Selector
               alCambiar={field.onChange}
+              buscable={tipos.length > TIPOS_SIN_BUSCADOR}
               error={fieldState.error?.message}
-              etiqueta="¿Qué pasó?"
-              opciones={tipos.map(tipo => ({
-                valor: tipo.codigo,
-                titulo: tipo.nombre,
-              }))}
-              tono="advertencia"
+              etiqueta="Tipo de novedad"
+              opciones={opciones}
+              pregunta="¿Qué pasó?"
+              vacio="Elegir"
               valor={field.value}
             />
           )}
@@ -173,6 +204,13 @@ export function NovedadPantalla({navigation, route}: Props) {
               onChangeText={field.onChange}
             />
           )}
+        />
+        <PasoFotos
+          alCambiar={setFotos}
+          descripcion="Lo que muestre el problema: la fachada, el paquete o la dirección."
+          exigida={false}
+          fotos={fotos}
+          titulo="Fotos (opcional)"
         />
         {configuracion.entregaConNovedad ? null : (
           <View style={styles.nota}>

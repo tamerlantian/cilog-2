@@ -296,13 +296,13 @@ describe('App', () => {
     });
 
     it('con envíos pendientes no deja eliminarla', async () => {
-      // Novedad no tiene enviador: se queda pendiente sin que el motor la toque.
+      // Terminar no tiene enviador: se queda pendiente sin que el motor la toque.
       await entrarACuenta(() =>
         escribir(tx =>
           encolar(tx, {
             usuarioId: usuarioPrueba.id,
-            tipo: 'novedad',
-            claveEntidad: 'guia:5:1',
+            tipo: 'terminar',
+            claveEntidad: 'despacho:5',
             cuerpo: {},
           }),
         ),

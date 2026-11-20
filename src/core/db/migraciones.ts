@@ -106,4 +106,32 @@ export const MIGRACIONES: readonly (readonly string[])[] = [
     )
     WHERE tipo = 'entrega' AND version_cuerpo = 1`,
   ],
+  // 4: novedades contra Fluor (POST /tte/movil/guia/novedad). Catálogo de
+  // tipos por empresa, novedad solucionada en la guía y cuerpo de la novedad
+  // con los nombres de Fluor (versión 2).
+  [
+    `CREATE TABLE novedad_tipos (
+      tenant_id INTEGER NOT NULL,
+      codigo TEXT NOT NULL,
+      nombre TEXT NOT NULL,
+      PRIMARY KEY (tenant_id, codigo)
+    )`,
+    'ALTER TABLE guias ADD COLUMN estado_novedad_solucion INTEGER NOT NULL DEFAULT 0',
+    `UPDATE operaciones_pendientes SET version_cuerpo = 2, cuerpo = json_object(
+      'codigo_guia_fk', json_extract(cuerpo, '$.codigo_guia_pk'),
+      'codigo_novedad_tipo_fk', json_extract(cuerpo, '$.codigo_novedad_tipo_fk'),
+      'descripcion', json_extract(cuerpo, '$.descripcion'),
+      'fecha', json_extract(cuerpo, '$.fecha'),
+      'latitud', json_extract(cuerpo, '$.latitud'),
+      'longitud', json_extract(cuerpo, '$.longitud')
+    )
+    WHERE tipo = 'novedad' AND version_cuerpo = 1`,
+  ],
+  // 5: las evidencias se guardan por nombre, no por ruta completa (en iOS la
+  // carpeta de la app cambia al reinstalar o actualizar). Se deja lo que va
+  // después de la última barra.
+  [
+    `UPDATE archivos SET ruta = replace(ruta, rtrim(ruta, replace(ruta, '/', '')), '')
+    WHERE ruta LIKE '%/%'`,
+  ],
 ];

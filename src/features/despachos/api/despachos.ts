@@ -33,6 +33,8 @@ const esquemaGuia = z.object({
   comentario: z.string().nullable(),
   estado_entregado: z.boolean(),
   estado_novedad: z.boolean(),
+  /** La oficina solucionó la novedad. Opcional mientras Fluor no lo envíe. */
+  estado_novedad_solucion: z.boolean().optional(),
   fecha_entrega: z.string().nullable(),
 });
 

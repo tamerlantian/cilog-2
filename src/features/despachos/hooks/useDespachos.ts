@@ -3,6 +3,7 @@ import {
   leerDespachos,
   leerGuia,
   leerGuias,
+  leerTiposNovedad,
 } from '../db/repositorio';
 import {clavesDespachos} from './claves';
 import {useConsultaLocal, useUsuarioId} from './local';
@@ -29,4 +30,10 @@ export const useGuias = (tenantDespachoId: number) =>
 export const useGuia = (tenantDespachoId: number, codigoGuia: number) =>
   useConsultaLocal(clavesDespachos.guia(tenantDespachoId, codigoGuia), db =>
     leerGuia(db, tenantDespachoId, codigoGuia),
+  );
+
+/** Tipos de novedad de la empresa del despacho, guardados en el teléfono. */
+export const useTiposNovedad = (tenantDespachoId: number) =>
+  useConsultaLocal(clavesDespachos.tiposNovedad(tenantDespachoId), db =>
+    leerTiposNovedad(db, tenantDespachoId),
   );

@@ -83,3 +83,6 @@ ios/GoogleService-Info.plist
 
 # Certificado público de la clave de subida (no versionar)
 *.pem
+
+# Licencia de Transistorsoft para iOS (ver ios/Secretos.xcconfig.example)
+ios/Secretos.xcconfig

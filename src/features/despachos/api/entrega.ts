@@ -15,9 +15,9 @@ const esquemaEntrega = z.object({
 export type RespuestaEntrega = z.infer<typeof esquemaEntrega>;
 
 /** Una entrega completa pesa ~1 MB: con señal débil tarda más que una consulta. */
-const TIEMPO_ENTREGA_MS = 60_000;
+export const TIEMPO_ENTREGA_MS = 60_000;
 
-const comoArchivo = ({ruta, tipo}: ArchivoOperacion, indice: number) =>
+export const comoArchivo = ({ruta, tipo}: ArchivoOperacion, indice: number) =>
   tipo === 'F'
     ? {uri: uriEvidencia(ruta), name: 'firma.png', type: 'image/png'}
     : {

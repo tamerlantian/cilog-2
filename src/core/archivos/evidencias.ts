@@ -21,6 +21,17 @@ export const ESPACIO_MINIMO_BYTES = 50 * 1024 * 1024;
 
 const sinEsquema = (uri: string) => uri.replace(/^file:\/\//, '');
 
+/**
+ * En la base se guarda solo el nombre del archivo (`abc.jpg`), nunca la ruta
+ * completa: en iOS la carpeta de la app cambia al reinstalar o actualizar, y
+ * una ruta guardada antes apunta a una carpeta que ya no existe. La ruta se
+ * arma con la carpeta actual cada vez que se usa. Las filas guardadas antes
+ * de este cambio traen la ruta completa: se toma el nombre del final.
+ */
+const nombreDe = (ruta: string) => ruta.slice(ruta.lastIndexOf('/') + 1);
+
+const enCarpeta = (ruta: string) => `${CARPETA}/${nombreDe(ruta)}`;
+
 export const hayEspacioParaEvidencias = async () => {
   try {
     const {freeSpace} = await getFSInfo();
@@ -33,7 +44,8 @@ export const hayEspacioParaEvidencias = async () => {
 
 /**
  * Mueve el archivo temporal (cámara o firma) a la carpeta de evidencias con
- * un nombre único. Devuelve la ruta definitiva y su tamaño.
+ * un nombre único. Devuelve el nombre con el que queda (lo que va a la base)
+ * y su tamaño.
  */
 export const guardarEvidencia = async (
   origen: string,
@@ -41,9 +53,9 @@ export const guardarEvidencia = async (
   extension: 'jpg' | 'png',
 ) => {
   if (!(await exists(CARPETA))) await mkdir(CARPETA);
-  const ruta = `${CARPETA}/${nombre}.${extension}`;
-  await moveFile(sinEsquema(origen), ruta);
-  const {size} = await stat(ruta);
+  const ruta = `${nombre}.${extension}`;
+  await moveFile(sinEsquema(origen), enCarpeta(ruta));
+  const {size} = await stat(enCarpeta(ruta));
   return {ruta, bytes: Number(size)};
 };
 
@@ -57,21 +69,23 @@ export const copiarEvidencia = async (
   nombre: string,
   extension: 'jpg' | 'png',
 ) => {
-  const ruta = `${CARPETA}/${nombre}.${extension}`;
-  await copyFile(origen, ruta);
-  const {size} = await stat(ruta);
+  const ruta = `${nombre}.${extension}`;
+  await copyFile(enCarpeta(origen), enCarpeta(ruta));
+  const {size} = await stat(enCarpeta(ruta));
   return {ruta, bytes: Number(size)};
 };
 
 /** Borra una evidencia; si ya no existe, no pasa nada. */
 export const borrarEvidencia = async (ruta: string) => {
   try {
-    if (await exists(ruta)) await unlink(ruta);
+    if (await exists(enCarpeta(ruta))) await unlink(enCarpeta(ruta));
   } catch {
     // Un archivo que no se pudo borrar solo ocupa espacio: no frena al conductor.
   }
 };
 
-/** Para mostrar una evidencia en `<Image>`. */
-export const uriEvidencia = (ruta: string) =>
-  ruta.startsWith('file://') ? ruta : `file://${ruta}`;
+/** Si la evidencia sigue en el teléfono (antes de enviarla). */
+export const existeEvidencia = (ruta: string) => exists(enCarpeta(ruta));
+
+/** Para mostrar o enviar una evidencia (`<Image>`, multipart). */
+export const uriEvidencia = (ruta: string) => `file://${enCarpeta(ruta)}`;

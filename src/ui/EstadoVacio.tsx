@@ -12,7 +12,7 @@ type Props = {
   icono?: TipoIcono;
   /** `accion`: círculo lleno del color de acción (vacío que invita a empezar). */
   tono?: 'primario' | 'accion' | 'exito' | 'advertencia' | 'peligro' | 'info';
-  accion?: {titulo: string; alPresionar: () => void};
+  accion?: {titulo: string; alPresionar: () => void; cargando?: boolean};
 };
 
 /** Pantalla o sección sin contenido: vacío, error o algo terminado. */
@@ -32,7 +32,11 @@ export function EstadoVacio({titulo, mensaje, icono, tono, accion}: Props) {
       </View>
       {accion ? (
         <View style={styles.accion}>
-          <Boton titulo={accion.titulo} onPress={accion.alPresionar} />
+          <Boton
+            cargando={accion.cargando}
+            titulo={accion.titulo}
+            onPress={accion.alPresionar}
+          />
         </View>
       ) : null}
     </View>

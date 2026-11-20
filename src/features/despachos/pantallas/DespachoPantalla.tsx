@@ -48,7 +48,6 @@ import {plural} from '../domain/envios';
 import {pesos} from '../domain/formato';
 import {
   cobroTotal,
-  funciones,
   permisoTodas,
   puedeEntregar,
   puedeReportarNovedad,
@@ -95,6 +94,13 @@ export function DespachoPantalla({navigation, route}: Props) {
   const seleccion = useSeleccion();
   const salirSeleccion = seleccion.salir;
   const ubicacion = useUbicacionDespacho(despacho);
+
+  // iOS no tiene botón atrás: en modo selección, deslizar para volver no
+  // saca del despacho (como el atrás de Android en useSeleccion).
+  const enSeleccion = seleccion.activa;
+  useEffect(() => {
+    navigation.setOptions({gestureEnabled: !enSeleccion});
+  }, [navigation, enSeleccion]);
 
   // Al volver de una entrega, la lista muestra lo que falta.
   const {verPendientes} = route.params;
@@ -205,9 +211,7 @@ export function DespachoPantalla({navigation, route}: Props) {
   const permisoEntregar = (guia: GuiaLocal) =>
     puedeEntregar(despacho, guia, configuracion);
   const permisoNovedad = (guia: GuiaLocal) =>
-    funciones.novedades
-      ? puedeReportarNovedad(despacho, guia)
-      : {permitido: false as const, motivo: 'La guía ya está gestionada.'};
+    puedeReportarNovedad(despacho, guia);
   const disponible = (guia: GuiaLocal) =>
     permisoEntregar(guia).permitido || permisoNovedad(guia).permitido;
   const motivoNoDisponible = (guia: GuiaLocal) => {
@@ -358,7 +362,6 @@ export function DespachoPantalla({navigation, route}: Props) {
               : undefined
           }
           alReportarNovedad={
-            funciones.novedades &&
             puedeReportarNovedad(despacho, siguiente).permitido
               ? () =>
                   navigation.navigate('Novedad', {
@@ -428,22 +431,20 @@ export function DespachoPantalla({navigation, route}: Props) {
               .join(' · ')}
       </Texto>
       <View style={styles.accionesSeleccion}>
-        {funciones.novedades ? (
-          <View style={styles.novedad}>
-            <Boton
-              disabled={!novedadSeleccion.permitido}
-              icono={TriangleAlert}
-              tipo="neutro"
-              titulo="Novedad"
-              onPress={() =>
-                navigation.navigate('Novedad', {
-                  tenantDespachoId,
-                  codigosGuia: codigosSeleccionados,
-                })
-              }
-            />
-          </View>
-        ) : null}
+        <View style={styles.novedad}>
+          <Boton
+            disabled={!novedadSeleccion.permitido}
+            icono={TriangleAlert}
+            tipo="neutro"
+            titulo="Novedad"
+            onPress={() =>
+              navigation.navigate('Novedad', {
+                tenantDespachoId,
+                codigosGuia: codigosSeleccionados,
+              })
+            }
+          />
+        </View>
         <View style={styles.entregar}>
           <Boton
             disabled={!entregaSeleccion.permitido}

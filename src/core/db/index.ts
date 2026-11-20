@@ -14,6 +14,7 @@ export {
   archivos,
   despachos,
   guias,
+  novedadTipos,
   operaciones,
   type EstadoOperacion,
   type GestionLocal,

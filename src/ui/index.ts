@@ -14,7 +14,6 @@ export {IconoDestacado} from './IconoDestacado';
 export * from './iconos';
 export {Input, PROPS_CORREO} from './Input';
 export {Insignia} from './Insignia';
-export {ListaOpciones} from './ListaOpciones';
 export {Marca} from './Marca';
 export {
   ContenedorMensajes,

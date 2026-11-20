@@ -42,25 +42,19 @@ Pendiente o por confirmar:
 
 - **Formato del QR**: la app anterior (`cilog`, `DespachoLectorQr.tsx`) lee un JSON `{"operador", "codigoDespacho", "token"}`, valida que el token sea alfanumérico y lo manda en mayúsculas. Falta confirmar que la web siga imprimiendo ese formato y que `operador` sea el `tenant_id` de Fluor. Mientras tanto la app vincula con ingreso manual (token en mayúsculas, como la anterior); el lector de códigos ya existe en Despacho (`react-native-camera-kit`), falta conectarlo aquí.
 - `/lista` devuelve solo la asignación. Para pintar la lista sin descargar cada despacho convendría agregar `numero`, `fecha_salida`, `cantidad` y `cantidad_entregada` (no bloquea: la app las calcula de las guías descargadas).
-- El paquete no trae `novedad_tipos` ni `configuracion_entrega`: siguen haciendo falta los endpoints 7 y 9.
-- Las rutas de escritura que faltan (6 y 8) deberían validar acceso como la entrega (por asignación), porque el repartidor no tiene `user_tenant`.
-  Propuesta: colgarlas de `/tte/movil/` con `X-Tenant-Despacho-ID`, p. ej. `POST /tte/movil/guia/novedad`. La app guarda `tenant_despacho_id` en cada operación de la cola.
+- El paquete no trae `configuracion_entrega`: sigue haciendo falta el endpoint 9. Los tipos de novedad se bajan aparte (§6 y 7).
+- Terminar (8) debería validar acceso como la entrega y la novedad (por asignación), porque el repartidor no tiene `user_tenant`: colgarlo de `/tte/movil/` con `X-Tenant-Despacho-ID`. La app guarda `tenant_despacho_id` en cada operación de la cola.
 
 ### Lo que la app ya guarda mientras tanto (paso 3a)
 
-Entregar, novedad y terminar ya funcionan en la app: se guardan en el teléfono y quedan en la cola como *Por enviar* hasta que existan estos endpoints. El cuerpo se guarda listo, con la forma de §4, §6 y §8 (sin `id_operacion`, que lo pone el envío). Valores **provisionales** que hay que cambiar antes de activar el envío:
+Terminar ya funciona en la app: se guarda en el teléfono y queda en la cola como *Por enviar* hasta que exista su endpoint. Valores **provisionales** que quedan:
 
 | Qué | Provisional en la app | Se reemplaza con |
 | --- | --- | --- |
-| Tipos de novedad | 6 códigos inventados (`AUSENTE`, `DIRECCION`, `CERRADO`, `RECHAZO`, `AVERIA`, `OTRO`) en `domain/gestion.ts`. **No existen en Fluor**: allá los tipos son de cada empresa (`tte_novedad_tipo.codigo_empresa_fk`). | §7, descargado por empresa del despacho |
 | Configuración de entrega | Foto y firma opcionales; no se entrega una guía con novedad. | §9 |
 | Tipo de documento de quien recibe | No se pide ni se envía `codigo_identificacion_fk` (el legacy tampoco lo pedía). Fluor debería aceptarlo opcional. | Decisión de negocio |
 | Ubicación | Se envían `latitud`/`longitud` en entrega y novedad cuando el GPS responde; si no, van en null. | — |
-| Fotos y firma | Cada archivo es una operación (`foto` o `firma`) que depende de la entrega, con cuerpo `{codigo_modelo: "TteGuia", codigo, tipo: "I"/"F"}`; el archivo está en la tabla `archivos`. Se subirán con §5 y `Idempotency-Key` = `id_operacion`. | §5 |
 
-**Novedad está oculta en la app** (`funciones.novedades = false` en `domain/gestion.ts`) porque su endpoint no entra en la primera versión. Se enciende con esa línea cuando Fluor tenga §6 y §7.
-
-Lo que se encole con los tipos de novedad provisionales Fluor lo rechazaría (404). Antes de activar el envío de novedades hay que tener el catálogo real; las de prueba se descartan desde *Envíos*.
 
 ### 4 y 5. Entrega con fotos y firma: **hecho en Fluor** como `POST /tte/movil/guia/entrega` (`b88a416`…`9ea5e66`)
 
@@ -76,38 +70,22 @@ Valida el acceso por la asignación (`X-Tenant-Despacho-ID`) y que la guía sea 
 
 **Por decidir**: responde `409 "El despacho está cerrado"` antes de revisar si la guía ya estaba entregada (`docs/offline.md` §12.3).
 
-### 6. `POST /tte/novedad/nuevo`
+### 6 y 7. Novedad y tipos de novedad: **hechos en Fluor** (`02aeab6`)
 
-```json
-// request
-{
-  "id_operacion": "6b3c9f1e-2a4d-4c8e-8f10-aa11bb22cc33",
-  "codigo_guia_pk": 777001,
-  "codigo_despacho_fk": 9001,
-  "codigo_novedad_tipo_fk": "DIR",
-  "descripcion": "Nadie atiende en la dirección",
-  "fecha": "2026-10-27T10:50:00",
-  "latitud": 6.2442,
-  "longitud": -75.5812
-}
-```
+`POST /tte/movil/guia/novedad`, multipart como la entrega, con `X-Tenant-Despacho-ID`:
 
-```json
-// 201
-{"codigo_novedad_pk": 5521, "codigo_guia_fk": 777001, "estado_novedad": true, "fecha": "2026-10-27T10:50:00"}
-```
+- `datos`: `{"codigo_guia_fk": 123, "codigo_novedad_tipo_fk": "01", "descripcion": "...", "fecha": "2026-11-19T10:00:00", "latitud": 6.2, "longitud": -75.5}`. El despacho y el usuario los pone Fluor.
+- `imagenes`: de 0 a 10 fotos JPEG, PNG o WebP, con los límites de la entrega. La app manda hasta 4 (`LIMITE_FOTOS`).
+- `200` `{codigo_novedad_pk, ..., ficheros_con_error}`. Valida que la guía sea del despacho y que el tipo tenga `aplica_movil`.
+- `409 "La guía ya tiene una novedad abierta"` si la anterior no está solucionada; `409 "El despacho está cerrado"`.
 
-- Crea `tte_novedad` (`ingreso_api = true`, `aplica_guia = true`, `usuario` del JWT) y marca `tte_guia.estado_novedad = true` y `tte_despacho.estado_novedad = true`.
-- 404 si el tipo no existe o `aplica_movil = false`. `descripcion` máx. 2000 caracteres (columna existente).
+`GET /tte/movil/novedad-tipo`: lista sin paginar de `{codigo_novedad_tipo_pk, nombre, interna, aplica_movil, codigo_interface}` con `aplica_movil = true`, ordenada por nombre. La app la baja con cada descarga del despacho y la guarda por empresa (`novedad_tipos`) para reportar sin señal.
 
-### 7. `GET /tte/novedad-tipo/descargar`
+Ajustes de backend:
 
-Query `aplica_movil` (bool, por defecto `true`). Sin paginación (catálogo para caché).
-
-```json
-// 200
-[{"codigo_novedad_tipo_pk": "DIR", "nombre": "Dirección errada", "aplica_movil": true}]
-```
+1. **Hecho** (`a9e96da`): los tipos se piden en `GET /tte/movil/novedad-tipo` con `X-Tenant-Despacho-ID` (`get_despacho_db`), porque el repartidor no tiene `user_tenant`.
+2. **Hecho** (`14ff964`): el `409` de novedad abierta trae `detail={"message": ..., "novedad": true}`, como la entrega; la app lo toma como recibido al reenviar.
+3. **Pendiente**: `estado_novedad_solucion` en cada guía de `GET /tte/movil/guias`. Con `true` la guía vuelve a pendiente en la app; mientras no venga, se toma como `false` (novedad abierta).
 
 ### 8. `POST /tte/despacho/terminar`
 

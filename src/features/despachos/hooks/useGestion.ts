@@ -18,16 +18,15 @@ import {
 } from '../db/gestion';
 import {
   CONFIGURACION_ENTREGA_PROVISIONAL,
-  TIPOS_NOVEDAD_PROVISIONALES,
   type DatosEntrega,
+  type DatosNovedad,
   type Ubicacion,
 } from '../domain/gestion';
 import {clavesDespachos} from './claves';
 import {useUsuarioId} from './local';
 
-/** Hasta que Fluor publique la configuración y el catálogo, valores fijos. */
+/** Hasta que Fluor publique la configuración de entrega, valores fijos. */
 export const useConfiguracionEntrega = () => CONFIGURACION_ENTREGA_PROVISIONAL;
-export const useTiposNovedad = () => TIPOS_NOVEDAD_PROVISIONALES;
 
 /**
  * Guardar es local y no espera la red: se registra, se encola y se pide un
@@ -66,7 +65,10 @@ export type Entrega = {
  * offline.md §8). Si la entrega no se guarda, se borran: no quedan archivos
  * sin operación.
  */
-const moverEvidencias = async ({fotos, firma}: Entrega, guias: number) => {
+const moverEvidencias = async (
+  {fotos, firma}: Pick<Entrega, 'fotos' | 'firma'>,
+  guias: number,
+) => {
   const pendientes = [
     ...fotos.map(uri => ({
       tipo: 'foto' as const,
@@ -127,26 +129,42 @@ export const useEntregar = (
   });
 };
 
+export type Novedad = {
+  datos: DatosNovedad;
+  /** Archivos temporales de la cámara. */
+  fotos: readonly string[];
+  ubicacion: Ubicacion | null;
+};
+
+/** Una o varias guías del mismo despacho con la misma novedad y fotos. */
 export const useReportarNovedad = (
   tenantDespachoId: number,
   codigosGuia: readonly number[],
 ) =>
-  useGuardarLocal(
-    (
-      usuarioId,
-      {
-        ubicacion,
-        ...datos
-      }: {tipo: string; descripcion?: string; ubicacion: Ubicacion | null},
-    ) =>
-      escribir(tx =>
+  useGuardarLocal(async (usuarioId, novedad: Novedad) => {
+    const fotos = await moverEvidencias(
+      {fotos: novedad.fotos, firma: null},
+      codigosGuia.length,
+    );
+    try {
+      return await escribir(tx =>
         registrarNovedades(
           tx,
-          {usuarioId, tenantDespachoId, codigosGuia, ubicacion},
-          datos,
+          {
+            usuarioId,
+            tenantDespachoId,
+            codigosGuia,
+            ubicacion: novedad.ubicacion,
+          },
+          novedad.datos,
+          fotos,
         ),
-      ),
-  );
+      );
+    } catch (error) {
+      await borrarTodas(fotos);
+      throw error;
+    }
+  });
 
 export const useTerminarDespacho = (tenantDespachoId: number) =>
   useGuardarLocal((usuarioId, _: void) =>

@@ -25,19 +25,22 @@ export const debeDetenerse = (
 
 /**
  * Lo que la línea del despacho le dice al conductor, del problema más urgente
- * al estado normal. Sin permiso ni GPS la empresa no lo ve; con el ahorro de
- * batería puede dejar de verlo con la pantalla apagada.
+ * al estado normal. Sin permiso ni GPS la empresa no lo ve; con permiso
+ * limitado (iOS sin "siempre") deja de verlo si cierra la app; con el ahorro
+ * de batería (Android) puede dejar de verlo con la pantalla apagada.
  */
 export type IndicadorUbicacion =
-  'sinPermiso' | 'gpsApagado' | 'bateria' | 'activa';
+  'sinPermiso' | 'gpsApagado' | 'limitada' | 'bateria' | 'activa';
 
 export const indicadorUbicacion = ({
   permiso,
+  limitada,
   gpsEncendido,
   bateriaSinRestricciones,
   bateriaRevisada,
 }: {
   permiso: 'concedido' | 'negado' | 'bloqueado';
+  limitada: boolean;
   gpsEncendido: boolean;
   bateriaSinRestricciones: boolean;
   /** El conductor ya vio la guía de batería y dijo "Ya lo hice". */
@@ -45,6 +48,7 @@ export const indicadorUbicacion = ({
 }): IndicadorUbicacion => {
   if (permiso !== 'concedido') return 'sinPermiso';
   if (!gpsEncendido) return 'gpsApagado';
+  if (limitada) return 'limitada';
   if (!bateriaSinRestricciones && !bateriaRevisada) return 'bateria';
   return 'activa';
 };
