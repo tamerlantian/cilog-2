@@ -5,8 +5,8 @@ import {iniciarSincronizacion, type Enviador} from '@/core/sync';
 import {enviadoresDespachos} from '@/features/despachos';
 
 /**
- * Enviadores por tipo de operación. Un tipo sin enviador (novedad y terminar,
- * hasta que Fluor los publique) espera en la cola.
+ * Enviadores por tipo de operación. Un tipo sin enviador (terminar, hasta que
+ * Fluor lo publique) espera en la cola.
  */
 const ENVIADORES: Record<string, Enviador> = {...enviadoresDespachos};
 

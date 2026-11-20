@@ -7,6 +7,7 @@ import {tenantDeOperador} from '../domain/operadores';
 import {
   actualizarDespachos,
   descargarDespacho,
+  descargarTiposNovedad,
   desvincularDespacho,
   vincularDespacho,
 } from './acciones';
@@ -44,6 +45,16 @@ export const useDescargarDespacho = (tenantDespachoId: number) => {
   return useMutation({
     mutationFn: () =>
       descargarDespacho(conUsuario(usuarioId), tenantDespachoId),
+    onSettled: refrescar,
+    networkMode: 'always',
+  });
+};
+
+/** Baja los tipos de novedad cuando faltan en el teléfono. */
+export const useDescargarTiposNovedad = (tenantDespachoId: number) => {
+  const refrescar = useRefrescar();
+  return useMutation({
+    mutationFn: () => descargarTiposNovedad(tenantDespachoId),
     onSettled: refrescar,
     networkMode: 'always',
   });

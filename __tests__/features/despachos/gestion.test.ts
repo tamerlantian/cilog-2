@@ -27,10 +27,12 @@ import {
   cobroTotal,
   CONFIGURACION_ENTREGA_PROVISIONAL,
   cuerpoEntrega,
+  cuerpoNovedad,
   destinatarioComun,
   permisoTodas,
   evidenciaFaltante,
   puedeEntregar,
+  puedeReportarNovedad,
   puedeTerminar,
 } from '@/features/despachos/domain/gestion';
 
@@ -132,6 +134,54 @@ describe('reglas de gestión', () => {
       puedeEntregar(abierto, guia, {...CONFIG, entregaConNovedad: true})
         .permitido,
     ).toBe(true);
+  });
+
+  it('no deja otra novedad mientras la anterior siga sin solucionar', () => {
+    const guia = {...sinGestion, codigoGuia: 1};
+    expect(puedeReportarNovedad(abierto, guia).permitido).toBe(true);
+    expect(
+      puedeReportarNovedad(abierto, {...guia, gestionLocal: 'novedad'}),
+    ).toEqual({
+      permitido: false,
+      motivo: 'La guía ya tiene una novedad sin solucionar.',
+    });
+    expect(
+      puedeReportarNovedad(abierto, {...guia, estadoNovedad: true}).permitido,
+    ).toBe(false);
+    expect(
+      puedeReportarNovedad(abierto, {...guia, estadoEntregado: true}).permitido,
+    ).toBe(false);
+  });
+
+  it('una novedad solucionada deja la guía pendiente otra vez', () => {
+    const solucionada = {
+      ...sinGestion,
+      codigoGuia: 1,
+      estadoNovedad: true,
+      estadoNovedadSolucion: true,
+    };
+    expect(puedeReportarNovedad(abierto, solucionada).permitido).toBe(true);
+    expect(puedeEntregar(abierto, solucionada, CONFIG).permitido).toBe(true);
+    expect(puedeTerminar({...abierto, porEnviar: 0}, [solucionada])).toEqual({
+      permitido: false,
+      motivo: 'Queda 1 guía pendiente.',
+    });
+  });
+
+  it('la novedad usa los campos de Fluor y el despacho no viaja', () => {
+    expect(
+      cuerpoNovedad(7, {tipo: '01', descripcion: '  '}, '2026-10-30T14:05:09', {
+        latitud: 6.2,
+        longitud: -75.5,
+      }),
+    ).toEqual({
+      codigo_guia_fk: 7,
+      codigo_novedad_tipo_fk: '01',
+      descripcion: null,
+      fecha: '2026-10-30T14:05:09',
+      latitud: 6.2,
+      longitud: -75.5,
+    });
   });
 
   it('terminar pide todo gestionado y enviado; las retiradas no cuentan', () => {
@@ -483,19 +533,43 @@ describe('varias guías juntas', () => {
     expect(enDisco.has('/documentos/evidencias/a2.jpg')).toBe(true);
   });
 
-  it('la novedad de varias guías queda preparada', async () => {
+  it('la novedad de varias guías: una operación por guía con sus fotos', async () => {
     await conGuias([guiaFluor(1), guiaFluor(2)]);
 
-    await escribir(tx =>
-      registrarNovedades(tx, varias([1, 2]), {tipo: 'AUSENTE'}),
+    const ids = await escribir(tx =>
+      registrarNovedades(tx, varias([1, 2]), {tipo: 'AUSENTE'}, [
+        [{tipo: 'foto', ruta: '/documentos/evidencias/n1.jpg', bytes: 1}],
+        [{tipo: 'foto', ruta: '/documentos/evidencias/n2.jpg', bytes: 1}],
+      ]),
     );
 
     const cola = await leer(db => db.select().from(operaciones));
     expect(
-      cola.map(o => [o.tipo, JSON.parse(o.cuerpo).codigo_guia_pk]),
+      cola.map(o => [
+        o.tipo,
+        o.versionCuerpo,
+        JSON.parse(o.cuerpo).codigo_guia_fk,
+      ]),
     ).toEqual([
-      ['novedad', 1],
-      ['novedad', 2],
+      ['novedad', 2, 1],
+      ['novedad', 2, 2],
     ]);
+    const fotos = await leer(db => db.select().from(archivos));
+    expect(fotos.map(f => [f.idOperacion, f.ruta, f.tipo])).toEqual([
+      [ids[0], '/documentos/evidencias/n1.jpg', 'I'],
+      [ids[1], '/documentos/evidencias/n2.jpg', 'I'],
+    ]);
+  });
+
+  it('la novedad no acepta firma', async () => {
+    await conGuias([guiaFluor(1)]);
+    await expect(
+      escribir(tx =>
+        registrarNovedad(tx, gestion(1), {tipo: 'AUSENTE'}, [
+          {tipo: 'firma', ruta: '/documentos/evidencias/f.png', bytes: 1},
+        ]),
+      ),
+    ).rejects.toThrow('La novedad solo lleva fotos.');
+    expect(await leer(db => db.select().from(operaciones))).toHaveLength(0);
   });
 });

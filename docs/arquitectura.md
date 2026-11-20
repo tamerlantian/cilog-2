@@ -96,11 +96,11 @@ Inter (lectura: 400, 500, 600), Space Grotesk 700 (títulos: variantes `marca`, 
 | Login y selección de empresa (`features/auth`) | 1 | Hecho, con pruebas. La empresa es opcional (solo ingreso y envíos). Diseño *Banda navy*: el login lleva una portada navy en la escena de marca (`PortadaLogin`) y el formulario en una hoja blanca; el resto del acceso va sobre blanco (`PantallaAcceso`). Probado en el emulador |
 | Firebase (push y sesión única), Sentry | 1 | Pendiente |
 | Registro, recuperación de clave y reenvío de verificación | 1 | Hecho, con pruebas. Falta probar contra el Fluor desplegado |
-| SQLite, cola y motor de sincronización (`core/db`, `core/sync`) | 2 | Hecho, con pruebas. Sin enviadores aún: Fluor no publica entregar, novedad ni terminar |
+| SQLite, cola y motor de sincronización (`core/db`, `core/sync`) | 2 | Hecho, con pruebas. Enviadores de entrega y novedad; terminar espera su endpoint |
 | Despachos: API, repositorio y casos de uso (vincular, actualizar, descargar, desvincular) | 2 | Hecho, con pruebas. Falta probar contra Fluor |
 | Pantallas de despachos: Mis despachos, Vincular (manual), Despacho, Guía, Envíos y chip de envíos en el encabezado | 2 | Hecho, con pruebas. Lector de códigos en el buscador de Despacho (abre la guía si coincide exacto); vincular por QR pendiente (falta el formato). Rediseño *Ruta* en Mis despachos (en curso destacado, terminados), Despacho (avance, tarjeta *Siguiente*, paradas en línea de tiempo) y Guía; Vincular con el diseño *Ruta* en ingreso manual (sin escáner); Envíos y Cuenta como pestañas |
-| Entregar, novedad y terminar despacho: guardado local + cola (`db/gestion.ts`) | 3a | Hecho, con pruebas. Sin envío (Fluor no publica los endpoints); tipos de novedad y configuración de entrega provisionales (ver `docs/contratos-fluor.md`). Fotos, firma y GPS en 3b |
-| Fotos (hasta 4), firma y ubicación de la entrega (`core/archivos`, `core/ubicacion`, `ui/PanelFirma`) | 3b | Hecho, con pruebas. Pantallas según el canvas de diseño (entrega en 3 pasos, novedad con opciones a la vista, diálogo de terminar), con el estilo *Ruta · Bosque y lima*. Probado en el emulador; falta un teléfono real |
+| Entregar, novedad y terminar despacho: guardado local + cola (`db/gestion.ts`) | 3a | Hecho, con pruebas. Entrega y novedad (con fotos y tipos por empresa) se envían a Fluor; terminar sin envío y configuración de entrega provisional (ver `docs/contratos-fluor.md`) |
+| Fotos (hasta 4), firma y ubicación de la entrega (`core/archivos`, `core/ubicacion`, `ui/PanelFirma`) | 3b | Hecho, con pruebas. Pantallas según el canvas de diseño (entrega en 3 pasos, novedad con el tipo en una hoja con buscador, diálogo de terminar), con el estilo *Ruta · Bosque y lima*. Probado en el emulador; falta un teléfono real |
 | Mi cuenta (`features/cuenta`): usuario, versión instalada y cerrar sesión con aviso de envíos pendientes | 2 | Hecho, con pruebas |
 
 ## Sesión y navegación

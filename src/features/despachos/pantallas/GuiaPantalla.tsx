@@ -25,11 +25,7 @@ import {EstadoGuia} from '../components/EstadoGuia';
 import {destinatario} from '../components/FilaGuia';
 import {enlaceLlamar, enlaceMapa} from '../domain/contacto';
 import {fechaCorta, numero, pesos} from '../domain/formato';
-import {
-  funciones,
-  puedeEntregar,
-  puedeReportarNovedad,
-} from '../domain/gestion';
+import {puedeEntregar, puedeReportarNovedad} from '../domain/gestion';
 import {useDespacho, useGuia} from '../hooks/useDespachos';
 import {useConfiguracionEntrega} from '../hooks/useGestion';
 import type {RutasDespachos} from '../rutas';
@@ -100,10 +96,7 @@ export function GuiaPantalla({navigation, route}: Props) {
   const entrega = despacho
     ? puedeEntregar(despacho, guia, configuracion)
     : sinDespacho;
-  const novedad =
-    despacho && funciones.novedades
-      ? puedeReportarNovedad(despacho, guia)
-      : sinDespacho;
+  const novedad = despacho ? puedeReportarNovedad(despacho, guia) : sinDespacho;
 
   const acciones =
     entrega.permitido || novedad.permitido ? (

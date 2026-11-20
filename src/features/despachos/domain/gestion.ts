@@ -73,20 +73,6 @@ export const destinatarioComun = (
 
 export type TipoNovedad = {codigo: string; nombre: string};
 
-/**
- * PROVISIONAL hasta `GET /tte/novedad-tipo/descargar` (docs/contratos-fluor.md
- * §7). En Fluor los tipos son de cada empresa; estos códigos no existen allá,
- * así que hay que cambiarlos por el catálogo real antes de activar el envío.
- */
-export const TIPOS_NOVEDAD_PROVISIONALES: readonly TipoNovedad[] = [
-  {codigo: 'AUSENTE', nombre: 'Destinatario ausente'},
-  {codigo: 'DIRECCION', nombre: 'Dirección errada o incompleta'},
-  {codigo: 'CERRADO', nombre: 'Establecimiento cerrado'},
-  {codigo: 'RECHAZO', nombre: 'El destinatario no la recibe'},
-  {codigo: 'AVERIA', nombre: 'Mercancía averiada'},
-  {codigo: 'OTRO', nombre: 'Otro'},
-];
-
 export type ConfiguracionEntrega = {
   exigeFoto: boolean;
   exigeFirma: boolean;
@@ -103,7 +89,7 @@ export const CONFIGURACION_ENTREGA_PROVISIONAL: ConfiguracionEntrega = {
 
 export const LARGO_MAXIMO_DESCRIPCION = 2000;
 
-/** Fotos por entrega, como en la app anterior. */
+/** Fotos por entrega o novedad, como en la app anterior (Fluor acepta hasta 10). */
 export const LIMITE_FOTOS = 4;
 
 /** Lo que la empresa exige y falta para confirmar la entrega; null si está completa. */
@@ -173,13 +159,6 @@ export const permisoTodas = <G extends {codigoGuia: number}>(
   return permitido;
 };
 
-/**
- * Funciones que dependen de endpoints que Fluor aún no tiene. Mientras estén
- * apagadas, la pantalla no ofrece la acción (docs/contratos-fluor.md §6).
- * Es un objeto para que las pruebas puedan encenderlas.
- */
-export const funciones = {novedades: false};
-
 export const puedeReportarNovedad = (
   despacho: DespachoGestion,
   guia: GuiaGestion,
@@ -187,8 +166,11 @@ export const puedeReportarNovedad = (
   const bloqueo = bloqueoDespacho(despacho);
   if (bloqueo) return bloqueo;
   if (guia.retirada) return negado('La empresa sacó esta guía del despacho.');
-  if (situacionGuia(guia) === 'entregada') {
-    return negado('La guía ya está entregada.');
+  const situacion = situacionGuia(guia);
+  if (situacion === 'entregada') return negado('La guía ya está entregada.');
+  // Fluor no acepta otra mientras la anterior no esté solucionada.
+  if (situacion === 'novedad') {
+    return negado('La guía ya tiene una novedad sin solucionar.');
   }
   return permitido;
 };
@@ -268,25 +250,29 @@ export const cuerpoEntrega = (
 
 export type CuerpoEntrega = ReturnType<typeof cuerpoEntrega>;
 
-/**
- * Cuerpos de novedad y terminar (docs/contratos-fluor.md §6 y §8). Provisionales
- * hasta que Fluor publique esos endpoints.
- */
+export type DatosNovedad = {tipo: string; descripcion?: string};
 
+/** Formato del cuerpo de la novedad: 2 = multipart de `POST /tte/movil/guia/novedad`. */
+export const VERSION_CUERPO_NOVEDAD = 2;
+
+/**
+ * Campo `datos` de `POST /tte/movil/guia/novedad` (docs/contratos-fluor.md §6).
+ * El despacho lo saca Fluor de la asignación; las fotos van aparte.
+ */
 export const cuerpoNovedad = (
-  ids: {codigoGuia: number; codigoDespacho: number},
-  datos: {tipo: string; descripcion?: string},
+  codigoGuia: number,
+  datos: DatosNovedad,
   fecha: string,
   ubicacion: Ubicacion | null = null,
 ) => ({
-  codigo_guia_pk: ids.codigoGuia,
-  codigo_despacho_fk: ids.codigoDespacho,
+  codigo_guia_fk: codigoGuia,
   codigo_novedad_tipo_fk: datos.tipo,
   descripcion: opcional(datos.descripcion),
   fecha,
   ...coordenadas(ubicacion),
 });
 
+/** Cuerpo de terminar (docs/contratos-fluor.md §8), provisional hasta su endpoint. */
 export const cuerpoTerminar = (codigoDespacho: number, fecha: string) => ({
   codigo_despacho_pk: codigoDespacho,
   fecha,

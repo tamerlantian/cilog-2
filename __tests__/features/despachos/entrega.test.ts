@@ -1,6 +1,9 @@
 import {ErrorApi} from '@/core/api';
 import {cliente} from '@/core/api/cliente';
-import {enviarEntrega} from '@/features/despachos/sync/enviadores';
+import {
+  enviarEntrega,
+  enviarNovedad,
+} from '@/features/despachos/sync/enviadores';
 
 const DESPACHO = 10;
 const DATOS = {guia: 1, fecha_entrega: '2026-11-06T10:42:13', recibe: 'Ana'};
@@ -138,5 +141,88 @@ describe('enviar una entrega a Fluor', () => {
     post.mockRejectedValue(sinPermiso);
 
     await expect(enviarEntrega(operacion())).rejects.toBe(sinPermiso);
+  });
+});
+
+describe('enviar una novedad a Fluor', () => {
+  const post = jest.spyOn(cliente, 'post');
+  const global = globalThis as unknown as {FormData: unknown};
+  const formDataOriginal = global.FormData;
+  const NOVEDAD = {
+    codigo_guia_fk: 1,
+    codigo_novedad_tipo_fk: '01',
+    descripcion: null,
+    fecha: '2026-11-19T10:00:00',
+    latitud: null,
+    longitud: null,
+  };
+  const novedad = (
+    archivos: Parameters<typeof enviarNovedad>[0]['archivos'] = [],
+  ) => ({
+    idOperacion: 'op-2',
+    tenantDespachoId: DESPACHO,
+    cuerpo: NOVEDAD,
+    archivos,
+  });
+
+  beforeAll(() => {
+    global.FormData = FormularioFalso;
+  });
+  afterAll(() => {
+    global.FormData = formDataOriginal;
+  });
+  beforeEach(() => {
+    post.mockReset();
+  });
+
+  it('manda datos y fotos juntos, con la asignación del despacho', async () => {
+    post.mockResolvedValue({
+      data: {codigo_novedad_pk: 55, ficheros_con_error: 0},
+    });
+
+    const resultado = await enviarNovedad(
+      novedad([{ruta: '/documentos/evidencias/n.jpg', tipo: 'I', bytes: 1}]),
+    );
+
+    expect(resultado).toEqual({conservarArchivos: false});
+    const [url, formulario, config] = post.mock.calls[0]!;
+    expect(url).toBe('/tte/movil/guia/novedad');
+    expect((formulario as FormularioFalso).partes).toEqual([
+      ['datos', JSON.stringify(NOVEDAD)],
+      [
+        'imagenes',
+        {
+          uri: 'file:///documentos/evidencias/n.jpg',
+          name: 'foto-1.jpg',
+          type: 'image/jpeg',
+        },
+      ],
+    ]);
+    expect(config?.headers).toMatchObject({
+      'X-Tenant-Despacho-ID': String(DESPACHO),
+    });
+  });
+
+  it('si Fluor no guardó alguna foto, pide conservarlas', async () => {
+    post.mockResolvedValue({
+      data: {codigo_novedad_pk: 55, ficheros_con_error: 1},
+    });
+
+    expect(await enviarNovedad(novedad())).toEqual({conservarArchivos: true});
+  });
+
+  it('un 409 con novedad true cuenta como recibida (reenvío tras perder la respuesta)', async () => {
+    post.mockRejectedValue(conflicto({novedad: true}));
+
+    expect(await enviarNovedad(novedad())).toEqual({conservarArchivos: true});
+  });
+
+  it('el 409 de la entrega no sirve para la novedad: es un rechazo', async () => {
+    post.mockRejectedValue(conflicto({entrega: true}));
+
+    await expect(enviarNovedad(novedad())).rejects.toMatchObject({
+      codigo: 'PETICION_INVALIDA',
+      estado: 409,
+    });
   });
 });

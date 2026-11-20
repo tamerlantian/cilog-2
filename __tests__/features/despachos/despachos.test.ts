@@ -16,6 +16,7 @@ import {
   leerDespachos,
   leerEnvios,
   leerGuias,
+  leerTiposNovedad,
 } from '@/features/despachos/db/repositorio';
 import {claveGuia} from '@/features/despachos/domain/claves';
 import {
@@ -206,6 +207,23 @@ describe('repositorio de despachos', () => {
     });
   });
 
+  it('una novedad solucionada en Fluor vuelve a contar como pendiente', async () => {
+    await escribir(tx => guardarAsignaciones(tx, USUARIO, [asignacion()]));
+    await fusionar([
+      guiaFluor(1, {estado_novedad: true}),
+      guiaFluor(2, {estado_novedad: true, estado_novedad_solucion: true}),
+    ]);
+
+    const [despacho] = await leer(db => leerDespachos(db, USUARIO));
+    expect(despacho).toMatchObject({gestionadas: 1, novedades: 1});
+    expect(
+      (await guiasLocales()).map(g => [g.codigoGuia, g.estadoNovedadSolucion]),
+    ).toEqual([
+      [1, false],
+      [2, true],
+    ]);
+  });
+
   it('un despacho que ya no viene en la lista se borra, o queda liberado si tiene pendientes', async () => {
     await escribir(tx =>
       guardarAsignaciones(tx, USUARIO, [asignacion(10), asignacion(11)]),
@@ -340,6 +358,88 @@ describe('casos de uso de despachos', () => {
     });
     const [despacho] = await leer(db => leerDespachos(db, USUARIO));
     expect(despacho).toMatchObject({tenantDespachoId: DESPACHO, totalGuias: 2});
+  });
+
+  it('la descarga trae los tipos de novedad de la empresa, compartidos entre sus despachos', async () => {
+    post.mockResolvedValue({data: asignacion()});
+    responderGet({
+      '/tte/movil/guias': () => descarga([guiaFluor(1)]),
+      '/tte/movil/novedad-tipo': () => [
+        {
+          codigo_novedad_tipo_pk: '02',
+          nombre: 'Dirección errada',
+          interna: false,
+          aplica_movil: true,
+          codigo_interface: null,
+        },
+        {codigo_novedad_tipo_pk: '01', nombre: null},
+      ],
+    });
+
+    await vincularDespacho(USUARIO, {
+      tenantId: 7,
+      codigoDespacho: 910,
+      token: 'A1B2',
+    });
+
+    expect(get).toHaveBeenCalledWith('/tte/movil/novedad-tipo', {
+      headers: {'X-Tenant-Despacho-ID': String(DESPACHO)},
+    });
+    // Sin nombre se muestra el código; el orden es el de Fluor.
+    expect(await leer(db => leerTiposNovedad(db, DESPACHO))).toEqual([
+      {codigo: '02', nombre: 'Dirección errada'},
+      {codigo: '01', nombre: '01'},
+    ]);
+    // Otro despacho de la misma empresa usa el mismo catálogo.
+    await escribir(tx =>
+      guardarAsignaciones(tx, USUARIO, [asignacion(), asignacion(11)]),
+    );
+    expect(await leer(db => leerTiposNovedad(db, 11))).toHaveLength(2);
+  });
+
+  it('si los tipos de novedad fallan, las guías se guardan igual', async () => {
+    await escribir(tx => guardarAsignaciones(tx, USUARIO, [asignacion()]));
+    responderGet({'/tte/movil/guias': () => descarga([guiaFluor(1)])});
+
+    expect(await descargarDespacho(USUARIO, DESPACHO)).toBe('actualizado');
+    expect(await guiasLocales()).toHaveLength(1);
+    expect(await leer(db => leerTiposNovedad(db, DESPACHO))).toEqual([]);
+  });
+
+  it('actualizar baja los tipos que faltan de un despacho ya descargado', async () => {
+    const tipos = [{codigo_novedad_tipo_pk: '01', nombre: 'Ausente'}];
+    responderGet({
+      '/mas/tenant-despacho/lista': () => ({
+        total: 1,
+        page: 1,
+        size: 100,
+        items: [asignacion()],
+      }),
+      '/tte/movil/guias': () => descarga([guiaFluor(1)]),
+    });
+    await actualizarDespachos(USUARIO);
+    expect(await leer(db => leerTiposNovedad(db, DESPACHO))).toEqual([]);
+
+    responderGet({
+      '/mas/tenant-despacho/lista': () => ({
+        total: 1,
+        page: 1,
+        size: 100,
+        items: [asignacion()],
+      }),
+      '/tte/movil/novedad-tipo': () => tipos,
+    });
+    await actualizarDespachos(USUARIO);
+    await actualizarDespachos(USUARIO);
+
+    expect(await leer(db => leerTiposNovedad(db, DESPACHO))).toEqual([
+      {codigo: '01', nombre: 'Ausente'},
+    ]);
+    const pedidas = get.mock.calls.filter(([url]) =>
+      url.includes('novedad-tipo'),
+    );
+    // Uno al descargar (falló), uno al faltar y ninguno cuando ya están.
+    expect(pedidas).toHaveLength(2);
   });
 
   it('si la descarga falla por red, el despacho queda vinculado sin guías', async () => {

@@ -11,6 +11,7 @@ import {
   guias,
   leer,
   migrar,
+  novedadTipos,
   operaciones,
 } from '@/core/db';
 import {MIGRACIONES} from '@/core/db/migraciones';
@@ -214,5 +215,55 @@ describe('migración 3: las fotos viajan con la entrega', () => {
       ['entrega-1', '/e/a.jpg'],
       ['entrega-1', '/e/b.png'],
     ]);
+  });
+});
+
+describe('migración 4: novedades contra Fluor', () => {
+  it('convierte la novedad guardada al cuerpo de Fluor y agrega la solución a las guías', async () => {
+    const conexion = open({name: 'v3.db'});
+    await conexion.execute('PRAGMA foreign_keys = ON');
+    establecerBase(
+      crearBase(async (consulta, params) => {
+        const {rawRows} = await conexion.executeRaw(
+          consulta,
+          params as Scalar[],
+        );
+        return rawRows ?? [];
+      }),
+    );
+    for (const sentencia of MIGRACIONES.slice(0, 3).flat()) {
+      await conexion.execute(sentencia);
+    }
+    await conexion.execute('PRAGMA user_version = 3');
+    await conexion.execute(
+      `INSERT INTO operaciones_pendientes
+        (id_operacion, usuario_id, tipo, clave_entidad, tenant_despacho_id, cuerpo, estado, proximo_intento, creada_en)
+        VALUES ('novedad-1', 1, 'novedad', 'guia:10:1', 10, ?, 'pendiente', 0, 1)`,
+      [
+        JSON.stringify({
+          codigo_guia_pk: 1,
+          codigo_despacho_fk: 910,
+          codigo_novedad_tipo_fk: 'AUSENTE',
+          descripcion: null,
+          fecha: '2026-11-06T10:42:13',
+          latitud: 6.25,
+          longitud: null,
+        }),
+      ],
+    );
+
+    await migrar();
+
+    const [novedad] = await leer(db => db.select().from(operaciones));
+    expect(novedad?.versionCuerpo).toBe(2);
+    expect(JSON.parse(novedad!.cuerpo)).toEqual({
+      codigo_guia_fk: 1,
+      codigo_novedad_tipo_fk: 'AUSENTE',
+      descripcion: null,
+      fecha: '2026-11-06T10:42:13',
+      latitud: 6.25,
+      longitud: null,
+    });
+    expect(await leer(db => db.select().from(novedadTipos))).toEqual([]);
   });
 });

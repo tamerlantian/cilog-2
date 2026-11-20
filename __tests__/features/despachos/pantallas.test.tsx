@@ -25,8 +25,8 @@ import * as apiAuth from '@/features/auth/api/auth';
 import * as api from '@/features/despachos/api/despachos';
 import type {GuiaFluor} from '@/features/despachos/api/despachos';
 import * as apiEntrega from '@/features/despachos/api/entrega';
+import * as apiNovedad from '@/features/despachos/api/novedad';
 import {claveGuia} from '@/features/despachos/domain/claves';
-import {funciones} from '@/features/despachos/domain/gestion';
 import {claveAvisoUbicacion} from '@/features/despachos/hooks/useRastreo';
 
 import {crearJwt, firmar, usuarioPrueba} from '../../helpers';
@@ -34,6 +34,7 @@ import {crearJwt, firmar, usuarioPrueba} from '../../helpers';
 jest.mock('@/features/auth/api/auth');
 jest.mock('@/features/despachos/api/despachos');
 jest.mock('@/features/despachos/api/entrega');
+jest.mock('@/features/despachos/api/novedad');
 const apiSimulada = jest.mocked(api);
 
 const DESPACHO = 10;
@@ -210,6 +211,16 @@ describe('pantallas de despachos', () => {
       .entregarGuiaApi.mockRejectedValue(
         new ErrorApi({codigo: 'SIN_CONEXION', mensaje: 'Sin red'}),
       );
+    // Tipos de la empresa: se bajan con el despacho.
+    jest.mocked(apiNovedad).descargarTiposNovedadApi.mockResolvedValue([
+      {codigo_novedad_tipo_pk: '01', nombre: 'Destinatario ausente'},
+      {codigo_novedad_tipo_pk: '02', nombre: 'Dirección errada'},
+    ]);
+    jest
+      .mocked(apiNovedad)
+      .reportarNovedadApi.mockRejectedValue(
+        new ErrorApi({codigo: 'SIN_CONEXION', mensaje: 'Sin red'}),
+      );
     jest.mocked(launchCamera).mockClear();
     enDisco.clear();
     jest.mocked(Toast.show).mockClear();
@@ -230,7 +241,6 @@ describe('pantallas de despachos', () => {
     useSesion.setState({estado: 'iniciando', avisoSesion: null});
   });
   afterEach(async () => {
-    funciones.novedades = false;
     // Lo que invalidaron las mutaciones termina antes de desmontar.
     await waitFor(() =>
       expect(
@@ -303,8 +313,7 @@ describe('pantallas de despachos', () => {
       screen.getByRole('button', {name: 'Llamar a María Peña'}),
     ).toBeTruthy();
     expect(screen.getByRole('button', {name: 'Entregar'})).toBeTruthy();
-    // Novedad está apagada hasta que Fluor tenga su endpoint.
-    expect(screen.queryByRole('button', {name: 'Novedad'})).toBeNull();
+    expect(screen.getByRole('button', {name: 'Novedad'})).toBeTruthy();
   });
 
   describe('lector de códigos', () => {
@@ -416,6 +425,14 @@ describe('pantallas de despachos', () => {
 
     const operacionesGuardadas = () =>
       leer(db => db.select().from(operaciones));
+
+    /** Abre la hoja de tipos de novedad y elige uno. */
+    const elegirTipo = async (nombre: string) => {
+      await fireEvent.press(
+        screen.getByRole('button', {name: /^Tipo de novedad: /}),
+      );
+      await fireEvent.press(await screen.findByRole('button', {name: nombre}));
+    };
 
     /** Del paso de fotos al de firma, sin llenar nada. */
     const irAFirma = async () => {
@@ -713,7 +730,6 @@ describe('pantallas de despachos', () => {
     });
 
     it('la novedad pide el tipo y deja la guía con novedad', async () => {
-      funciones.novedades = true;
       await abrirGuia('Guía 3, Destinatario 3');
       await fireEvent.press(screen.getByRole('button', {name: 'Novedad'}));
 
@@ -722,13 +738,12 @@ describe('pantallas de despachos', () => {
       );
       expect(await screen.findByText('Elige el tipo de novedad')).toBeTruthy();
 
-      await fireEvent.press(
-        screen.getByRole('radio', {name: 'Destinatario ausente'}),
-      );
+      await elegirTipo('Destinatario ausente');
       expect(
-        screen.getByRole('radio', {name: 'Destinatario ausente'}).props
-          .accessibilityState.checked,
-      ).toBe(true);
+        screen.getByRole('button', {
+          name: 'Tipo de novedad: Destinatario ausente',
+        }),
+      ).toBeTruthy();
       await fireEvent.changeText(
         screen.getByLabelText('Detalle (opcional)'),
         'Nadie atiende',
@@ -742,7 +757,8 @@ describe('pantallas de despachos', () => {
       expect(screen.getByText('Con novedad')).toBeTruthy();
       const [operacion] = await operacionesGuardadas();
       expect(JSON.parse(operacion!.cuerpo)).toMatchObject({
-        codigo_novedad_tipo_fk: 'AUSENTE',
+        codigo_guia_fk: 3,
+        codigo_novedad_tipo_fk: '01',
         descripcion: 'Nadie atiende',
       });
 
@@ -752,6 +768,86 @@ describe('pantallas de despachos', () => {
       );
       await screen.findByRole('button', {name: /^Llamar a /});
       expect(screen.queryByRole('button', {name: 'Entregar'})).toBeNull();
+    });
+
+    it('la novedad lleva sus fotos en la misma operación', async () => {
+      await abrirGuia('Guía 3, Destinatario 3');
+      await fireEvent.press(screen.getByRole('button', {name: 'Novedad'}));
+
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Tomar foto'}),
+      );
+      expect(await screen.findByLabelText('Foto 1')).toBeTruthy();
+      await elegirTipo('Dirección errada');
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Reportar novedad'}),
+      );
+      await screen.findByRole('button', {name: '1 por enviar'});
+
+      const [operacion] = await operacionesGuardadas();
+      expect(operacion).toMatchObject({tipo: 'novedad', versionCuerpo: 2});
+      const guardados = await leer(db => db.select().from(archivos));
+      expect(guardados).toEqual([
+        expect.objectContaining({
+          idOperacion: operacion!.idOperacion,
+          tipo: 'I',
+          ruta: expect.stringMatching(/^\/documentos\/evidencias\/.+\.jpg$/),
+        }),
+      ]);
+    });
+
+    it('con muchos tipos de novedad la hoja trae buscador', async () => {
+      jest.mocked(apiNovedad).descargarTiposNovedadApi.mockResolvedValue(
+        Array.from({length: 25}, (_, i) => ({
+          codigo_novedad_tipo_pk: String(i + 1).padStart(2, '0'),
+          nombre: i === 17 ? 'Mercancía averiada' : `Tipo ${i + 1}`,
+        })),
+      );
+      await abrirGuia('Guía 3, Destinatario 3');
+      await fireEvent.press(screen.getByRole('button', {name: 'Novedad'}));
+
+      await fireEvent.press(
+        await screen.findByRole('button', {name: 'Tipo de novedad: Elegir'}),
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText('Buscar entre 25 opciones'),
+        'averiada',
+      );
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Mercancía averiada'}),
+      );
+
+      expect(
+        screen.getByRole('button', {
+          name: 'Tipo de novedad: Mercancía averiada',
+        }),
+      ).toBeTruthy();
+    });
+
+    it('sin tipos de novedad en el teléfono deja descargarlos', async () => {
+      const tiposApi = jest.mocked(apiNovedad).descargarTiposNovedadApi;
+      tiposApi.mockRejectedValue(
+        new ErrorApi({codigo: 'SIN_CONEXION', mensaje: 'Sin red'}),
+      );
+      await abrirGuia('Guía 3, Destinatario 3');
+      await fireEvent.press(screen.getByRole('button', {name: 'Novedad'}));
+
+      expect(
+        await screen.findByText(
+          'Faltan los tipos de novedad de la empresa en el teléfono. Descárgalos con señal.',
+        ),
+      ).toBeTruthy();
+
+      tiposApi.mockResolvedValue([
+        {codigo_novedad_tipo_pk: '01', nombre: 'Destinatario ausente'},
+      ]);
+      await fireEvent.press(
+        screen.getByRole('button', {name: 'Descargar tipos de novedad'}),
+      );
+      expect(
+        await screen.findByRole('button', {name: 'Tipo de novedad: Elegir'}),
+      ).toBeTruthy();
+      expect(tiposApi).toHaveBeenLastCalledWith(DESPACHO);
     });
 
     it('terminar queda bloqueado mientras haya envíos sin confirmar', async () => {

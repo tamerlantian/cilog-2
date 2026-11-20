@@ -62,6 +62,10 @@ export const guias = sqliteTable(
     /** Lo que dijo Fluor en la última descarga. */
     estadoEntregado: integer('estado_entregado', {mode: 'boolean'}).notNull(),
     estadoNovedad: integer('estado_novedad', {mode: 'boolean'}).notNull(),
+    /** La oficina ya solucionó la novedad: la guía vuelve a estar pendiente. */
+    estadoNovedadSolucion: integer('estado_novedad_solucion', {mode: 'boolean'})
+      .notNull()
+      .default(false),
     fechaEntrega: text('fecha_entrega'),
     /** Lo que hizo el conductor y aún no confirma Fluor. Una descarga no lo pisa. */
     gestionLocal: text('gestion_local').$type<GestionLocal>(),
@@ -126,5 +130,19 @@ export const archivos = sqliteTable(
   t => [index('archivos_operacion').on(t.idOperacion)],
 );
 
-export const esquema = {despachos, guias, operaciones, archivos};
+/**
+ * Tipos de novedad de cada empresa (`tte_novedad_tipo` con `aplica_movil`).
+ * Se bajan con el despacho para reportar sin señal; el orden es el de Fluor.
+ */
+export const novedadTipos = sqliteTable(
+  'novedad_tipos',
+  {
+    tenantId: integer('tenant_id').notNull(),
+    codigo: text('codigo').notNull(),
+    nombre: text('nombre').notNull(),
+  },
+  t => [primaryKey({columns: [t.tenantId, t.codigo]})],
+);
+
+export const esquema = {despachos, guias, operaciones, archivos, novedadTipos};
 export type Esquema = typeof esquema;

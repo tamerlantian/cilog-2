@@ -9,11 +9,15 @@ import {
   vincularDespachoApi,
   type DatosVincular,
 } from '../api/despachos';
+import {descargarTiposNovedadApi} from '../api/novedad';
 import {
   fusionarGuias,
   guardarAsignacion,
   guardarAsignaciones,
+  guardarTiposNovedad,
+  leerDespacho,
   leerDespachos,
+  leerTiposNovedad,
   quitarDespacho,
 } from '../db/repositorio';
 
@@ -23,8 +27,29 @@ import {
  */
 
 /**
- * Baja las guías del despacho y las fusiona con lo local. Si Fluor ya no lo
- * tiene asignado al usuario (404), se quita o queda como liberado.
+ * Baja los tipos de novedad de la empresa del despacho y reemplaza los
+ * guardados. Lanza el error: quien llama decide si le importa.
+ */
+export const descargarTiposNovedad = async (tenantDespachoId: number) => {
+  const despacho = await leer(db => leerDespacho(db, tenantDespachoId));
+  if (!despacho) return;
+  const tipos = await descargarTiposNovedadApi(tenantDespachoId);
+  await escribir(tx => guardarTiposNovedad(tx, despacho.tenantId, tipos));
+};
+
+/** Los tipos son un extra de la descarga: si fallan, quedan los que había. */
+const intentarTiposNovedad = async (tenantDespachoId: number) => {
+  try {
+    await descargarTiposNovedad(tenantDespachoId);
+  } catch {
+    // Se reintenta en la próxima descarga o desde la pantalla de novedad.
+  }
+};
+
+/**
+ * Baja las guías del despacho y las fusiona con lo local, junto con los tipos
+ * de novedad de su empresa. Si Fluor ya no lo tiene asignado al usuario
+ * (404), se quita o queda como liberado.
  */
 export const descargarDespacho = async (
   usuarioId: number,
@@ -33,6 +58,7 @@ export const descargarDespacho = async (
   try {
     const descarga = await descargarGuiasApi(tenantDespachoId);
     await escribir(tx => fusionarGuias(tx, usuarioId, descarga));
+    await intentarTiposNovedad(tenantDespachoId);
     return 'actualizado' as const;
   } catch (error) {
     if (traducirError(error).codigo !== 'NO_ENCONTRADO') throw error;
@@ -42,15 +68,25 @@ export const descargarDespacho = async (
 
 /**
  * Actualiza la lista de despachos asignados y baja las guías de los que nunca
- * se han descargado. Sin señal lanza el error y lo local queda como estaba.
+ * se han descargado. A los ya descargados sin tipos de novedad (p. ej. de una
+ * versión anterior de la app) les baja los tipos. Sin señal lanza el error y
+ * lo local queda como estaba.
  */
 export const actualizarDespachos = async (usuarioId: number) => {
   const asignaciones = await listarAsignacionesApi();
   await escribir(tx => guardarAsignaciones(tx, usuarioId, asignaciones));
   const locales = await leer(db => leerDespachos(db, usuarioId));
   for (const despacho of locales) {
-    if (despacho.descargadoEn === null && !despacho.liberado) {
+    if (despacho.liberado) continue;
+    if (despacho.descargadoEn === null) {
       await descargarDespacho(usuarioId, despacho.tenantDespachoId);
+    } else {
+      const tipos = await leer(db =>
+        leerTiposNovedad(db, despacho.tenantDespachoId),
+      );
+      if (tipos.length === 0) {
+        await intentarTiposNovedad(despacho.tenantDespachoId);
+      }
     }
   }
 };

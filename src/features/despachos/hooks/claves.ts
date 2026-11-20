@@ -8,6 +8,8 @@ export const clavesDespachos = {
     ['despachos', 'guias', tenantDespachoId] as const,
   guia: (tenantDespachoId: number, codigoGuia: number) =>
     ['despachos', 'guia', tenantDespachoId, codigoGuia] as const,
+  tiposNovedad: (tenantDespachoId: number) =>
+    ['despachos', 'tiposNovedad', tenantDespachoId] as const,
   envios: (usuarioId: number) => ['despachos', 'envios', usuarioId] as const,
   resumenEnvios: (usuarioId: number) =>
     ['despachos', 'resumenEnvios', usuarioId] as const,

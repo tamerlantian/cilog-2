@@ -7,6 +7,8 @@ export type DatosGuia = {
   ciudadDestino: string | null;
   estadoEntregado: boolean;
   estadoNovedad: boolean;
+  /** La oficina solucionó la novedad; sin el dato se toma como abierta. */
+  estadoNovedadSolucion?: boolean;
   gestionLocal: 'entregada' | 'novedad' | null;
 };
 
@@ -16,7 +18,8 @@ export type Situacion = 'pendiente' | 'entregada' | 'novedad';
 export const situacionGuia = (guia: DatosGuia): Situacion => {
   if (guia.gestionLocal) return guia.gestionLocal;
   if (guia.estadoEntregado) return 'entregada';
-  if (guia.estadoNovedad) return 'novedad';
+  // Solucionada, la guía vuelve a salir a reparto: se entrega o lleva otra novedad.
+  if (guia.estadoNovedad && !guia.estadoNovedadSolucion) return 'novedad';
   return 'pendiente';
 };
 
