@@ -1,7 +1,10 @@
 import {eq} from 'drizzle-orm';
 
 import {ErrorApi, type CodigoError} from '@/core/api';
-import {escribir, leer, operaciones} from '@/core/db';
+import * as fs from '@dr.pogodin/react-native-fs';
+
+import {uriEvidencia} from '@/core/archivos';
+import {archivos, escribir, leer, operaciones} from '@/core/db';
 import {
   calcularEspera,
   crearMotor,
@@ -184,6 +187,56 @@ describe('cola de operaciones y motor de sincronización', () => {
     );
     await motor.ejecutar();
     expect(enviados).toEqual(['novedad', 'entrega']);
+  });
+
+  describe('evidencias', () => {
+    const enDisco = (fs as unknown as {__archivos: Map<string, number>})
+      .__archivos;
+    const adjuntar = (idOperacion: string, ruta: string) =>
+      escribir(tx =>
+        tx.insert(archivos).values({idOperacion, ruta, tipo: 'I', bytes: 1}),
+      );
+
+    beforeEach(() => enDisco.clear());
+
+    it('una ruta guardada con la carpeta vieja de iOS se envía desde la actual', async () => {
+      const enviar = jest.fn<ReturnType<Enviador>, Parameters<Enviador>>(
+        async () => {},
+      );
+      const id = await encolarEn(entrega(1));
+      await adjuntar(
+        id,
+        '/var/mobile/Containers/Data/Application/VIEJA/Documents/evidencias/a.jpg',
+      );
+      enDisco.set('/documentos/evidencias/a.jpg', 1);
+
+      await motorCon({entrega: enviar}).ejecutar();
+
+      expect(await leerOperacion(id)).toMatchObject({estado: 'confirmada'});
+      const [{archivos: enviados}] = enviar.mock.calls[0]!;
+      expect(uriEvidencia(enviados[0]!.ruta)).toBe(
+        'file:///documentos/evidencias/a.jpg',
+      );
+      // Confirmada: la foto se borra de la carpeta actual.
+      expect(enDisco.has('/documentos/evidencias/a.jpg')).toBe(false);
+    });
+
+    it('si falta una foto no la reintenta como sin señal: la rechaza con el motivo', async () => {
+      const enviar = jest.fn<ReturnType<Enviador>, Parameters<Enviador>>(
+        async () => {},
+      );
+      const id = await encolarEn(entrega(1));
+      await adjuntar(id, 'perdida.jpg');
+
+      await motorCon({entrega: enviar}).ejecutar();
+
+      expect(enviar).not.toHaveBeenCalled();
+      expect(await leerOperacion(id)).toMatchObject({
+        estado: 'rechazada',
+        codigoError: 'PETICION_INVALIDA',
+        ultimoError: expect.stringContaining('ya no están en el teléfono'),
+      });
+    });
   });
 
   it('una rechazada frena su guía pero no las demás', async () => {

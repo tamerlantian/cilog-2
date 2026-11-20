@@ -106,7 +106,7 @@ erDiagram
         datetime confirmada_en
     }
     archivos {
-        string ruta PK "documentos de la app"
+        string ruta PK "nombre del archivo en documentos/evidencias"
         string id_operacion FK "la entrega"
         string tipo "F firma | I imagen"
         int bytes
@@ -117,7 +117,7 @@ Reglas del modelo:
 
 - **Lo que dijo Fluor y lo que hizo el conductor van en columnas distintas.** `estado_entregado` se sobreescribe al descargar; `gestion_local` no. La pantalla muestra `gestion_local ?? estado del servidor`. Así una descarga nunca borra una entrega que aún no se envió.
 - `usuario_id` en cada operación: el motor solo envía las del usuario con sesión (§9).
-- Las fotos y la firma son **archivos de la operación de entrega**, no operaciones aparte: viajan en la misma petición (§8). Un archivo pertenece a **una sola** operación (`ruta` es la llave): la entrega de varias guías guarda una copia por guía (§6.5).
+- Las fotos y la firma son **archivos de la operación de entrega**, no operaciones aparte: viajan en la misma petición (§8). Un archivo pertenece a **una sola** operación (`ruta` es la llave): la entrega de varias guías guarda una copia por guía (§6.5). `ruta` guarda **solo el nombre** (`abc.jpg`): en iOS la carpeta de la app cambia al reinstalar o actualizar, y una ruta completa dejaba la entrega reintentándose para siempre como "Sin conexión". La ruta se arma con la carpeta actual al usarla (`core/archivos`); la migración 5 recortó las filas viejas. Si al enviar falta un archivo, el motor rechaza la operación con ese motivo en vez de reintentarla.
 - `depende_de`: "terminar" no sale mientras haya entregas sin confirmar del despacho.
 - Base en modo **WAL** y toda escritura del conductor en **una transacción**: guía + operación + archivos se guardan juntos o no se guarda nada.
 

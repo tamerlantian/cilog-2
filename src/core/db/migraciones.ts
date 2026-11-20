@@ -127,4 +127,11 @@ export const MIGRACIONES: readonly (readonly string[])[] = [
     )
     WHERE tipo = 'novedad' AND version_cuerpo = 1`,
   ],
+  // 5: las evidencias se guardan por nombre, no por ruta completa (en iOS la
+  // carpeta de la app cambia al reinstalar o actualizar). Se deja lo que va
+  // después de la última barra.
+  [
+    `UPDATE archivos SET ruta = replace(ruta, rtrim(ruta, replace(ruta, '/', '')), '')
+    WHERE ruta LIKE '%/%'`,
+  ],
 ];

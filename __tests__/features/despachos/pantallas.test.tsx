@@ -626,8 +626,9 @@ describe('pantallas de despachos', () => {
       });
       const guardados = await leer(db => db.select().from(archivos));
       expect(guardados.map(a => a.ruta)).toEqual([
-        expect.stringMatching(/^\/documentos\/evidencias\/.+\.jpg$/),
-        expect.stringMatching(/^\/documentos\/evidencias\/.+\.png$/),
+        // Solo el nombre: la carpeta de la app cambia en iOS.
+        expect.stringMatching(/^[^/]+\.jpg$/),
+        expect.stringMatching(/^[^/]+\.png$/),
       ]);
       // La foto que se quitó nunca se movió a documentos.
       expect(
@@ -791,7 +792,7 @@ describe('pantallas de despachos', () => {
         expect.objectContaining({
           idOperacion: operacion!.idOperacion,
           tipo: 'I',
-          ruta: expect.stringMatching(/^\/documentos\/evidencias\/.+\.jpg$/),
+          ruta: expect.stringMatching(/^[^/]+\.jpg$/),
         }),
       ]);
     });

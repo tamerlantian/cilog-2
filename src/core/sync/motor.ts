@@ -1,4 +1,5 @@
-import {borrarEvidencia} from '@/core/archivos';
+import {ErrorApi} from '@/core/api';
+import {borrarEvidencia, existeEvidencia} from '@/core/archivos';
 import {escribir, leer} from '@/core/db';
 
 import {clasificarFallo} from './clasificar';
@@ -52,6 +53,23 @@ export type OpcionesEjecucion = {
 
 type Oyente = () => void;
 
+/**
+ * Un archivo que falta haría fallar la petición sin respuesta, como si no
+ * hubiera señal, y se reintentaría para siempre. Se rechaza con el motivo
+ * real para que el conductor lo vea y decida.
+ */
+const exigirArchivos = async (archivos: readonly ArchivoOperacion[]) => {
+  const presentes = await Promise.all(
+    archivos.map(archivo => existeEvidencia(archivo.ruta)),
+  );
+  if (presentes.every(Boolean)) return;
+  throw new ErrorApi({
+    codigo: 'PETICION_INVALIDA',
+    mensaje:
+      'Las fotos o la firma de este envío ya no están en el teléfono. Descártalo y regístralo de nuevo.',
+  });
+};
+
 export const crearMotor = ({
   enviadores,
   usuarioActual,
@@ -74,6 +92,7 @@ export const crearMotor = ({
     avisar();
     try {
       const archivos = await leer(db => archivosDe(db, operacion.idOperacion));
+      await exigirArchivos(archivos);
       const resultado = await enviador({
         idOperacion: operacion.idOperacion,
         tenantDespachoId: operacion.tenantDespachoId,
